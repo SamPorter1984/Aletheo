@@ -1,7 +1,7 @@
 pragma solidity >=0.7.0;
 
 // OpenZeppelin Upgradeability contracts modified by Sam Porter
-// You can find original set of contracts here: 
+// You can find original set of contracts here: https://github.com/OpenZeppelin/openzeppelin-contracts/tree/master/contracts/proxy
 
 // Had to pack OpenZeppelin upgradeability contracts in one single contract for readability. It's basically the same OpenZeppelin functions but in one contract with some
 // differences:
