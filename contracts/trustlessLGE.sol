@@ -10,7 +10,6 @@ pragma solidity >=0.6.0;
 // Blockchain needs no VCs, no authorities.
 
 import "./SafeMath.sol";
-import "./ReentrancyGuard.sol";
 import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Pair.sol";
 import "./ILGE2.sol";
