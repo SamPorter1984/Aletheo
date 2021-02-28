@@ -2,12 +2,10 @@ pragma solidity >=0.6.0;
 
 // Author: Sam Porter
 
-// What CORE team did is something really interesting, with LGE it's now possible to create fairer distribution and
-// fund promising projects without VC vultures at all.
+// What CORE team did is something really interesting, with LGE it's now possible to create fairer distribution and fund promising projects without VC vultures at all.
 // Non-upgradeable, not owned, liquidity is being created automatically on first transaction after last block of LGE.
 // The Event lasts for ~2 months to ensure fair distribution.
-// 0,5% of contributed Eth goes to developers for earliest development expenses including audits and bug bounties.
-// Blockchain needs no VCs, no authorities.
+// 0,5% of contributed Eth goes to developer for earliest development expenses including audits and bug bounties. As you can see, blockchain needs no VCs, no authorities.
 
 import "./SafeMath.sol";
 import "./ReentrancyGuard.sol";
@@ -115,12 +113,12 @@ contract FoundingEvent {
 		_governance.transfer(deployerShare);
 		uint contribution = _founders[msg.sender].ethContributed;
 		uint recentTotalContribution = contribution + amount;
-		IWETH(_WETH).deposit{value: amount}(); // not sure, but maybe i should have an lge deposit to withdraw last or else to refund somebody who withdraws last
+		IWETH(_WETH).deposit{value: amount}();
 		if (recentTotalContribution >= 1e18 && recentTotalContribution >= contribution) {
 			_minimumRequiredVotes += (recentTotalContribution*13/20) - (contribution*13/20);
 		}
 		_founders[msg.sender].ethContributed += amount;
-		_totalETHDeposited += amount; // could omit to make it cheaper? observe blockchain directly?
+		_totalETHDeposited += amount; // could use WETH balanceOf instead?
 		if (block.number >= _rewardsGenesis) {_createLiquidity();}
 	}
 
@@ -143,7 +141,7 @@ contract FoundingEvent {
 		IERC20(_tokenETHLP).transfer(address(msg.sender), lpShare);
 	}
 
-	function claimLGERewards() public onlyFounder { // most popular function, has to have first Method Id
+	function claimLGERewards() public onlyFounder { // most popular function, has to have first Method Id or close to
 		uint rewardsGenesis = _rewardsGenesis;
 		require(_approvedContract == address(0), "migration is in the process, call migrate and claim from new contract");
 		require(block.number > rewardsGenesis, "tokenLGE::claimLGERewards: not ready yet");
@@ -170,14 +168,14 @@ contract FoundingEvent {
 			require(_founders[msg.sender].rewardsLeft == 0, "still rewards here left");
 			uint ethContributed = _founders[msg.sender].ethContributed;
 			uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
-			IlpOraclesFund(_lpOraclesFund).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount); //have to make sure that deleting participant here
-			delete _founders[msg.sender]; // does not prevent that function from working correctly. lpOraclesFund has to only now how many lp and how much tokenAmount
+			IlpOraclesFund(_lpOraclesFund).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
+			delete _founders[msg.sender];
 			_minimumRequiredVotes = _minimumRequiredVotes.sub(ethContributed*13/20);
 			if (_votedAddresses[msg.sender] == true) {
 				_totalVotes = _totalVotes.sub(ethContributed*13/20);
 			}
-		} else if (contract_ == _approvedContract && contract != address(0)) { // migrate to approved contract in case of a bug in this contract
-			ILGE2(contract).migrate(msg.sender,_founders[msg.sender].ethContributed,_founders[msg.sender].rewardsLeft,_founders[msg.sender].tokenAmount);
+		} else if (contract_ == _approvedContract && contract != address(0)) {
+			ILGE2(contract).migrate(msg.sender,_founders[msg.sender].ethContributed,_founders[msg.sender].rewardsLeft,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
 			delete _founders[msg.sender];
 		} else {revert();}
 	}
@@ -189,11 +187,13 @@ contract FoundingEvent {
 		uint rewardsLeft = _founders[msg.sender].rewardsLeft;
 		bool firstClaim = _founders[msg.sender].firstClaim;
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
+		uint lockUpTo = _founders[msg.sender].lockUpTo;
 		delete _founders[msg.sender];
 		_founders[account].ethContributed = ethContributed;
 		_founders[account].rewardsLeft = rewardsLeft;
 		_founders[account].firstClaim = firstClaim;
 		_founders[account].tokenAmount = tokenAmount;
+		_founders[account].lockUpTo = lockUpTo;
 	}
 
 	function setRewardsRate(uint rate) public onlyGovernance {
@@ -203,7 +203,7 @@ contract FoundingEvent {
 
 	function _createLiquidity() internal {
 		_lgeOngoing = false;
-		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).getPair(_token, _WETH); // this should return address(0) anyway, but no investor wants epic fail
+		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).getPair(_token, _WETH); // should return address(0) anyway, but no investor wants epic fail
         if(_tokenETHLP == address(0)) {
             _tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
         }
@@ -226,8 +226,8 @@ contract FoundingEvent {
     }
 // VIEW FUNCTIONS ========================================================================================
 
-	function getFounder(address account) external view returns (uint ethContributed, uint rewardsLeft, bool firstClaim, uint tokenAmount) {
-		return (_founders[account].ethContributed,_founders[account].rewardsLeft,_founders[account].firstClaim,_founders[account].tokenAmount);
+	function getFounder(address account) external view returns (uint ethContributed, uint rewardsLeft, bool firstClaim, uint tokenAmount, uint lockUpTo) {
+		return (_founders[account].ethContributed,_founders[account].rewardsLeft,_founders[account].firstClaim,_founders[account].tokenAmount,_founders[account].lockUpTo);
 	}
 	function getLGEOngoing() external view returns (bool) {return _lgeOngoing;}
 	function getRewardsGenesis() external view returns (uint) {return _rewardsGenesis;}
@@ -235,8 +235,7 @@ contract FoundingEvent {
 	function getTotalETHDeposited() external view returns (uint) {return _totalETHDeposited;}
 
 // IN CASE OF A BUG IN THIS CONTRACT =====================================================================
-// I am quite confident in the code, since there is nothing fancy, but let this be here just for investors' confidence. It also pictures quite clearly my intention to make the
-// project completely decentralized, even if it makes some stuff a bit more complicated and some transactions more expensive, it's better stay.
+// There is nothing fancy in the code, but let this be here just for investors' confidence.
 	function setGovernance(address payable account) public onlyGovernance {
 		_governance = account;
 	}
