@@ -4,7 +4,7 @@ pragma solidity >=0.6.0;
 
 // What CORE team did is something really interesting, with LGE it's now possible to create fairer distribution and
 // fund promising projects without VC vultures at all.
-// Non-upgradeable, not owned, liquidity is being created automatically on first transaction after last block of LGE.
+// This version is non-upgradeable, not owned, liquidity is being created automatically on first transaction after last block of LGE.
 // The Event lasts for ~2 months to ensure fair distribution.
 // 0,5% of contributed Eth goes to developer for earliest development expenses including audits and bug bounties. 
 // Blockchain needs no VCs, no authorities.
