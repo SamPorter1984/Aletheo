@@ -159,6 +159,7 @@ contract FoundingEvent {
 			rewardsToClaim -= rewardsClaimed;
 		}
 		require(rewardsToClaim > 0, "nothing to claim");
+		require(rewardsToClaim <= IERC20(_token).balanceOf(address(this)),"withdrawing too much");
 		_founders[msg.sender].rewardsLeft -= rewardsToClaim;
 		IERC20(_token).transfer(address(msg.sender), rewardsToClaim);
 	}
