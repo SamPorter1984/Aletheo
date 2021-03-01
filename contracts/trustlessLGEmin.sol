@@ -201,17 +201,16 @@ contract FoundingEvent {
         assembly { size := extcodesize(account) }
         return size > 0;
     }
+
+    function setGovernance(address payable account) public onlyGovernance {
+		_governance = account;
+	}
 // VIEW FUNCTIONS ========================================================================================
 
-	function getFounder(address account) external view returns (uint ethContributed, uint rewardsLeft, bool firstClaim, uint tokenAmount, uint lockUpTo) {
+	function getFounder(address account) external view returns (uint ethContr, uint rewLeft, bool frstClaim, uint tknAmount, uint lckUpTo) {
 		return (_founders[account].ethContributed,_founders[account].rewardsLeft,_founders[account].firstClaim,_founders[account].tokenAmount,_founders[account].lockUpTo);
 	}
-	function getLGEOngoing() external view returns (bool) {return _lgeOngoing;}
-	function getRewardsGenesis() external view returns (uint) {return _rewardsGenesis;}
-	function getRewardsRate() external view returns (uint) {return _rewardsRate;}
-	function getTotalETHDeposited() external view returns (uint) {return _totalETHDeposited;}
-
-	function setGovernance(address payable account) public onlyGovernance {
-		_governance = account;
+	function getLgeInfo() external view returns (bool lgeOng,uint rewGenesis,uint rewRate,uint totalEthDepos) {
+		return (_lgeOngoing,_rewardsGenesis,_rewardsRate,_totalETHDeposited);
 	}
 }
