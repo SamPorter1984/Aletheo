@@ -22,7 +22,7 @@ import "./IERC20.sol";
 contract FoundingEvent {
 	using SafeMath for uint;
 
-
+	// I believe this is required for the safety of investors and other developers joining the project
 	string public agreementTerms = "I understand that this contract is provided with no warranty of any kind. \n I agree to not hold the contract creator, RAID team members or anyone associated with this event liable for any damage monetary and otherwise I might onccur. \n I understand that any smart contract interaction carries an inherent risk.";
 	uint private _totalETHDeposited;
 	uint private _totalLGELPtokensMinted;
