@@ -2,14 +2,13 @@ pragma solidity >=0.6.0;
 
 // Author: Sam Porter
 
-// What CORE team did is something really interesting, with LGE it's now possible to create fairer distribution and
-// fund promising projects without VC vultures at all.
-// This version is non-upgradeable, not owned, liquidity is being created automatically on first transaction after last block of LGE.
+// What CORE team did is something really interesting, with LGE it's now possible to create fairer distribution and fund promising projects without VC vultures at all.
+// Non-upgradeable, not owned, liquidity is being created automatically on first transaction after last block of LGE.
 // The Event lasts for ~2 months to ensure fair distribution.
-// 0,5% of contributed Eth goes to developer for earliest development expenses including audits and bug bounties. 
-// Blockchain needs no VCs, no authorities.
+// 0,5% of contributed Eth goes to developer for earliest development expenses including audits and bug bounties. As you can see, blockchain needs no VCs, no authorities.
 
 import "./SafeMath.sol";
+import "./ReentrancyGuard.sol";
 import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Pair.sol";
 import "./ILGE2.sol";
@@ -21,7 +20,7 @@ contract FoundingEvent {
 	using SafeMath for uint;
 
 
-	string public agreementTerms = "I understand that this contract is provided with no warranty of any kind. \n I agree to not hold RAID team members or anyone associated with this event liable for any damage monetary and otherwise I might onccur. \n I understand that any smart contract interaction carries an inherent risk.";
+	string public agreementTerms = "I understand that this contract is provided with no warranty of any kind. \n I agree to not hold the contract creator, RAID team members or anyone associated with this event liable for any damage monetary and otherwise I might onccur. \n I understand that any smart contract interaction carries an inherent risk.";
 	uint private _totalETHDeposited;
 	uint private _totalLGELPtokensMinted;
 	uint private _totalLGEStaked;
@@ -80,8 +79,7 @@ contract FoundingEvent {
 	event LiquidityPoolCreated(address indexed liquidityPair);
 
 	modifier onlyFounder() {
-		require(_founders[msg.sender].ethContributed > 0, "Not an Founder");
-		require(_reentrancyStatus != 1, "ReentrancyGuard: reentrant call");
+		require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not an Founder or reentrant call");
         _reentrancyStatus = 1;
 		_;
 		_reentrancyStatus = 0;
@@ -97,10 +95,8 @@ contract FoundingEvent {
 	}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
-		require(msg.value > 0, "tokenLGE::_depositEth: amount must be bigger than 0");
-		require(_lgeOngoing == true, "tokenLGE::_depositEth: LGE has already ended or didn't start");
-		require(iAgreeToPublicStringAgreementTerms == true, "no agreement to the terms provided");
-		require(_isContract(msg.sender) == false, "contracts can't be Founders");
+		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true, "LGE has already ended or didn't start, or no agreement provided");
+		require(msg.value > 0 && _isContract(msg.sender) == false, "amount must be bigger than 0 ot contracts can't be Founders");
 		if (_takenAddresses[msg.sender] == true) {
 			_takenAddresses[msg.sender] = false;
 			address linkedAddress = _linkedAddresses[msg.sender];
@@ -129,23 +125,21 @@ contract FoundingEvent {
 	}
 
 	function unstakeLP() public onlyFounder {
-		require(_founders[msg.sender].lockUpTo <= block.number, "tokens locked");
-		require(_founders[msg.sender].firstClaim == true, "tokenLGE::unstakeLP: first claim rewards");
-		require(_approvedContract == address(0), "tokenLGE::unstakeLP: migration is in the process, call migrate first");
+		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].firstClaim == true && _approvedContract == address(0), "tokens locked or need to claim first or migration is in the process");
 		uint ethContributed = _founders[msg.sender].ethContributed;
-		delete _founders[msg.sender];
+		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
+		require(lpShare <= IERC20(_tokenETHLP).balanceOf(address(this)),"withdrawing too much");
+		IERC20(_tokenETHLP).transfer(address(msg.sender), lpShare);
 		_minimumRequiredVotes = _minimumRequiredVotes.sub(ethContributed*13/20);
 		if (_votedAddresses[msg.sender] == true) {
 			_totalVotes = _totalVotes.sub(ethContributed*13/20);
 		}
-		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
-		IERC20(_tokenETHLP).transfer(address(msg.sender), lpShare);
+		delete _founders[msg.sender];
 	}
 
-	function claimLGERewards() public onlyFounder { // most popular function, has to have first Method Id or close to. fix overflow
+	function claimLGERewards() public onlyFounder { // most popular function, has to have first Method Id or close to
 		uint rewardsGenesis = _rewardsGenesis;
-		require(_approvedContract == address(0), "migration is in the process, call migrate and claim from new contract");
-		require(block.number > rewardsGenesis, "tokenLGE::claimLGERewards: not ready yet");
+		require(_approvedContract == address(0) && block.number > rewardsGenesis, "too soon or migration is in the process, claim from new contract");
 		if (_founders[msg.sender].firstClaim == false) {
 			_founders[msg.sender].firstClaim = true;
 			uint share = _founders[msg.sender].ethContributed*1e27/_totalETHDeposited;
@@ -156,11 +150,10 @@ contract FoundingEvent {
 			uint tokenAmount = _founders[msg.sender].tokenAmount;
 			uint rewardsToClaim = (block.number - rewardsGenesis)*_rewardsRate*tokenAmount/1e27;
 			uint rewardsClaimed = tokenAmount - _founders[msg.sender].rewardsLeft;
-			rewardsToClaim -= rewardsClaimed;
+			rewardsToClaim = rewardsToClaim.sub(rewardsClaimed);
 		}
-		require(rewardsToClaim > 0, "nothing to claim");
-		require(rewardsToClaim <= IERC20(_token).balanceOf(address(this)),"withdrawing too much");
-		_founders[msg.sender].rewardsLeft -= rewardsToClaim;
+		require(rewardsToClaim > 0 && rewardsToClaim <= IERC20(_token).balanceOf(address(this)), "nothing to claim or withdrawing too much");
+		_founders[msg.sender].rewardsLeft = _founders[msg.sender].rewardsLeft.sub(rewardsToClaim);
 		IERC20(_token).transfer(address(msg.sender), rewardsToClaim);
 	}
 
@@ -183,8 +176,7 @@ contract FoundingEvent {
 	}
 
 	function changeAddress(address account) public onlyFounder {
-		require(_voting == false, "can't change address during voting period");
-		require(_isContract(account) == false, "contracts can't be founders");
+		require(_voting == false && _isContract(account) == false, "can't change during voting or contracts can't be founders");
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint rewardsLeft = _founders[msg.sender].rewardsLeft;
 		bool firstClaim = _founders[msg.sender].firstClaim;
@@ -243,8 +235,7 @@ contract FoundingEvent {
 	}
 
 	function proposeContract(address contract_) public onlyGovernance {
-		require(_canPropose == true, "previous voting is not yet finished");
-		require(block.number >= (_lgeStart + 180000), "too soon");
+		require(_canPropose == true && block.number >= (_lgeStart + 180000), "previous voting is not yet finished or too soon");
 		_proposedContract = contract_;
 		_voting = true;
 		_canPropose = false;
@@ -253,9 +244,7 @@ contract FoundingEvent {
 	}
 
 	function voteForProposedContract() public onlyFounder {
-		require(_founders[msg.sender].ethContributed > 1e18, "not enough eth deposited to vote");
-		require(_voting == true, "nothing to vote for");
-		require(_votedAddresses[msg.sender] == false, "already voted");
+		require(_founders[msg.sender].ethContributed > 1e18 && _voting == true && _votedAddresses[msg.sender] == false, "not enough eth deposited or nothing to vote for or already voted");
 		_votedAddresses[msg.sender] = true;
 		_totalVotes += _founders[msg.sender].ethContributed;
 		if (block.number >= _votingEnd || _totalVotes >= _minimumRequiredVotes) {_resolveVoting();}
@@ -286,18 +275,15 @@ contract FoundingEvent {
 	}
 
 	function resetVotingPowerForNextVote() public onlyFounder { // very unlikely to be ever required
-		require(_voting == false, "voting is still ongoing");
-		require(_votedAddresses[msg.sender] == true, "wasn't voting");
+		require(_voting == false && _votedAddresses[msg.sender] == true, "voting is ongoing or wasn't voting");
 		_votedAddresses[msg.sender] = false;
 	}
 
 // IN CASE OF SPAM BOTS OVERLOADING TESTNET FOR LEGIT TESTERS ============================================
 
 	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
-		require(_linkedAddresses[msg.sender] != account, "already linked these addresses");
-		require(_takenAddresses[account] == false, "somebody already uses this address");
-		require(isFounder(account) == false, "can't link lge participant to lge participant");
-		require(_founders[msg.sender].ethContributed >= _linkLimit, "deposited not enough eth to link an account");
+		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false, "already linked these or somebody already uses this");
+		require(isFounder(account) == false && _founders[msg.sender].ethContributed >= _linkLimit, "can't link founders or not enough eth deposited");
 		_linkedAddresses[msg.sender] = account;
 		_linkedAddresses[account] = msg.sender;
 		_takenAddresses[account] = true;
