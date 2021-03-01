@@ -82,7 +82,7 @@ contract FoundingEvent {
 	event LiquidityPoolCreated(address indexed liquidityPair);
 
 	modifier onlyFounder() {
-		require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not an Founder or reentrant call");
+		require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not a Founder or reentrant call");
         _reentrancyStatus = 1;
 		_;
 		_reentrancyStatus = 0;
