@@ -74,8 +74,8 @@ contract FoundingEvent {
 		_;
 	}
 
-	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
-		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true, "LGE has already ended or didn't start, or no agreement provided");
+	function depositEth() external payable {
+		require(_lgeOngoing == true, "LGE has already ended or didn't start");
 		require(msg.value > 0 && _isContract(msg.sender) == false, "amount must be bigger than 0 or contracts can't be Founders");
 		uint deployerShare = msg.value / 200;
 		uint amount = msg.value - deployerShare;
