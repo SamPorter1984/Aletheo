@@ -1,2 +1,2 @@
 # RAID
-Decentralized word-of-mouth marketing platform
+Decentralized word-of-mouth marketing service
