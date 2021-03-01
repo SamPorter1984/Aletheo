@@ -7,7 +7,7 @@ pragma solidity >=0.6.0;
 // Non-upgradeable, not owned, liquidity is being created automatically on first transaction after last block of LGE.
 // The Event lasts for ~2 months to ensure fair distribution.
 // 0,5% of contributed Eth goes to developer for earliest development expenses including audits and bug bounties.
-// As you can see, blockchain needs no VCs, no authorities.
+// Blockchain needs no VCs, no authorities.
 // Minimized the code a bit in case if publishing a contract will cost a small fortune for you, will publish trustlessLGEmin.sol too
 
 import "./SafeMath.sol";
