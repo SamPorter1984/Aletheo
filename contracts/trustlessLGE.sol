@@ -142,7 +142,7 @@ contract FoundingEvent {
 		IERC20(_tokenETHLP).transfer(address(msg.sender), lpShare);
 	}
 
-	function claimLGERewards() public onlyFounder { // most popular function, has to have first Method Id or close to
+	function claimLGERewards() public onlyFounder { // most popular function, has to have first Method Id or close to. fix overflow
 		uint rewardsGenesis = _rewardsGenesis;
 		require(_approvedContract == address(0), "migration is in the process, call migrate and claim from new contract");
 		require(block.number > rewardsGenesis, "tokenLGE::claimLGERewards: not ready yet");
