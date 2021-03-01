@@ -30,7 +30,6 @@ contract FoundingEvent {
 	address private _tokenETHLP; // maybe just precompute create2 and hardcode too?
 	uint private _rewardsRate;
 	uint private _lgeStart; // it's not required. remove and replace with hardcoded approximate blocknumbers to save transaction cost for users
-	uint private _totalRewardsLeft;
 	address private constant _WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;// testing
 	address payable private _governance;
 	uint private _lockTime;
@@ -44,7 +43,6 @@ contract FoundingEvent {
 //////
 	constructor() {
 		_governance = msg.sender;
-		_totalRewardsLeft = 1e27;
 		_rewardsRate = 95e18; // aprox 1 billion tokens in 5 years
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
 		_rewardsGenesis = block.number + 5; // testing number
@@ -61,6 +59,7 @@ contract FoundingEvent {
 
 	mapping(address => Founder) private _founders;
 
+	event AddressLinked(address indexed address1, address indexed address2);
 	event LiquidityPoolCreated(address indexed liquidityPair);
 
 	modifier onlyFounder() {
@@ -77,24 +76,11 @@ contract FoundingEvent {
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
 		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true, "LGE has already ended or didn't start, or no agreement provided");
-		require(msg.value > 0 && _isContract(msg.sender) == false, "amount must be bigger than 0 ot contracts can't be Founders");
-		if (_takenAddresses[msg.sender] == true) {
-			_takenAddresses[msg.sender] = false;
-			address linkedAddress = _linkedAddresses[msg.sender];
-			if (linkedAddress != address(0)) {
-				_linkedAddresses[msg.sender] = address(0);
-				_linkedAddresses[linkedAddress] = address(0);
-			}
-		}
+		require(msg.value > 0 && _isContract(msg.sender) == false, "amount must be bigger than 0 or contracts can't be Founders");
 		uint deployerShare = msg.value / 200;
 		uint amount = msg.value - deployerShare;
 		_governance.transfer(deployerShare);
-		uint contribution = _founders[msg.sender].ethContributed;
-		uint recentTotalContribution = contribution + amount;
 		IWETH(_WETH).deposit{value: amount}();
-		if (recentTotalContribution >= 1e18 && recentTotalContribution >= contribution) {
-			_minimumRequiredVotes += (recentTotalContribution*13/20) - (contribution*13/20);
-		}
 		_founders[msg.sender].ethContributed += amount;
 		_totalETHDeposited += amount; // could use WETH balanceOf instead?
 		if (block.number >= _rewardsGenesis) {_createLiquidity();}
@@ -111,10 +97,6 @@ contract FoundingEvent {
 		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
 		require(lpShare <= IERC20(_tokenETHLP).balanceOf(address(this)),"withdrawing too much");
 		IERC20(_tokenETHLP).transfer(address(msg.sender), lpShare);
-		_minimumRequiredVotes = _minimumRequiredVotes.sub(ethContributed*13/20);
-		if (_votedAddresses[msg.sender] == true) {
-			_totalVotes = _totalVotes.sub(ethContributed*13/20);
-		}
 		delete _founders[msg.sender];
 	}
 
@@ -146,10 +128,6 @@ contract FoundingEvent {
 			uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
 			IlpOraclesFund(_lpOraclesFund).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
 			delete _founders[msg.sender];
-			_minimumRequiredVotes = _minimumRequiredVotes.sub(ethContributed*13/20);
-			if (_votedAddresses[msg.sender] == true) {
-				_totalVotes = _totalVotes.sub(ethContributed*13/20);
-			}
 		} else {revert();}
 	}
 
