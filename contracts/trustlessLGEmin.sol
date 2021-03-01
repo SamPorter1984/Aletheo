@@ -8,7 +8,7 @@ pragma solidity >=0.6.0;
 // The Event lasts for ~2 months to ensure fair distribution.
 // 0,5% of contributed Eth goes to developer for earliest development expenses including audits and bug bounties. 
 // Blockchain needs no VCs, no authorities.
-// Minimized version without voting for a migration and without address link.
+// Minimized version without voting for a migration and without address link. This one is also cheaper for founders.
 
 import "./SafeMath.sol";
 import "./ReentrancyGuard.sol";
