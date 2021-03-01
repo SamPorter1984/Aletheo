@@ -12,7 +12,6 @@ pragma solidity >=0.6.0;
 // Minimized the code a bit in case if publishing a contract will cost a small fortune for you, will publish trustlessLGEmin.sol too
 
 import "./SafeMath.sol";
-import "./ReentrancyGuard.sol";
 import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Pair.sol";
 import "./ILGE2.sol";
