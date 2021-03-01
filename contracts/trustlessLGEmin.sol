@@ -62,7 +62,6 @@ contract FoundingEvent {
 
 	mapping(address => Founder) private _founders;
 
-	event AddressLinked(address indexed address1, address indexed address2);
 	event LiquidityPoolCreated(address indexed liquidityPair);
 
 	modifier onlyFounder() {
@@ -75,10 +74,6 @@ contract FoundingEvent {
 	modifier onlyGovernance() {
 		require(msg.sender == _governance, "not governance");
 		_;
-	}
-
-	function isFounder(address account) public view returns(bool) {
-		if (_founders[account].ethContributed > 0) {return true;} else {return false;}
 	}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
