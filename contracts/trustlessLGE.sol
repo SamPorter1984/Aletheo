@@ -36,7 +36,6 @@ contract FoundingEvent {
 	bool private _canPropose = true;
 	uint private _minimumRequiredVotes;
 	uint private _lgeStart; // it's not required. remove and replace with hardcoded approximate blocknumbers to save transaction cost for users
-	uint private _totalRewardsLeft;
 	address private constant _WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;// testing
 	address payable private _governance;
 	uint private _votingEnd;
@@ -53,7 +52,6 @@ contract FoundingEvent {
 //////
 	constructor() {
 		_governance = msg.sender;
-		_totalRewardsLeft = 1e27;
 		_rewardsRate = 95e18; // aprox 1 billion tokens in 5 years
 		_linkLimit = 1e17; // 0.1 ether
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
