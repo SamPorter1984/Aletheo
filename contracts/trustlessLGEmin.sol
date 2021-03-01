@@ -12,7 +12,6 @@ pragma solidity >=0.6.0;
 // Minimized version without voting for a migration and without address link. This one is also cheaper for founders.
 
 import "./SafeMath.sol";
-import "./ReentrancyGuard.sol";
 import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Pair.sol";
 import "./ILGE2.sol";
