@@ -64,7 +64,7 @@ contract FoundingEvent {
 
 	modifier onlyFounder() {
 		require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not an Founder or reentrant call");
-        _reentrancyStatus = 1;
+    	_reentrancyStatus = 1;
 		_;
 		_reentrancyStatus = 0;
 	}
@@ -106,7 +106,7 @@ contract FoundingEvent {
 		if (_founders[msg.sender].firstClaim == false) {
 			_founders[msg.sender].firstClaim = true;
 			uint share = _founders[msg.sender].ethContributed*1e27/_totalETHDeposited;
-			_founders[msg.sender].rewardsLeft = share; // could use inaccurate storage in uint64?
+			_founders[msg.sender].rewardsLeft = share; // uint64?
 			_founders[msg.sender].tokenAmount = share;
 			uint rewardsToClaim = (block.number - rewardsGenesis)*_rewardsRate*share/1e27;
 		} else {
@@ -152,15 +152,15 @@ contract FoundingEvent {
 
 	function _createLiquidity() internal {
 		_lgeOngoing = false;
-		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).getPair(_token, _WETH); // should return address(0) anyway, but no investor wants epic fail
-        if(_tokenETHLP == address(0)) {
-            _tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
-        }
-        IWETH(_WETH).transfer(_tokenETHLP, IWETH(_WETH).balanceOf(address(this)));
-        IERC20(_token).transfer(_tokenETHLP, IERC20(_token).balanceOf(address(this))/6);
-        IUniswapV2Pair(_tokenETHLP).mint(address(this));
-        _totalLGELPtokensMinted = IUniswapV2Pair(_tokenETHLP).balanceOf(address(this));
-        emit LiquidityPoolCreated(_tokenETHLP);
+		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).getPair(_token, _WETH); // should return address(0) anyway
+    	if(_tokenETHLP == address(0)) {
+        	_tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
+    	}
+    	IWETH(_WETH).transfer(_tokenETHLP, IWETH(_WETH).balanceOf(address(this)));
+    	IERC20(_token).transfer(_tokenETHLP, IERC20(_token).balanceOf(address(this))/6);
+    	IUniswapV2Pair(_tokenETHLP).mint(address(this));
+    	_totalLGELPtokensMinted = IUniswapV2Pair(_tokenETHLP).balanceOf(address(this));
+    	emit LiquidityPoolCreated(_tokenETHLP);
 	}
 
 	function setLockTime(uint lockTime_) public onlyGovernance {
@@ -169,12 +169,12 @@ contract FoundingEvent {
 	}
 
 	function _isContract(address account) internal view returns (bool) {
-        uint256 size;
-        assembly { size := extcodesize(account) }
-        return size > 0;
-    }
+		uint256 size;
+		assembly { size := extcodesize(account) }
+		return size > 0;
+	}
 
-    function setGovernance(address payable account) public onlyGovernance {
+	function setGovernance(address payable account) public onlyGovernance {
 		_governance = account;
 	}
 // VIEW FUNCTIONS ========================================================================================
