@@ -64,7 +64,7 @@ contract FoundingEvent {
 
 	modifier onlyFounder() {
 		require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not an Founder or reentrant call");
-    	_reentrancyStatus = 1;
+		_reentrancyStatus = 1;
 		_;
 		_reentrancyStatus = 0;
 	}
@@ -153,14 +153,14 @@ contract FoundingEvent {
 	function _createLiquidity() internal {
 		_lgeOngoing = false;
 		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).getPair(_token, _WETH); // should return address(0) anyway
-    	if(_tokenETHLP == address(0)) {
-        	_tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
-    	}
-    	IWETH(_WETH).transfer(_tokenETHLP, IWETH(_WETH).balanceOf(address(this)));
-    	IERC20(_token).transfer(_tokenETHLP, IERC20(_token).balanceOf(address(this))/6);
-    	IUniswapV2Pair(_tokenETHLP).mint(address(this));
-    	_totalLGELPtokensMinted = IUniswapV2Pair(_tokenETHLP).balanceOf(address(this));
-    	emit LiquidityPoolCreated(_tokenETHLP);
+		if(_tokenETHLP == address(0)) {
+			_tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
+		}
+		IWETH(_WETH).transfer(_tokenETHLP, IWETH(_WETH).balanceOf(address(this)));
+		IERC20(_token).transfer(_tokenETHLP, IERC20(_token).balanceOf(address(this))/6);
+		IUniswapV2Pair(_tokenETHLP).mint(address(this));
+		_totalLGELPtokensMinted = IUniswapV2Pair(_tokenETHLP).balanceOf(address(this));
+		emit LiquidityPoolCreated(_tokenETHLP);
 	}
 
 	function setLockTime(uint lockTime_) public onlyGovernance {
