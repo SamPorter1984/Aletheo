@@ -9,15 +9,17 @@ pragma solidity >=0.7.0;
 // 2._deadline variable is a block after which it becomes impossible to upgrade the contract. Defined in constructor and here it's ~2 years.
 // 3._upgradeBlock defines how often the contract can be upgraded. Defined in _setlogic() function and the internval here is set
 // to 100k blocks.
+// 4. Admin can be changed only once.
 
-contract CustomAdminProxy {
+contract CustomProxy {
 	event Upgraded(address indexed logic);
 	event AdminChanged(address previousAdmin, address newAdmin);
 	bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 	bytes32 internal constant LOGIC_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 	uint private _upgradeBlock;
 	uint private _deadline;
-
+	bool private _governanceSet;
+	
 	constructor() {
 		require(ADMIN_SLOT == bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1) && LOGIC_SLOT == bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1), "eth ded or code broke");
 		_setAdmin(msg.sender);
@@ -76,6 +78,8 @@ contract CustomAdminProxy {
 	}
 
 	function _setAdmin(address newAdm) internal {
+		require(_governanceSet == false, "governance already set");
+		_governanceSet = true;
 		assembly { sstore(ADMIN_SLOT, newAdmin) }
 	}
 
