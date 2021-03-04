@@ -27,7 +27,6 @@ contract FoundingEvent {
 	uint private _totalETHDeposited;
 	uint private _ETHDeposited;
 	uint private _totalLGELPtokensMinted;
-	uint private _totalLGEStaked;
 	bool private _lgeOngoing = true;
 	address private _tokenETHLP; // maybe just precompute create2 and hardcode too?
 	uint private _rewardsRate;
@@ -72,7 +71,7 @@ contract FoundingEvent {
 	event LiquidityPoolCreated(address indexed liquidityPair);
 
 	modifier onlyFounder() {
-		require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not a Founder or reentrant call");
+		require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not a Founder or reentrancy guard");
 		_reentrancyStatus = 1;
 		_;
 		_reentrancyStatus = 0;
@@ -96,12 +95,10 @@ contract FoundingEvent {
 		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true, "LGE has already ended or didn't start, or no agreement provided");
 		require(msg.value > 0 && _isContract(msg.sender) == false, "amount must be bigger than 0 ot contracts can't be Founders");
 		if (_takenAddresses[msg.sender] == true) {
-			delete _takenAddresses[msg.sender];
 			address linkedAddress = _linkedAddresses[msg.sender];
-			if (linkedAddress != address(0)) {
-				delete _linkedAddresses[msg.sender];
-				delete _linkedAddresses[linkedAddress];
-			}
+			delete _linkedAddresses[linkedAddress];
+			delete _linkedAddresses[msg.sender];
+			delete _takenAddresses[msg.sender];
 		}
 		uint deployerShare = msg.value / 200;
 		uint amount = msg.value - deployerShare;
@@ -135,7 +132,7 @@ contract FoundingEvent {
 		if (_founders[msg.sender].firstClaim == false) {
 			_founders[msg.sender].firstClaim = true;
 			uint share = _founders[msg.sender].ethContributed*5e27/_totalETHDeposited;
-			_founders[msg.sender].rewardsLeft = share; // uint64?
+			_founders[msg.sender].rewardsLeft = share;
 			_founders[msg.sender].tokenAmount = share;
 			rewardsToClaim = (block.number - rewardsGenesis)*_rewardsRate*share/5e27;
 		} else {
@@ -151,13 +148,12 @@ contract FoundingEvent {
 
 	function migrate(address contract_) public onlyFounder {
 		require(_founders[msg.sender].firstClaim == true && _voting == false, "claim rewards before this or voting is ongoing");
-		if (contract_ == _lpOraclesFund) {
-			require(_founders[msg.sender].rewardsLeft == 0, "still rewards left");
-			uint ethContributed = _founders[msg.sender].ethContributed;
-			uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
-			IlpOraclesFund(_lpOraclesFund).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
-			delete _founders[msg.sender];
-		} else {revert();}
+		require(_founders[msg.sender].rewardsLeft == 0, "still rewards left");
+		uint ethContributed = _founders[msg.sender].ethContributed;
+		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
+		IERC20(_tokenETHLP).transfer(_lpOraclesFund, lpShare);
+		IlpOraclesFund(_lpOraclesFund).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
+		delete _founders[msg.sender];
 	}
 
 	function changeAddress(address account) public onlyFounder {
@@ -207,16 +203,16 @@ contract FoundingEvent {
 
 	function setGovernanceContract(address account) public onlyGovernance {
 		_governanceContract = account;
-	} 
+	}
 
 	function toggleVoting() public onlyGovernanceContract {
 		if (_voting == false) {_voting = true;} else {_voting = false;}
 	}
 
-	function recomputeRewardsLeft() public onlyFounder { // increase incentive to keep liquidity
+	function recomputeRewardsLeft() public onlyFounder {
 		if(_rewardsToRecompute > 0) {
-			uint share = _founders[msg.sender].ethContributed*5e27/_ETHDeposited;
-			_founders[msg.sender].rewardsLeft = share;
+			uint share = _founders[msg.sender].ethContributed*rewardsToRecompute/_ETHDeposited;
+			_founders[msg.sender].rewardsLeft += share;
 		}
 	}
 
@@ -229,11 +225,17 @@ contract FoundingEvent {
 		return (_lgeOngoing,_rewardsGenesis,_rewardsRate,_totalETHDeposited);
 	}
 
-// IN CASE OF SPAM BOTS OVERLOADING TESTNET FOR LEGIT TESTERS ============================================
+// IN CASE OF SPAM BOTS ============================================
 
 	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
 		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false, "already linked these or somebody already uses this");
 		require(isFounder(account) == false && _founders[msg.sender].ethContributed >= _linkLimit, "can't link founders or not enough eth deposited");
+		if (_linkedAddresses[msg.sender] != address(0)) {
+			address linkedAddress = _linkedAddresses[msg.sender];
+			delete _linkedAddresses[msg.sender];
+			delete _linkedAddresses[linkedAddress];
+			delete _takenAddresses[linkedAddress];
+		}
 		_linkedAddresses[msg.sender] = account;
 		_linkedAddresses[account] = msg.sender;
 		_takenAddresses[account] = true;
