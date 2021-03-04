@@ -12,7 +12,7 @@ import "./SafeMath.sol";
 // Even if there will be a vulnerability in upgradeable contracts defined in _beforeTokenTransfer(), it won't be devastating.
 // Developers can't simply rug.
 // Allowances are possible only for approved by the governance contracts.
-// _mint() and _burn() functions are removed
+// _mint() and _burn() functions are removed.
 // Token name and symbol can be changed.
 
 contract VSRERC20 is Context, IERC20 {
@@ -38,13 +38,12 @@ contract VSRERC20 is Context, IERC20 {
     bool private _governanceSet;
     address private _governance;
 
-
 //// variables for testing purposes. live it should all be hardcoded addresses to save gas for users
     address private _mFund;
     address private _tFund;
     address private _mrFund;
     address private _charFund;
-    address private _lpOfund;    
+    address private _lpOfund;
     address private _fFund;
     address private _devFund;
     uint private _genesisBlock;
@@ -60,7 +59,7 @@ contract VSRERC20 is Context, IERC20 {
     }
 
     modifier onlyGovernance() {
-        require(msg.sender == _governance, "not a governance address");
+        require(msg.sender == _governance, "only governance");
         _;
     }
 
@@ -68,128 +67,114 @@ contract VSRERC20 is Context, IERC20 {
         return _name;
     }
 
-
     function symbol() public view returns (string memory) {
         return _symbol;
     }
 
-
-    function decimals() public view returns (uint8) {
+    function decimals() public pure returns (uint8) {
         return 18;
     }
-
 
     function totalSupply() public view override returns (uint256) {
         return _totalSupply;
     }
 
-
     function balanceOf(address account) public view override returns (uint256) {
         return _balances[account];
     }
-
 
     function transfer(address recipient, uint256 amount) public override returns (bool) {
         _transfer(_msgSender(), recipient, amount);
         return true;
     }
 
-
-    function allowance(address owner, address spender) public view virtual override returns (uint256) {
+    function allowance(address owner, address spender) public view override returns (uint256) {
         return _allowances[owner][spender];
     }
 
-
-    function approve(address spender, uint256 amount) public virtual override returns (bool) {
+    function approve(address spender, uint256 amount) public override returns (bool) {
         _approve(_msgSender(), spender, amount);
         return true;
     }
 
-
     function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
         _transfer(sender, recipient, amount);
         uint256 currentAllowance = _allowances[sender][_msgSender()];
-        require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
+        require(currentAllowance >= amount, "exceeds allowance");
         _approve(sender, _msgSender(), currentAllowance - amount);
         return true;
     }
 
-
-    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
         _approve(_msgSender(), spender, _allowances[_msgSender()][spender] + addedValue);
         return true;
     }
 
-
-    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
+    function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
         uint256 currentAllowance = _allowances[_msgSender()][spender];
-        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
+        require(currentAllowance >= subtractedValue, "below zero");
         _approve(_msgSender(), spender, currentAllowance - subtractedValue);
         return true;
     }
 
-
     function _transfer(address sender, address recipient, uint256 amount) internal {
-        require(sender != address(0), "ERC20: transfer from the zero address");
-        require(recipient != address(0), "ERC20: transfer to the zero address");
+        require(sender != address(0) && recipient != address(0), "zero address");
         _beforeTokenTransfer(sender, amount);
         uint256 senderBalance = _balances[sender];
-        require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
+        require(senderBalance >= amount, "exceeds balance");
         _balances[sender] = senderBalance - amount;
         _balances[recipient] += amount;
         emit Transfer(sender, recipient, amount);
     }
 
-
-    function _approve(address owner, address spender, uint256 amount) internal virtual {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(_allowanceContracts[spender] == true, "ERC20: forbidden spender address");
+    function _approve(address owner, address spender, uint256 amount) internal {
+        require(owner != address(0), "zero address");
+        require(_allowanceContracts[spender] == true, "forbidden spender");
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
     }
 
-
     function _beforeTokenTransfer(address from, uint256 amount) internal { // if all addresses are hardcoded almost no cost is added for the end-user
         if (from == _devFund || from == _fFund || from == _tFund || from == _mrFund || from == _charFund || from == _lpOfund|| from == _mFund) {
             require(block.number > _genesisBlock, "too early");
-            require(_withdrawingFromFunds == false, "somebody is already withdrawing");
+            require(_withdrawingFromFunds == false, "reentrancy guard");
             _withdrawingFromFunds = true;
             if (from == _mFund) {
-                require(amount <= balanceOf(_mFund),"withdrawing too much");
+                require(amount <= balanceOf(_mFund),"too much");
                 uint allowed = (block.number - _genesisBlock).mul(_marketingEmission) - _withdrawnMfund;
-                require(amount <= allowed, "not yet allowed");
+                require(amount <= allowed, "not yet");
                 _withdrawnMfund += amount;
             } else if (from == _devFund) {
-                require(amount <= balanceOf(_devFund),"withdrawing too much");
+                require(amount <= balanceOf(_devFund),"too much");
                 uint allowed = (block.number - _genesisBlock).mul(_emission) - _withdrawnDfund;
-                require(amount <= allowed, "not yet allowed");
+                require(amount <= allowed, "not yet");
                 _withdrawnDfund += amount;
             } else if (from == _fFund) {
-                require(amount <= balanceOf(_fFund),"withdrawing too much");
+                require(amount <= balanceOf(_fFund),"too much");
                 uint allowed = (block.number - _genesisBlock).mul(_emission) - _withdrawnFfund;
-                require(amount <= allowed, "not yet allowed");
+                require(amount <= allowed, "not yet");
                 _withdrawnFfund += amount;
             } else if (from == _tFund) {
-                require(amount <= balanceOf(_tFund),"withdrawing too much");
+                require(amount <= balanceOf(_tFund),"too much");
                 uint allowed = (block.number - _genesisBlock).mul(_emission) - _withdrawnTfund;
-                require(amount <= allowed, "not yet allowed");
+                require(amount <= allowed, "not yet");
                 _withdrawnTfund += amount;
             } else if (from == _mrFund) {
-                require(block.number > _genesisBlock + 10512000, "too early"); // ~5 years
-                require(amount <= balanceOf(_mrFund),"withdrawing too much");
+                require(block.number > _genesisBlock + 5000000, "too early");
+                require(amount <= balanceOf(_mrFund),"too much");
                 uint allowed = (block.number - _genesisBlock).mul(_emission) - _withdrawnMRfund;
-                require(amount <= allowed, "not yet allowed");
+                require(amount <= allowed, "not yet");
                 _withdrawnMRfund += amount;
             } else if (from == _charFund) {
-                require(block.number > _genesisBlock + 10512000, "too early");
-                require(amount <= balanceOf(_charFund),"withdrawing too much");
+                require(block.number > _genesisBlock + 5000000, "too early");
+                require(amount <= balanceOf(_charFund),"too much");
                 uint allowed = (block.number - _genesisBlock).mul(_emission) - _withdrawnCfund;
-                require(amount <= allowed, "not yet allowed");
+                require(amount <= allowed, "not yet");
                 _withdrawnCfund += amount;
             } else if (from == _lpOfund) {
-                require(amount <= balanceOf(_lpOfund),"withdrawing too much");
+                require(amount <= balanceOf(_lpOfund),"too much");
                 uint allowed = (block.number - _genesisBlock).mul(_emission) - _withdrawnLpOfund;
-                require(amount <= allowed, "not yet allowed");
+                require(amount <= allowed, "not yet");
                 _withdrawnLpOfund += amount;
             }
             _withdrawingFromFunds = false;
@@ -208,12 +193,12 @@ contract VSRERC20 is Context, IERC20 {
     }
 
     function setEmission(uint emission) public onlyGovernance {
-        require(emission <= 50 && emission >= 20, "can't override hard limit");
+        require(emission <= 50 && emission >= 20, "hard limit");
         _emission = emission;
     }
 
     function setMarketingEmission(uint marketingEmission) public onlyGovernance {
-        require(marketingEmission <= 500 && marketingEmission >= 200, "can't override hard limit");
+        require(marketingEmission <= 500 && marketingEmission >= 200, "hard limit");
         _marketingEmission = marketingEmission;
     }
 
