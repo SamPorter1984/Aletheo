@@ -33,7 +33,7 @@ contract FoundingEvent {
 	address private constant _WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;// testing
 	address payable private _governance;
 	uint private _lockTime;
-	bool private _reentrancyStatus;
+	uint private _reentrancyStatus;
 
 ///////variables for testing purposes
 	address private _uniswapFactory = 0x7FDc955b5E2547CC67759eDba3fd5d7027b9Bd66;
@@ -63,7 +63,7 @@ contract FoundingEvent {
 	event LiquidityPoolCreated(address indexed liquidityPair);
 
 	modifier onlyFounder() {
-		require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not an Founder or reentrant call");
+		require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not a Founder or reentrant call");
 		_reentrancyStatus = 1;
 		_;
 		_reentrancyStatus = 0;
@@ -103,15 +103,16 @@ contract FoundingEvent {
 	function claimLGERewards() public onlyFounder { // most popular function, has to have first Method Id or close to
 		uint rewardsGenesis = _rewardsGenesis;
 		require(block.number > rewardsGenesis, "too soon");
+		uint rewardsToClaim;
 		if (_founders[msg.sender].firstClaim == false) {
 			_founders[msg.sender].firstClaim = true;
 			uint share = _founders[msg.sender].ethContributed*1e27/_totalETHDeposited;
 			_founders[msg.sender].rewardsLeft = share; // uint64?
 			_founders[msg.sender].tokenAmount = share;
-			uint rewardsToClaim = (block.number - rewardsGenesis)*_rewardsRate*share/1e27;
+			rewardsToClaim = (block.number - rewardsGenesis)*_rewardsRate*share/1e27;
 		} else {
 			uint tokenAmount = _founders[msg.sender].tokenAmount;
-			uint rewardsToClaim = (block.number - rewardsGenesis)*_rewardsRate*tokenAmount/1e27;
+			rewardsToClaim = (block.number - rewardsGenesis)*_rewardsRate*tokenAmount/1e27;
 			uint rewardsClaimed = tokenAmount - _founders[msg.sender].rewardsLeft;
 			rewardsToClaim = rewardsToClaim.sub(rewardsClaimed);
 		}
