@@ -99,11 +99,11 @@ contract FoundingEvent {
 		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true, "LGE has already ended or didn't start, or no agreement provided");
 		require(msg.value > 0 && _isContract(msg.sender) == false, "amount must be bigger than 0 ot contracts can't be Founders");
 		if (_takenAddresses[msg.sender] == true) {
-			_takenAddresses[msg.sender] = false;
+			delete _takenAddresses[msg.sender];
 			address linkedAddress = _linkedAddresses[msg.sender];
 			if (linkedAddress != address(0)) {
-				_linkedAddresses[msg.sender] = address(0);
-				_linkedAddresses[linkedAddress] = address(0);
+				delete _linkedAddresses[msg.sender];
+				delete _linkedAddresses[linkedAddress];
 			}
 		}
 		uint deployerShare = msg.value / 200;
@@ -112,7 +112,7 @@ contract FoundingEvent {
 		uint contribution = _founders[msg.sender].ethContributed;
 		uint recentTotalContribution = contribution + amount;
 		IWETH(_WETH).deposit{value: amount}();
-		if (recentTotalContribution >= 1e18 && recentTotalContribution >= contribution) {
+		if (recentTotalContribution >= 1e18) {
 			_minimumRequiredVotes += (recentTotalContribution*13/20) - (contribution*13/20);
 		}
 		_founders[msg.sender].ethContributed += amount;
