@@ -34,8 +34,8 @@ contract VSRERC20 is Context, IERC20 {
     uint private _withdrawnCfund;
     uint private _withdrawnLpOfund;
     uint private _withdrawnDfund;
+    uint private _governanceSet;
     bool private _withdrawingFromFunds;
-    bool private _governanceSet;
     address private _governance;
 
 //// variables for testing purposes. live it should all be hardcoded addresses to save gas for users
@@ -187,8 +187,8 @@ contract VSRERC20 is Context, IERC20 {
     }
 
     function setGovernance(address address_) public onlyGovernance { // after the governance model will be finalized, it will only be set once
-        require(_governanceSet == false, "alreadySet");
-        _governanceSet = true;
+        require(_governanceSet < 4, "alreadySet"); // added for safety
+        _governanceSet += 1;
         _governance = address_;
     }
 
