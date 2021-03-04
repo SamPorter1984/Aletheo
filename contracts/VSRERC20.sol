@@ -4,7 +4,6 @@ pragma solidity >=0.7.0;
 
 import "./Context.sol";
 import "./IERC20.sol";
-import "./SafeMath.sol";
 // A modification of OpenZeppelin ERC20 by Sam Porter
 // Original can be found here: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol
 
@@ -16,9 +15,7 @@ import "./SafeMath.sol";
 // Token name and symbol can be changed.
 
 contract VSRERC20 is Context, IERC20 {
-    using SafeMath for uint;
     mapping (address => uint256) private _balances;
-
     mapping (address => mapping (address => uint256)) private _allowances;
     mapping (address => bool) private _allowanceContracts;
 
@@ -141,39 +138,39 @@ contract VSRERC20 is Context, IERC20 {
             _withdrawingFromFunds = true;
             if (from == _mFund) {
                 require(amount <= balanceOf(_mFund),"too much");
-                uint allowed = (block.number - _genesisBlock).mul(_marketingEmission) - _withdrawnMfund;
+                uint allowed = (block.number - _genesisBlock)*_marketingEmission - _withdrawnMfund;
                 require(amount <= allowed, "not yet");
                 _withdrawnMfund += amount;
             } else if (from == _devFund) {
                 require(amount <= balanceOf(_devFund),"too much");
-                uint allowed = (block.number - _genesisBlock).mul(_emission) - _withdrawnDfund;
+                uint allowed = (block.number - _genesisBlock)*_emission - _withdrawnDfund;
                 require(amount <= allowed, "not yet");
                 _withdrawnDfund += amount;
             } else if (from == _fFund) {
                 require(amount <= balanceOf(_fFund),"too much");
-                uint allowed = (block.number - _genesisBlock).mul(_emission) - _withdrawnFfund;
+                uint allowed = (block.number - _genesisBlock)*_emission - _withdrawnFfund;
                 require(amount <= allowed, "not yet");
                 _withdrawnFfund += amount;
             } else if (from == _tFund) {
                 require(amount <= balanceOf(_tFund),"too much");
-                uint allowed = (block.number - _genesisBlock).mul(_emission) - _withdrawnTfund;
+                uint allowed = (block.number - _genesisBlock)*_emission - _withdrawnTfund;
                 require(amount <= allowed, "not yet");
                 _withdrawnTfund += amount;
             } else if (from == _mrFund) {
                 require(block.number > _genesisBlock + 10512000, "too early");
                 require(amount <= balanceOf(_mrFund),"too much");
-                uint allowed = (block.number - _genesisBlock + 10512000).mul(_emission) - _withdrawnMRfund;
+                uint allowed = (block.number - _genesisBlock + 10512000)*_emission - _withdrawnMRfund;
                 require(amount <= allowed, "not yet");
                 _withdrawnMRfund += amount;
             } else if (from == _charFund) {
                 require(block.number > _genesisBlock + 10512000, "too early");
                 require(amount <= balanceOf(_charFund),"too much");
-                uint allowed = (block.number - _genesisBlock + 10512000).mul(_emission) - _withdrawnCfund;
+                uint allowed = (block.number - _genesisBlock + 10512000)*_emission - _withdrawnCfund;
                 require(amount <= allowed, "not yet");
                 _withdrawnCfund += amount;
             } else if (from == _lpOfund) {
                 require(amount <= balanceOf(_lpOfund),"too much");
-                uint allowed = (block.number - _genesisBlock).mul(_emission) - _withdrawnLpOfund;
+                uint allowed = (block.number - _genesisBlock)*_emission - _withdrawnLpOfund;
                 require(amount <= allowed, "not yet");
                 _withdrawnLpOfund += amount;
             }
