@@ -35,7 +35,7 @@ contract VSRERC20 is Context, IERC20 {
     bool private _withdrawingFromFunds;
     address private _governance;
 
-//// variables for testing purposes. live it should all be hardcoded addresses to save gas for users
+//// variables for testing purposes. live it should all be hardcoded addresses
     address private _mFund;
     address private _tFund;
     address private _mrFund;
@@ -58,6 +58,10 @@ contract VSRERC20 is Context, IERC20 {
     modifier onlyGovernance() {
         require(msg.sender == _governance, "only governance");
         _;
+    }
+
+    function stats() public view returns(uint emi, uint mEmi, uint wMf, uint wFf, uint wTf, uint wMRf, uint wCf, uint wLpOf, uint wDf, uint govSet) {
+        return (_emission,_marketingEmission,_withdrawnMfund,_withdrawnFfund,_withdrawnTfund,_withdrawnMRfund,_withdrawnCfund,_withdrawnLpOfund,_withdrawnDfund,_governanceSet);
     }
 
     function name() public view returns (string memory) {
@@ -131,7 +135,7 @@ contract VSRERC20 is Context, IERC20 {
         emit Approval(owner, spender, amount);
     }
 
-    function _beforeTokenTransfer(address from, uint256 amount) internal { // if all addresses are hardcoded almost no cost is added for the end-user
+    function _beforeTokenTransfer(address from, uint256 amount) internal { // if all addresses are hardcoded almost no cost is added
         if (from == _devFund || from == _fFund || from == _tFund || from == _mrFund || from == _charFund || from == _lpOfund|| from == _mFund) {
             require(block.number > _genesisBlock, "too early");
             require(_withdrawingFromFunds == false, "reentrancy guard");
@@ -184,7 +188,7 @@ contract VSRERC20 is Context, IERC20 {
     }
 
     function setGovernance(address address_) public onlyGovernance { // after the governance model will be finalized, it will only be set once
-        require(_governanceSet < 4, "alreadySet"); // added for safety
+        require(_governanceSet < 4, "already set"); // added for safety
         _governanceSet += 1;
         _governance = address_;
     }
