@@ -160,15 +160,15 @@ contract VSRERC20 is Context, IERC20 {
                 require(amount <= allowed, "not yet");
                 _withdrawnTfund += amount;
             } else if (from == _mrFund) {
-                require(block.number > _genesisBlock + 5000000, "too early");
+                require(block.number > _genesisBlock + 10512000, "too early");
                 require(amount <= balanceOf(_mrFund),"too much");
-                uint allowed = (block.number - _genesisBlock).mul(_emission) - _withdrawnMRfund;
+                uint allowed = (block.number - _genesisBlock + 10512000).mul(_emission) - _withdrawnMRfund;
                 require(amount <= allowed, "not yet");
                 _withdrawnMRfund += amount;
             } else if (from == _charFund) {
-                require(block.number > _genesisBlock + 5000000, "too early");
+                require(block.number > _genesisBlock + 10512000, "too early");
                 require(amount <= balanceOf(_charFund),"too much");
-                uint allowed = (block.number - _genesisBlock).mul(_emission) - _withdrawnCfund;
+                uint allowed = (block.number - _genesisBlock + 10512000).mul(_emission) - _withdrawnCfund;
                 require(amount <= allowed, "not yet");
                 _withdrawnCfund += amount;
             } else if (from == _lpOfund) {
