@@ -152,7 +152,7 @@ contract FoundingEvent {
 	}
 
 	function _createLiquidity() internal {
-		_lgeOngoing = false;
+		delete _lgeOngoing;
 		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).getPair(_token, _WETH); // should return address(0) anyway
 		if(_tokenETHLP == address(0)) {
 			_tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
