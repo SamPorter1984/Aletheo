@@ -80,7 +80,7 @@ contract CustomProxy {
 	function _setAdmin(address newAdm) internal {
 		require(_governanceSet < 4, "governance already set");
 		_governanceSet += 1;
-		assembly { sstore(ADMIN_SLOT, newAdmin) }
+		assembly { sstore(ADMIN_SLOT, newAdm) }
 	}
 
 	fallback () external payable {
