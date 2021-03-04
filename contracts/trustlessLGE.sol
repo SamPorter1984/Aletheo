@@ -25,24 +25,21 @@ contract FoundingEvent {
 	// I believe this is required for the safety of investors and other developers joining the project
 	string public agreementTerms = "I understand that this contract is provided with no warranty of any kind. \n I agree to not hold the contract creator, RAID team members or anyone associated with this event liable for any damage monetary and otherwise I might onccur. \n I understand that any smart contract interaction carries an inherent risk.";
 	uint private _totalETHDeposited;
+	uint private _ETHDeposited;
 	uint private _totalLGELPtokensMinted;
 	uint private _totalLGEStaked;
 	bool private _lgeOngoing = true;
 	address private _tokenETHLP; // maybe just precompute create2 and hardcode too?
 	uint private _rewardsRate;
-	address private _approvedContract;
-	address private _proposedContract;
 	bool private _voting;
-	bool private _canPropose = true;
-	uint private _minimumRequiredVotes;
 	uint private _lgeStart; // it's not required. remove and replace with hardcoded approximate blocknumbers to save transaction cost for users
 	address private constant _WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;// testing
 	address payable private _governance;
-	uint private _votingEnd;
-	uint private _totalVotes;
+	address private _governanceContract;
 	uint private _linkLimit;
 	uint private _lockTime;
 	uint private _reentrancyStatus;
+	uint private _rewardsToRecompute;
 
 ///////variables for testing purposes
 	address private _uniswapFactory = 0x7FDc955b5E2547CC67759eDba3fd5d7027b9Bd66;
@@ -52,7 +49,7 @@ contract FoundingEvent {
 //////
 	constructor() {
 		_governance = msg.sender;
-		_rewardsRate = 95e18; // aprox 1 billion tokens in 5 years
+		_rewardsRate = 63e18; // aprox 1 billion tokens in 7,5 years
 		_linkLimit = 1e17; // 0.1 ether
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
 		_rewardsGenesis = block.number + 5;
@@ -68,15 +65,10 @@ contract FoundingEvent {
 	}
 
 	mapping(address => Founder) private _founders;
-
-	mapping(address => bool) private _votedAddresses;
-
 	mapping (address => address) private _linkedAddresses;
 	mapping (address => bool) private _takenAddresses;
-	mapping (address => bool) private _agreements;
 
 	event AddressLinked(address indexed address1, address indexed address2);
-	event ContractApproved(address indexed approvedContract);
 	event LiquidityPoolCreated(address indexed liquidityPair);
 
 	modifier onlyFounder() {
@@ -86,10 +78,15 @@ contract FoundingEvent {
 		_reentrancyStatus = 0;
 	}
 
-	modifier onlyGovernance() {
+	modifier onlyGovernance() { // proposal delegator
 		require(msg.sender == _governance, "not governance");
 		_;
 	}
+
+	modifier onlyGovernanceContract() {
+		require(msg.sender == _governanceContract, "not governance contract");
+		_;
+	}	
 
 	function isFounder(address account) public view returns(bool) {
 		if (_founders[account].ethContributed > 0) {return true;} else {return false;}
@@ -109,12 +106,7 @@ contract FoundingEvent {
 		uint deployerShare = msg.value / 200;
 		uint amount = msg.value - deployerShare;
 		_governance.transfer(deployerShare);
-		uint contribution = _founders[msg.sender].ethContributed;
-		uint recentTotalContribution = contribution + amount;
 		IWETH(_WETH).deposit{value: amount}();
-		if (recentTotalContribution >= 1e18) {
-			_minimumRequiredVotes += (recentTotalContribution*13/20) - (contribution*13/20);
-		}
 		_founders[msg.sender].ethContributed += amount;
 		_totalETHDeposited += amount; // could use WETH balanceOf instead?
 		if (block.number >= _rewardsGenesis) {_createLiquidity();}
@@ -126,59 +118,50 @@ contract FoundingEvent {
 	}
 
 	function unstakeLP() public onlyFounder {
-		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].firstClaim == true && _approvedContract == address(0), "tokens locked or need to claim first or migration is in the process");
+		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].firstClaim == true && block.number > (_rewardsGenesis + 100000), "tokens locked or claim rewards");
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
 		require(lpShare <= IERC20(_tokenETHLP).balanceOf(address(this)),"withdrawing too much");
+		_ETHDeposited = _totalETHDeposited - ethContributed;
+		_rewardsToRecompute += _founders[msg.sender].rewardsLeft;
 		IERC20(_tokenETHLP).transfer(address(msg.sender), lpShare);
-		_minimumRequiredVotes = _minimumRequiredVotes.sub(ethContributed*13/20);
-		if (_votedAddresses[msg.sender] == true) {
-			_totalVotes = _totalVotes.sub(ethContributed*13/20);
-		}
 		delete _founders[msg.sender];
 	}
 
 	function claimLGERewards() public onlyFounder { // most popular function, has to have first Method Id or close to
 		uint rewardsGenesis = _rewardsGenesis;
-		require(_approvedContract == address(0) && block.number > rewardsGenesis, "too soon or migration is in the process, claim from new contract");
+		require(block.number > rewardsGenesis, "too soon");
 		uint rewardsToClaim;
 		if (_founders[msg.sender].firstClaim == false) {
 			_founders[msg.sender].firstClaim = true;
-			uint share = _founders[msg.sender].ethContributed*1e27/_totalETHDeposited;
+			uint share = _founders[msg.sender].ethContributed*5e27/_totalETHDeposited;
 			_founders[msg.sender].rewardsLeft = share; // uint64?
 			_founders[msg.sender].tokenAmount = share;
-			rewardsToClaim = (block.number - rewardsGenesis)*_rewardsRate*share/1e27;
+			rewardsToClaim = (block.number - rewardsGenesis)*_rewardsRate*share/5e27;
 		} else {
 			uint tokenAmount = _founders[msg.sender].tokenAmount;
-			rewardsToClaim = (block.number - rewardsGenesis)*_rewardsRate*tokenAmount/1e27;
+			rewardsToClaim = (block.number - rewardsGenesis)*_rewardsRate*tokenAmount/5e27;
 			uint rewardsClaimed = tokenAmount - _founders[msg.sender].rewardsLeft;
 			rewardsToClaim = rewardsToClaim.sub(rewardsClaimed);
 		}
-		require(rewardsToClaim > 0 && rewardsToClaim <= IERC20(_token).balanceOf(address(this)), "nothing to claim or withdrawing too much");
-		_founders[msg.sender].rewardsLeft = _founders[msg.sender].rewardsLeft.sub(rewardsToClaim);
+		require(rewardsToClaim <= IERC20(_token).balanceOf(address(this)), "nothing to claim or withdrawing too much");
+		_founders[msg.sender].rewardsLeft -= rewardsToClaim;
 		IERC20(_token).transfer(address(msg.sender), rewardsToClaim);
 	}
 
 	function migrate(address contract_) public onlyFounder {
-		require(_founders[msg.sender].firstClaim == true, "claim your first rewards before calling this function");
+		require(_founders[msg.sender].firstClaim == true && _voting == false, "claim rewards before this or voting is ongoing");
 		if (contract_ == _lpOraclesFund) {
-			require(_founders[msg.sender].rewardsLeft == 0, "still rewards here left");
+			require(_founders[msg.sender].rewardsLeft == 0, "still rewards left");
 			uint ethContributed = _founders[msg.sender].ethContributed;
 			uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
 			IlpOraclesFund(_lpOraclesFund).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
-			delete _founders[msg.sender];
-			_minimumRequiredVotes = _minimumRequiredVotes.sub(ethContributed*13/20);
-			if (_votedAddresses[msg.sender] == true) {
-				_totalVotes = _totalVotes.sub(ethContributed*13/20);
-			}
-		} else if (contract_ == _approvedContract && contract != address(0)) {
-			ILGE2(contract).migrate(msg.sender,_founders[msg.sender].ethContributed,_founders[msg.sender].rewardsLeft,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
 			delete _founders[msg.sender];
 		} else {revert();}
 	}
 
 	function changeAddress(address account) public onlyFounder {
-		require(_voting == false && _isContract(account) == false, "can't change during voting or contracts can't be founders");
+		require(_isContract(account) == false && _voting == false, "contracts can't be founders or voting is ongoing");
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint rewardsLeft = _founders[msg.sender].rewardsLeft;
 		bool firstClaim = _founders[msg.sender].firstClaim;
@@ -199,15 +182,12 @@ contract FoundingEvent {
 
 	function _createLiquidity() internal {
 		delete _lgeOngoing;
-		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).getPair(_token, _WETH); // should return address(0) anyway, but no investor wants epic fail
-		if(_tokenETHLP == address(0)) {
 		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
- 	       	}
-        	IWETH(_WETH).transfer(_tokenETHLP, IWETH(_WETH).balanceOf(address(this)));
-        	IERC20(_token).transfer(_tokenETHLP, IERC20(_token).balanceOf(address(this))/6);
-        	IUniswapV2Pair(_tokenETHLP).mint(address(this));
-        	_totalLGELPtokensMinted = IUniswapV2Pair(_tokenETHLP).balanceOf(address(this));
-        	emit LiquidityPoolCreated(_tokenETHLP);
+		IWETH(_WETH).transfer(_tokenETHLP, IWETH(_WETH).balanceOf(address(this)));
+		IERC20(_token).transfer(_tokenETHLP, IERC20(_token).balanceOf(address(this))/6);
+		IUniswapV2Pair(_tokenETHLP).mint(address(this));
+		_totalLGELPtokensMinted = IUniswapV2Pair(_tokenETHLP).balanceOf(address(this));
+		emit LiquidityPoolCreated(_tokenETHLP);
 	}
 
 	function setLockTime(uint lockTime_) public onlyGovernance {
@@ -216,69 +196,37 @@ contract FoundingEvent {
 	}
 
 	function _isContract(address account) internal view returns (bool) {
-        	uint256 size;
-        	assembly { size := extcodesize(account) }
-        	return size > 0;
-    	}
+			uint256 size;
+			assembly { size := extcodesize(account) }
+			return size > 0;
+	}
+
+	function setGovernance(address payable account) public onlyGovernance {
+		_governance = account;
+	}
+
+	function setGovernanceContract(address account) public onlyGovernance {
+		_governanceContract = account;
+	} 
+
+	function toggleVoting() public onlyGovernanceContract {
+		if (_voting == false) {_voting = true;} else {_voting = false;}
+	}
+
+	function recomputeRewardsLeft() public onlyFounder { // increase incentive to keep liquidity
+		if(_rewardsToRecompute > 0) {
+			uint share = _founders[msg.sender].ethContributed*5e27/_ETHDeposited;
+			_founders[msg.sender].rewardsLeft = share;
+		}
+	}
+
 // VIEW FUNCTIONS ========================================================================================
 
 	function getFounder(address account) external view returns (uint ethContributed, uint rewardsLeft, bool firstClaim, uint tokenAmount, uint lockUpTo) {
 		return (_founders[account].ethContributed,_founders[account].rewardsLeft,_founders[account].firstClaim,_founders[account].tokenAmount,_founders[account].lockUpTo);
 	}
-	function getLGEOngoing() external view returns (bool) {return _lgeOngoing;}
-	function getRewardsGenesis() external view returns (uint) {return _rewardsGenesis;}
-	function getRewardsRate() external view returns (uint) {return _rewardsRate;}
-	function getTotalETHDeposited() external view returns (uint) {return _totalETHDeposited;}
-
-// IN CASE OF A BUG IN THIS CONTRACT =====================================================================
-// There is nothing fancy in the code, but let this be here just for investors' confidence.
-	function setGovernance(address payable account) public onlyGovernance {
-		_governance = account;
-	}
-
-	function proposeContract(address contract_) public onlyGovernance {
-		require(_canPropose == true && block.number >= (_lgeStart + 180000), "previous voting is not yet finished or too soon");
-		_proposedContract = contract_;
-		_voting = true;
-		_canPropose = false;
-		_votingEnd = block.number + 10; // 90000 a bit less than two weeks
-		_rewardsGenesis += 180000;
-	}
-
-	function voteForProposedContract() public onlyFounder {
-		require(_founders[msg.sender].ethContributed > 1e18 && _voting == true && _votedAddresses[msg.sender] == false, "not enough eth deposited or nothing to vote for or already voted");
-		_votedAddresses[msg.sender] = true;
-		_totalVotes += _founders[msg.sender].ethContributed;
-		if (block.number >= _votingEnd || _totalVotes >= _minimumRequiredVotes) {_resolveVoting();}
-	}
-
-	function _resolveVoting() internal {
-		_voting = false;
-		_canPropose = true;
-		_votingEnd = 0;
-		if (_totalVotes >= _minimumRequiredVotes) {
-			_approvedContract = _proposedContract;
-			address approvedContract = _approvedContract;
-			address token = _token;
-			address WETH = _WETH;
-			address tokenETHLP = _tokenETHLP;
-			if (IERC20(WETH).balanceOf(address(this)) > 0) {
-				IERC20(WETH).transfer(approvedContract, IERC20(WETH).balanceOf(address(this)));
-			}
-			if (tokenETHLP != address(0) && IERC20(tokenETHLP).balanceOf(address(this)) > 0) {
-				IERC20(tokenETHLP).transfer(approvedContract, IERC20(tokenETHLP).balanceOf(address(this)));
-			}
-			if (IERC20(token).balanceOf(address(this)) > 0) {
-				IERC20(token).transfer(approvedContract, IERC20(token).balanceOf(address(this)));	
-			}
-			emit ContractApproved(approvedContract);
-		}
-		_totalVotes = 0;
-	}
-
-	function resetVotingPowerForNextVote() public onlyFounder { // very unlikely to be ever required
-		require(_voting == false && _votedAddresses[msg.sender] == true, "voting is ongoing or wasn't voting");
-		_votedAddresses[msg.sender] = false;
+	function getLgeInfo() external view returns (bool lgeOng,uint rewGenesis,uint rewRate,uint totalEthDepos) {
+		return (_lgeOngoing,_rewardsGenesis,_rewardsRate,_totalETHDeposited);
 	}
 
 // IN CASE OF SPAM BOTS OVERLOADING TESTNET FOR LEGIT TESTERS ============================================
