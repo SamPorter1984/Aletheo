@@ -5,11 +5,11 @@ pragma solidity >=0.7.0;
 
 // Had to pack OpenZeppelin upgradeability contracts in one single contract for readability. It's basically the same OpenZeppelin functions 
 // but in one contract with some differences:
-// 1.constructor does not require arguments.
-// 2._deadline variable is a block after which it becomes impossible to upgrade the contract. Defined in constructor and here it's ~2 years.
-// 3._upgradeBlock defines how often the contract can be upgraded. Defined in _setlogic() function and the internval here is set
+// 1. constructor does not require arguments.
+// 2. _deadline variable is a block after which it becomes impossible to upgrade the contract. Defined in constructor and here it's ~2 years.
+// 3. _upgradeBlock defines how often the contract can be upgraded. Defined in _setlogic() function and the internval here is set
 // to 100k blocks.
-// 4. Admin can be changed only once.
+// 4. Admin can be changed only three times.
 
 contract CustomProxy {
 	event Upgraded(address indexed logic);
@@ -18,7 +18,7 @@ contract CustomProxy {
 	bytes32 internal constant LOGIC_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 	uint private _upgradeBlock;
 	uint private _deadline;
-	bool private _governanceSet;
+	uint private _governanceSet;
 	
 	constructor() {
 		require(ADMIN_SLOT == bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1) && LOGIC_SLOT == bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1), "eth ded or code broke");
@@ -78,8 +78,8 @@ contract CustomProxy {
 	}
 
 	function _setAdmin(address newAdm) internal {
-		require(_governanceSet == false, "governance already set");
-		_governanceSet = true;
+		require(_governanceSet < 4, "governance already set");
+		_governanceSet += 1;
 		assembly { sstore(ADMIN_SLOT, newAdmin) }
 	}
 
