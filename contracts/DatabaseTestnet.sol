@@ -39,9 +39,10 @@ contract DatabaseTestnet {
 
 	function recordEntryByOracle(address[] memory workers, bytes32[] memory hashes, string[] memory entries) public onlyOracle {
 		for (uint i = 0; i < workers.length; i++) {
-			require(_blockNumbers[workers[i]] + 25 >= block.number, "too early"); // mandatory for testnet
-			if (_approvalRequired == false) {_blockNumbers[workers[i]] = block.number; emit Entry(workers[i], hashes[i], entries[i]);}
-			else if (_workers[workers[i]] == true) {_blockNumbers[workers[i]] = block.number; emit Entry(workers[i], hashes[i], entries[i]);}
+			if (_blockNumbers[workers[i]] + 25 >= block.number) {
+				if (_approvalRequired == false) {_blockNumbers[workers[i]] = block.number; emit Entry(workers[i], hashes[i], entries[i]);}
+				else if (_workers[workers[i]] == true) {_blockNumbers[workers[i]] = block.number; emit Entry(workers[i], hashes[i], entries[i]);}
+			}
 		}
 	}
 
@@ -88,16 +89,16 @@ contract DatabaseTestnet {
 	function setLinkLimit(uint value) external onlyGovernance {require(value >= 0 && value < 1e18, "can't override hard limit");_linkLimit = value;}
 
 	function _linkAddress(address founder, address worker) internal {
-		require(_linkedAddresses[founder] != worker && _takenAddresses[worker] == false, "already linked these or somebody already uses this");
-		require(_isFounder(worker) == false && _founders[founder] >= _linkLimit, "can't link founders or not enough eth deposited");
-		if (_linkedAddresses[founder] != address(0)) {
+		if (_linkedAddresses[founder] != worker && _takenAddresses[worker] == false && _isFounder(worker) == false && _founders[founder] >= _linkLimit) {
+			if (_linkedAddresses[founder] != address(0)) {
 			address linkedAddress = _linkedAddresses[founder]; delete _linkedAddresses[founder]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
+			}
+			_linkedAddresses[founder] = worker;
+			_linkedAddresses[worker] = founder;
+			_takenAddresses[worker] = true;
+			if (_workers[worker] != true) {_workers[worker] == true; emit WorkerAdded(worker);}
+			emit AddressLinked(founder,worker);
 		}
-		_linkedAddresses[founder] = worker;
-		_linkedAddresses[worker] = founder;
-		_takenAddresses[worker] = true;
-		if (_workers[worker] != true) {_workers[worker] == true; emit WorkerAdded(worker);}
-		emit AddressLinked(founder,worker);
 	}
 
 	function getAddress(address account) public view returns(bool worker, uint founderContrib, address linked, bool taken, bool oracle, uint lastEntryBlock) {
