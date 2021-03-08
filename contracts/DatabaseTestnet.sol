@@ -1,14 +1,14 @@
 pragma solidity >=0.7.0;
-
+pragma experimental ABIEncoderV2;
 contract DatabaseTestnet {
 	address private _governance;
 	bool private _approvalRequired;
 	uint private _periodCounter;
-
+	uint private _linkLimit;
 	struct Period {uint startBlock; uint endBlock;}
 
 	mapping (uint => Period) private _periods;
-	mapping (address => uint96) private _blockNumbers;
+	mapping (address => uint) private _blockNumbers;
 	mapping (address => bool) private _oracles;
 	mapping (address => uint) private _founders;// ethContributed // only for public testnet
 	mapping (address => bool) private _takenAddresses;
@@ -19,8 +19,9 @@ contract DatabaseTestnet {
 	event WorkerAdded(address indexed account);
 	event AddressLinked(address indexed address1, address indexed address2);
 	event NewPeriod(uint id, uint startBlock, uint endBlock);
-
-	constructor() {_governance = msg.sender;}
+    event FounderAdded(address indexed founder);
+    
+	constructor() {_governance = msg.sender;_linkLimit=1e17;}
 
 	modifier onlyOracle() {require(_oracles[msg.sender] == true, "not an oracle");_;}
 	modifier onlyGovernance() {require(msg.sender == _governance, "not a governance address");_;}
@@ -32,6 +33,14 @@ contract DatabaseTestnet {
 		else if (_workers[msg.sender] == true) {_blockNumbers[msg.sender] = block.number; emit Entry(msg.sender, _hash, _entry);}
 	}
 
+	function recordEntryByOracle(address[] memory workers, bytes32[] memory hashes, string[] memory entries) public onlyOracle {
+		for (uint i = 0; i < workers.length; i++) {
+			require(_blockNumbers[workers[i]] + 25 >= block.number, "too early"); // mandatory for testnet
+			if (_approvalRequired == false) {_blockNumbers[workers[i]] = block.number; emit Entry(workers[i], hashes[i], entries[i]);}
+			else if (_workers[workers[i]] == true) {_blockNumbers[workers[i]] = block.number; emit Entry(workers[i], hashes[i], entries[i]);}
+		}
+	}
+
 	function newPeriod(uint endB) public onlyOracle {
 		require(block.number >= _periods[_periodCounter].endBlock);
 		uint startB = _periods[_periodCounter].endBlock+1;
@@ -41,16 +50,39 @@ contract DatabaseTestnet {
 		emit NewPeriod(_periodCounter,startB,endB);
 	}
 
-	function toggleFounder(address account) public onlyOracle {if (_founders[account] == false) {_founders[account] = true;emit FounderAdded(account);} else {delete _founders[account];}}
-	function toggleWorker(address account) public onlyOracle {if (_workers[account] == false) {_workers[account] = true;emit WorkerAdded(account);} else {delete _workers[account];}}
-	function toggleOracle(address account) public onlyGovernance {if (_oracles[account] == false) {_oracles[account] = true;} else {delete _oracles[account];}}
+	function toggleFounder(address[] memory accounts, uint[] memory ethContributions) public onlyOracle {
+		for (uint i = 0; i < accounts.length; i++) {
+			if(_founders[accounts[i]] != ethContributions[i]) {_founders[accounts[i]] = ethContributions[i]; emit FounderAdded(accounts[i]);}
+			else{
+				if (_linkedAddresses[accounts[i]] != address(0)) {
+					address linkedAddress = _linkedAddresses[accounts[i]];
+					delete _linkedAddresses[linkedAddress];
+					delete _linkedAddresses[accounts[i]];
+					delete _takenAddresses[linkedAddress];
+				}
+				delete _founders[accounts[i]];
+			}
+		}
+	}
+
+	function toggleWorker(address[] memory accounts) public onlyOracle {
+		for (uint i = 0; i < accounts.length; i++) {if (_workers[accounts[i]] == false) {_workers[accounts[i]] = true; emit WorkerAdded(accounts[i]);} else {delete _workers[accounts[i]];}}
+	}
+
+	function toggleOracle(address[] memory accounts) public onlyGovernance {
+		for (uint i = 0; i < accounts.length; i++) {if (_oracles[accounts[i]] == false) {_oracles[accounts[i]] = true;} else {delete _oracles[accounts[i]];}}
+	}
+
+	function linkAddressByOracle(address[] memory founders, address[] memory workers) external onlyOracle {
+		for (uint i = 0; i < founders.length; i++) {_linkAddress(founders[i], workers[i]);}
+	}
+
 	function setGovernance(address account) public onlyGovernance {_governance = account;}
 	function toggleApprovalRequired() public onlyGovernance {if (_approvalRequired == false) {_approvalRequired = true;} else {delete _approvalRequired;}}
-	function linkAddressByOracle(address founder, address worker) external onlyOracle {_linkAddress(founder, worker);}
 	function linkAddress(address worker) external onlyFounder {_linkAddress(msg.sender, worker);}
-	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
+	function _isFounder(address account) internal view returns(bool) {if (_founders[account] > 0) {return true;} else {return false;}}
 
-	function _linkAddress(address founder, address worker) external { // can be used to limit the amount of testers to only approved addresses
+	function _linkAddress(address founder, address worker) internal {
 		require(_linkedAddresses[founder] != worker && _takenAddresses[worker] == false, "already linked these or somebody already uses this");
 		require(_isFounder(worker) == false && _founders[founder] >= _linkLimit, "can't link founders or not enough eth deposited");
 		if (_linkedAddresses[founder] != address(0)) {
@@ -63,7 +95,7 @@ contract DatabaseTestnet {
 		emit AddressLinked(founder,worker);
 	}
 
-	function getAddress(address account) public view returns(bool worker, bool founder, address linked, bool taken, bool oracle, uint lastEntryBlock) {
+	function getAddress(address account) public view returns(bool worker, uint founderContrib, address linked, bool taken, bool oracle, uint lastEntryBlock) {
 		return (_workers[account],_founders[account],_linkedAddresses[account],_takenAddresses[account],_oracles[account],_blockNumbers[account]);
 	}
 
