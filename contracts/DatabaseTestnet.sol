@@ -28,11 +28,13 @@ contract DatabaseTestnet {
 
 	function recordEntry(bytes32 _hash, string memory _entry) public { // method id
 		require(_blockNumbers[msg.sender] + 25 >= block.number, "too early"); // mandatory for testnet
-		if (_approvalRequired == false) {_blockNumbers[msg.sender] = block.number;emit Entry(msg.sender, _hash, _entry);}
-		else if (_workers[msg.sender] == true) {_blockNumbers[msg.sender] = block.number;emit Entry(msg.sender, _hash, _entry);}
+		if (_approvalRequired == false) {_blockNumbers[msg.sender] = block.number; emit Entry(msg.sender, _hash, _entry);}
+		else if (_workers[msg.sender] == true) {_blockNumbers[msg.sender] = block.number; emit Entry(msg.sender, _hash, _entry);}
 	}
 
-	function newPeriod(uint startB, uint endB) public onlyOracle {
+	function newPeriod(uint endB) public onlyOracle {
+		require(block.number >= _periods[_periodCounter].endBlock);
+		uint startB = _periods[_periodCounter].endBlock+1;
 		_periodCounter++;
 		_periods[_periodCounter].startBlock = startB;
 		_periods[_periodCounter].endBlock = endB;
@@ -60,6 +62,7 @@ contract DatabaseTestnet {
 		if (_workers[worker] != true) {_workers[worker] == true; emit WorkerAdded(worker);}
 		emit AddressLinked(founder,worker);
 	}
+
 	function getAddress(address account) public view returns(bool worker, bool founder, address linked, bool taken, bool oracle, uint lastEntryBlock) {
 		return (_workers[account],_founders[account],_linkedAddresses[account],_takenAddresses[account],_oracles[account],_blockNumbers[account]);
 	}
