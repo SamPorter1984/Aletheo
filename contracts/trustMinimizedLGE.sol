@@ -2,7 +2,7 @@ pragma solidity >=0.6.0;
 
 // Author: Sam Porter
 
-// Or you could call it trust minimized lge.
+// Trustless or trust minimized for accuracy.
 // What CORE team did is something really interesting, with LGE it's now possible 
 // to create fairer distribution and fund promising projects without VC vultures at all.
 // Non-upgradeable, not owned, liquidity is being created automatically on first transaction after last block of LGE.
