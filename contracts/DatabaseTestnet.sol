@@ -1,7 +1,9 @@
 pragma solidity >=0.7.0;
 pragma experimental ABIEncoderV2;
-// not critically important for this contract to be clean on the testnet, and it's disposable by design anyway. but hopefully it's good already, so that it could create a good look i guess
-// could make sense to make it upgradeable for starters, so it won't be required to update contract address everywhere. then after a while deploy non-upgradeable finilized version
+// not critically important for this contract to be clean on the testnet, and it's disposable by design anyway. but hopefully it's good already,
+// so that it could create a good look i guess
+// could make sense to make it upgradeable for starters, so it won't be required to update contract address everywhere. then after a while deploy
+// non-upgradeable finilized version
 contract DatabaseTestnet {
 	address private _governance;
 	bool private _approvalRequired;
