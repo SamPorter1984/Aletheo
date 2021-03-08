@@ -1,5 +1,7 @@
 pragma solidity >=0.7.0;
 pragma experimental ABIEncoderV2;
+// not critically important for this contract to be clean on the testnet, and it's disposable by design anyway. but hopefully it's good already, so that it could create a good look i guess
+// could make sense to make it upgradeable for starters, so it won't be required to update contract address everywhere. then after a while deploy non-upgradeable finilized version
 contract DatabaseTestnet {
 	address private _governance;
 	bool private _approvalRequired;
@@ -19,8 +21,8 @@ contract DatabaseTestnet {
 	event WorkerAdded(address indexed account);
 	event AddressLinked(address indexed address1, address indexed address2);
 	event NewPeriod(uint id, uint startBlock, uint endBlock);
-    event FounderAdded(address indexed founder);
-    
+	event FounderAdded(address indexed founder);
+	
 	constructor() {_governance = msg.sender;_linkLimit=1e17;}
 
 	modifier onlyOracle() {require(_oracles[msg.sender] == true, "not an oracle");_;}
@@ -41,7 +43,7 @@ contract DatabaseTestnet {
 		}
 	}
 
-	function newPeriod(uint endB) public onlyOracle {
+	function newPeriod(uint endB) public onlyGovernance {
 		require(block.number >= _periods[_periodCounter].endBlock);
 		uint startB = _periods[_periodCounter].endBlock+1;
 		_periodCounter++;
@@ -53,7 +55,7 @@ contract DatabaseTestnet {
 	function toggleFounder(address[] memory accounts, uint[] memory ethContributions) public onlyOracle {
 		for (uint i = 0; i < accounts.length; i++) {
 			if(_founders[accounts[i]] != ethContributions[i]) {_founders[accounts[i]] = ethContributions[i]; emit FounderAdded(accounts[i]);}
-			else{
+			else {
 				if (_linkedAddresses[accounts[i]] != address(0)) {
 					address linkedAddress = _linkedAddresses[accounts[i]];
 					delete _linkedAddresses[linkedAddress];
@@ -81,6 +83,7 @@ contract DatabaseTestnet {
 	function toggleApprovalRequired() public onlyGovernance {if (_approvalRequired == false) {_approvalRequired = true;} else {delete _approvalRequired;}}
 	function linkAddress(address worker) external onlyFounder {_linkAddress(msg.sender, worker);}
 	function _isFounder(address account) internal view returns(bool) {if (_founders[account] > 0) {return true;} else {return false;}}
+	function setLinkLimit(uint value) external onlyGovernance {require(value >= 0 && value < 1e18, "can't override hard limit");_linkLimit = value;}
 
 	function _linkAddress(address founder, address worker) internal {
 		require(_linkedAddresses[founder] != worker && _takenAddresses[worker] == false, "already linked these or somebody already uses this");
