@@ -48,7 +48,11 @@ contract DatabaseTestnet {
 
 	function newPeriod(uint endB) public onlyGovernance {
 		require(block.number >= _periods[_periodCounter].endBlock);
-		uint startB = _periods[_periodCounter].endBlock+1;
+		uint previousEndB = _periods[_periodCounter].endBlock;
+		uint startB = previousEndB+1;
+		if (previousEndB == 0) {
+			startB = block.number;	
+		}
 		_periodCounter++;
 		_periods[_periodCounter].startBlock = startB;
 		_periods[_periodCounter].endBlock = endB;
