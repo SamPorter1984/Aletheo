@@ -47,12 +47,13 @@ contract DatabaseTestnet {
 	}
 
 	function newPeriod(uint endB) public onlyGovernance {
-		require(block.number >= _periods[_periodCounter].endBlock);
+		require(block.number >= _periods[_periodCounter].endBlock,"too soon");
 		uint previousEndB = _periods[_periodCounter].endBlock;
 		uint startB = previousEndB+1;
 		if (previousEndB == 0) {
 			startB = block.number;	
 		}
+		require(endB > startB,"forbidden");
 		_periodCounter++;
 		_periods[_periodCounter].startBlock = startB;
 		_periods[_periodCounter].endBlock = endB;
