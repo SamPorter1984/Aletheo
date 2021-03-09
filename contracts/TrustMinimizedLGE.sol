@@ -2,7 +2,6 @@ pragma solidity >=0.6.0;
 
 // Author: Sam Porter
 
-// Trustless or trust minimized for accuracy.
 // What CORE team did is something really interesting, with LGE it's now possible 
 // to create fairer distribution and fund promising projects without VC vultures at all.
 // Non-upgradeable, not owned, liquidity is being created automatically on first transaction after last block of LGE.
@@ -18,6 +17,7 @@ import "./ILGE2.sol";
 import "./IlpOraclesFund.sol";
 import "./IWETH.sol";
 import "./IERC20.sol";
+import "./IGovernance.sol";
 
 contract FoundingEvent {
 	using SafeMath for uint;
@@ -28,23 +28,21 @@ contract FoundingEvent {
 	uint private _ETHDeposited;
 	uint private _totalLGELPtokensMinted;
 	bool private _lgeOngoing = true;
-	address private _tokenETHLP; // maybe just precompute create2 and hardcode too?
+	address private _tokenETHLP; // create2 and hardcode too?
 	uint private _rewardsRate;
-	bool private _voting;
-	uint private _lgeStart; // it's not required. remove and replace with hardcoded approximate blocknumbers to save transaction cost for users
-	address private constant _WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;// testing
 	address payable private _governance;
-	address private _governanceContract;
 	uint private _linkLimit;
 	uint private _lockTime;
 	uint private _reentrancyStatus;
 	uint private _rewardsToRecompute;
 
 ///////variables for testing purposes
+	address private constant _WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;// testing
 	address private _uniswapFactory = 0x7FDc955b5E2547CC67759eDba3fd5d7027b9Bd66;
 	uint private _rewardsGenesis; // = hardcoded block.number
 	address private _token; // = hardcoded address
 	address private _lpOraclesFund;
+	uint private _lgeStart; // not required. replace with hardcoded blocknumbers
 //////
 	constructor() {
 		_governance = msg.sender;
@@ -52,14 +50,14 @@ contract FoundingEvent {
 		_linkLimit = 1e17; // 0.1 ether
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
 		_rewardsGenesis = block.number + 5;
-		_lockTime = 6307200;
+		_lockTime = 10512000;
 	}
 
 	struct Founder {
 		uint ethContributed;
 		bool firstClaim;
 		uint rewardsLeft;
-		uint tokenAmount; // will be required for generic staking if lge rewards run out
+		uint tokenAmount; // will be required for generic staking after lge rewards run out
 		uint lockUpTo;
 	}
 
@@ -68,7 +66,6 @@ contract FoundingEvent {
 	mapping (address => bool) private _takenAddresses;
 
 	event AddressLinked(address indexed address1, address indexed address2);
-	event LiquidityPoolCreated(address indexed liquidityPair);
 
 	modifier onlyFounder() {
 		require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not a Founder or reentrancy guard");
@@ -82,18 +79,13 @@ contract FoundingEvent {
 		_;
 	}
 
-	modifier onlyGovernanceContract() {
-		require(msg.sender == _governanceContract, "not governance contract");
-		_;
-	}	
-
 	function isFounder(address account) public view returns(bool) {
 		if (_founders[account].ethContributed > 0) {return true;} else {return false;}
 	}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
 		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true, "LGE has already ended or didn't start, or no agreement provided");
-		require(msg.value > 0 && _isContract(msg.sender) == false, "amount must be bigger than 0 ot contracts can't be Founders");
+		require(msg.value > 0 && _isContract(msg.sender) == false, "amount must be bigger than 0 or contracts can't be Founders");
 		if (_takenAddresses[msg.sender] == true) {
 			address linkedAddress = _linkedAddresses[msg.sender];
 			delete _linkedAddresses[linkedAddress];
@@ -146,8 +138,8 @@ contract FoundingEvent {
 		IERC20(_token).transfer(address(msg.sender), rewardsToClaim);
 	}
 
-	function migrate(address contract_) public onlyFounder {
-		require(_founders[msg.sender].firstClaim == true && _voting == false, "claim rewards before this or voting is ongoing");
+	function migrate() public onlyFounder {
+		require(_founders[msg.sender].firstClaim == true && IGovernance(_governance).getVoting() == false, "claim rewards before this or voting is ongoing");
 		require(_founders[msg.sender].rewardsLeft == 0, "still rewards left");
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
@@ -157,7 +149,7 @@ contract FoundingEvent {
 	}
 
 	function changeAddress(address account) public onlyFounder {
-		require(_isContract(account) == false && _voting == false, "contracts can't be founders or voting is ongoing");
+		require(_isContract(account) == false && IGovernance(_governance).getVoting() == false, "contracts can't be founders or voting is ongoing");
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint rewardsLeft = _founders[msg.sender].rewardsLeft;
 		bool firstClaim = _founders[msg.sender].firstClaim;
@@ -183,7 +175,6 @@ contract FoundingEvent {
 		IERC20(_token).transfer(_tokenETHLP, IERC20(_token).balanceOf(address(this))/6);
 		IUniswapV2Pair(_tokenETHLP).mint(address(this));
 		_totalLGELPtokensMinted = IUniswapV2Pair(_tokenETHLP).balanceOf(address(this));
-		emit LiquidityPoolCreated(_tokenETHLP);
 	}
 
 	function setLockTime(uint lockTime_) public onlyGovernance {
@@ -201,22 +192,13 @@ contract FoundingEvent {
 		_governance = account;
 	}
 
-	function setGovernanceContract(address account) public onlyGovernance {
-		_governanceContract = account;
-	}
-
-	function toggleVoting() public onlyGovernanceContract {
-		if (_voting == false) {_voting = true;} else {_voting = false;}
-	}
-
 	function recomputeRewardsLeft() public onlyFounder {
 		if(_rewardsToRecompute > 0) {
-			uint share = _founders[msg.sender].ethContributed*rewardsToRecompute/_ETHDeposited;
+			uint share = _founders[msg.sender].ethContributed*_rewardsToRecompute/_ETHDeposited;
 			_founders[msg.sender].rewardsLeft += share;
 		}
 	}
-
-// VIEW FUNCTIONS ========================================================================================
+// VIEW FUNCTIONS ==================================================
 
 	function getFounder(address account) external view returns (uint ethContributed, uint rewardsLeft, bool firstClaim, uint tokenAmount, uint lockUpTo) {
 		return (_founders[account].ethContributed,_founders[account].rewardsLeft,_founders[account].firstClaim,_founders[account].tokenAmount,_founders[account].lockUpTo);
@@ -224,7 +206,6 @@ contract FoundingEvent {
 	function getLgeInfo() external view returns (bool lgeOng,uint rewGenesis,uint rewRate,uint totalEthDepos) {
 		return (_lgeOngoing,_rewardsGenesis,_rewardsRate,_totalETHDeposited);
 	}
-
 // IN CASE OF SPAM BOTS ============================================
 
 	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
