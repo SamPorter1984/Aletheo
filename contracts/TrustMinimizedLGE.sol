@@ -199,15 +199,16 @@ contract FoundingEvent {
 		}
 	}
 // VIEW FUNCTIONS ==================================================
-
-	function getFounder(address account) external view returns (uint ethContributed, uint rewardsLeft, bool firstClaim, uint tokenAmount, uint lockUpTo) {
-		return (_founders[account].ethContributed,_founders[account].rewardsLeft,_founders[account].firstClaim,_founders[account].tokenAmount,_founders[account].lockUpTo);
+	function getFounder(address account) external view returns (uint ethContributed, uint rewardsLeft, bool firstClaim, uint lockUpTo, address linked) {
+		return (_founders[account].ethContributed,_founders[account].rewardsLeft,_founders[account].firstClaim,_founders[account].lockUpTo,_linkedAddresses[account]);
 	}
+
+	function getFounderTknAmount(address account) external view returns (uint tknAmount) {return _founders[account].tokenAmount;}
+
 	function getLgeInfo() external view returns (bool lgeOng,uint rewGenesis,uint rewRate,uint totalEthDepos) {
 		return (_lgeOngoing,_rewardsGenesis,_rewardsRate,_totalETHDeposited);
 	}
 // IN CASE OF SPAM BOTS ============================================
-
 	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
 		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false, "already linked these or somebody already uses this");
 		require(isFounder(account) == false && _founders[msg.sender].ethContributed >= _linkLimit, "can't link founders or not enough eth deposited");
