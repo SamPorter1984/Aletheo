@@ -47,17 +47,19 @@ contract DatabaseTestnet {
 	}
 
 	function newPeriod(uint endB) public onlyGovernance {
-		require(block.number >= _periods[_periodCounter].endBlock,"too soon");
-		uint previousEndB = _periods[_periodCounter].endBlock;
+		uint counter = _periodCounter;
+		require(block.number >= _periods[counter].endBlock,"too soon");
+		uint previousEndB = _periods[counter].endBlock;
 		uint startB = previousEndB+1;
 		if (previousEndB == 0) {
 			startB = block.number;	
 		}
 		require(endB > startB,"forbidden");
 		_periodCounter++;
-		_periods[_periodCounter].startBlock = startB;
-		_periods[_periodCounter].endBlock = endB;
-		emit NewPeriod(_periodCounter,startB,endB);
+		counter++;
+		_periods[counter].startBlock = startB;
+		_periods[counter].endBlock = endB;
+		emit NewPeriod(counter,startB,endB);
 	}
 
 	function toggleFounder(address[] memory accounts, uint[] memory ethContributions) public onlyOracle {
