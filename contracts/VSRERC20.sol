@@ -72,10 +72,6 @@ contract VSRERC20 is Context, IERC20 {
         return _symbol;
     }
 
-    function decimals() public pure returns (uint8) {
-        return 18;
-    }
-
     function totalSupply() public view override returns (uint256) {
         return _totalSupply;
     }
@@ -87,10 +83,6 @@ contract VSRERC20 is Context, IERC20 {
     function transfer(address recipient, uint256 amount) public override returns (bool) {
         _transfer(_msgSender(), recipient, amount);
         return true;
-    }
-
-    function allowance(address owner, address spender) public view override returns (uint256) {
-        return _allowances[owner][spender];
     }
 
     function approve(address spender, uint256 amount) public override returns (bool) {
