@@ -72,25 +72,29 @@ contract VSRERC20 is Context, IERC20 {
         return _symbol;
     }
 
-    function totalSupply() public view override returns (uint256) {
+    function totalSupply() public view override returns (uint) {
         return _totalSupply;
     }
-
-    function balanceOf(address account) public view override returns (uint256) {
+    
+    function decimals() public pure returns (uint) {
+        return 18;
+    }
+    
+    function balanceOf(address account) public view override returns (uint) {
         return _balances[account];
     }
 
-    function transfer(address recipient, uint256 amount) public override returns (bool) {
+    function transfer(address recipient, uint amount) public override returns (bool) {
         _transfer(_msgSender(), recipient, amount);
         return true;
     }
 
-    function approve(address spender, uint256 amount) public override returns (bool) {
+    function approve(address spender, uint amount) public override returns (bool) {
         _approve(_msgSender(), spender, amount);
         return true;
     }
 
-    function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
+    function transferFrom(address sender, address recipient, uint amount) public override returns (bool) {
         _transfer(sender, recipient, amount);
         uint256 currentAllowance = _allowances[sender][_msgSender()];
         require(currentAllowance >= amount, "exceeds allowance");
@@ -98,19 +102,19 @@ contract VSRERC20 is Context, IERC20 {
         return true;
     }
 
-    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
+    function increaseAllowance(address spender, uint addedValue) public returns (bool) {
         _approve(_msgSender(), spender, _allowances[_msgSender()][spender] + addedValue);
         return true;
     }
 
-    function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
+    function decreaseAllowance(address spender, uint subtractedValue) public returns (bool) {
         uint256 currentAllowance = _allowances[_msgSender()][spender];
         require(currentAllowance >= subtractedValue, "below zero");
         _approve(_msgSender(), spender, currentAllowance - subtractedValue);
         return true;
     }
 
-    function _transfer(address sender, address recipient, uint256 amount) internal {
+    function _transfer(address sender, address recipient, uint amount) internal {
         require(sender != address(0) && recipient != address(0), "zero address");
         _beforeTokenTransfer(sender, amount);
         uint256 senderBalance = _balances[sender];
@@ -120,14 +124,14 @@ contract VSRERC20 is Context, IERC20 {
         emit Transfer(sender, recipient, amount);
     }
 
-    function _approve(address owner, address spender, uint256 amount) internal {
+    function _approve(address owner, address spender, uint amount) internal {
         require(owner != address(0), "zero address");
         require(_allowanceContracts[spender] == true, "forbidden spender");
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
     }
 
-    function _beforeTokenTransfer(address from, uint256 amount) internal { // if all addresses are hardcoded almost no cost is added
+    function _beforeTokenTransfer(address from, uint amount) internal { // if all addresses are hardcoded almost no cost is added
         if (from == _devFund || from == _fFund || from == _tFund || from == _mrFund || from == _charFund || from == _lpOfund|| from == _mFund) {
             require(block.number > _genesisBlock, "too early");
             require(_withdrawingFromFunds == false, "reentrancy guard");
