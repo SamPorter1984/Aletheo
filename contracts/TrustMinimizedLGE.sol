@@ -113,9 +113,9 @@ contract FoundingEvent {
 		if (_founders[msg.sender].firstClaim == false) {
 			_founders[msg.sender].firstClaim = true;
 			uint share = _founders[msg.sender].ethContributed*totalTokenAmount/_ETHDeposited;
-			_founders[msg.sender].rewardsLeft = share;
+			_founders[msg.sender].tokenAmount = share;
 			rewardsToClaim = (block.number - rewardsGenesis)*rewardsRate*share/totalTokenAmount;
-			_founders[msg.sender].tokenAmount = share - rewardsToClaim;
+			_founders[msg.sender].rewardsLeft = share - rewardsToClaim;
 		} else {
 			uint tokenAmount = _founders[msg.sender].tokenAmount;
 			rewardsToClaim = (block.number - rewardsGenesis)*rewardsRate*tokenAmount/totalTokenAmount;
