@@ -1,3 +1,54 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity >=0.6.0 <0.8.0;
+library SafeMath {
+	function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+		require(b <= a, "SafeMath: subtraction overflow");
+		uint256 c = a - b;
+		return c;
+	}
+}
+
+pragma solidity >=0.6.0;
+interface IWETH {
+	function deposit() external payable;
+	function transfer(address to, uint value) external returns (bool);
+	function balanceOf(address account) external returns (uint);
+}
+
+pragma solidity >=0.6.0;
+interface IERC20 {
+	function balanceOf(address account) external view returns (uint256);
+	function transfer(address recipient, uint256 amount) external returns (bool);
+}
+
+pragma solidity >=0.6.0;
+interface IUniswapV2Pair {
+	function balanceOf(address owner) external view returns (uint);
+	function transfer(address to, uint value) external returns (bool);
+	function mint(address to) external returns (uint liquidity);
+	function sync() external;
+	function initialize(address, address) external;
+}
+
+pragma solidity >=0.6.0;
+interface IUniswapV2Factory {
+	function getPair(address tokenA, address tokenB) external view returns (address pair);
+	function createPair(address tokenA, address tokenB) external returns (address pair);
+}
+
+interface ILGE2 {
+	function migrate(address participant, uint ethContributed, uint rewardsLeft, uint tokenAmount) external;
+}
+
+interface IlpOraclesFund {
+	function stakeFromLgeContract(address account, uint lpAmount, uint tokenAmount,uint lockUpTo) external;
+}
+
+interface IGovernance {
+	function getVoting() external view returns (bool voting);
+}
+
 pragma solidity >=0.6.0;
 
 // Author: Sam Porter
@@ -114,15 +165,15 @@ contract FoundingEvent {
 			_founders[msg.sender].firstClaim = true;
 			uint share = _founders[msg.sender].ethContributed*totalTokenAmount/_ETHDeposited;
 			_founders[msg.sender].rewardsLeft = share;
-			_founders[msg.sender].tokenAmount = share;
 			rewardsToClaim = (block.number - rewardsGenesis)*rewardsRate*share/totalTokenAmount;
+			_founders[msg.sender].tokenAmount = share - rewardsToClaim;
 		} else {
 			uint tokenAmount = _founders[msg.sender].tokenAmount;
 			rewardsToClaim = (block.number - rewardsGenesis)*rewardsRate*tokenAmount/totalTokenAmount;
 			uint rewardsClaimed = tokenAmount - rewardsLeft;
 			rewardsToClaim = rewardsToClaim.sub(rewardsClaimed);
+			_founders[msg.sender].rewardsLeft -= rewardsToClaim;
 		}
-		if(rewardsToClaim > rewardsLeft){_founders[msg.sender].rewardsLeft = 0;} else {_founders[msg.sender].rewardsLeft -= rewardsToClaim;}
 		IERC20(_token).transfer(address(msg.sender), rewardsToClaim);
 	}
 
@@ -130,7 +181,7 @@ contract FoundingEvent {
 		require(_founders[msg.sender].firstClaim == true && IGovernance(_governance).getVoting() == false, "claim rewards before this or voting is ongoing");
 		require(_founders[msg.sender].rewardsLeft == 0, "still rewards left");
 		uint ethContributed = _founders[msg.sender].ethContributed;
-		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
+		uint lpShare = _totalLGELPtokensMinted*ethContributed/_ETHDeposited;
 		IERC20(_tokenETHLP).transfer(_lpOraclesFund, lpShare);
 		IlpOraclesFund(_lpOraclesFund).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
 		delete _founders[msg.sender];
