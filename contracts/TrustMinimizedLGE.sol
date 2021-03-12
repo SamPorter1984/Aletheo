@@ -56,13 +56,7 @@ contract FoundingEvent {
 		_totalTokenAmount = 1e27;
 	}
 
-	struct Founder {
-		uint ethContributed;
-		bool firstClaim;
-		uint rewardsLeft;
-		uint tokenAmount; // will be required for generic staking after lge rewards run out
-		uint lockUpTo;
-	}
+	struct Founder {uint ethContributed; bool firstClaim; uint rewardsLeft; uint tokenAmount; uint lockUpTo;}
 
 	mapping(address => Founder) private _founders;
 	mapping (address => address) private _linkedAddresses;
@@ -115,7 +109,7 @@ contract FoundingEvent {
 			uint share = _founders[msg.sender].ethContributed*totalTokenAmount/_ETHDeposited;
 			_founders[msg.sender].tokenAmount = share;
 			rewardsToClaim = (block.number - rewardsGenesis)*rewardsRate*share/totalTokenAmount;
-			_founders[msg.sender].rewardsLeft = share - rewardsToClaim;
+			_founders[msg.sender].rewardsLeft = share*5 - rewardsToClaim;
 		} else {
 			uint tokenAmount = _founders[msg.sender].tokenAmount;
 			rewardsToClaim = (block.number - rewardsGenesis)*rewardsRate*tokenAmount/totalTokenAmount;
@@ -123,7 +117,7 @@ contract FoundingEvent {
 			rewardsToClaim = rewardsToClaim.s(rewardsClaimed);
 			_founders[msg.sender].rewardsLeft = rewardsLeft.s(rewardsToClaim);
 		}
-		IERC20(_token).transfer(address(msg.sender), rewardsToClaim);
+		ITreasury(_treasury).claimFounderRewards(address(msg.sender), rewardsToClaim);
 	}
 
 	function migrate() public onlyFounder {
@@ -134,7 +128,7 @@ contract FoundingEvent {
 		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
 		if (lpShare > inStock) {lpShare = inStock;}
 		IERC20(_tokenETHLP).transfer(_treasury, lpShare);
-		ITreasury(_treasury).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
+		ITreasury(_treasury).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);// should tokenAmount be cut in half here?
 		delete _founders[msg.sender];
 	}
 
@@ -196,7 +190,7 @@ contract FoundingEvent {
 
 	function getFounderTknAmount(address account) external view returns (uint tknAmount) {return _founders[account].tokenAmount;}
 
-	function getLgeInfo() external view returns (bool lgeOng,uint rewGenesis,uint rewRate,uint totalEthDepos, uint EthDepos, uint totalTknAmount, uint rewToRecompute) {
-		return (_lgeOngoing,_rewardsGenesis,_rewardsRate,_totalETHDeposited,_ETHDeposited,_totalTokenAmount,_rewardsToRecompute);
+	function getLgeInfo() external view returns (bool lgeOng,uint rewGenesis,uint rewRate,uint totEthDepos, uint EthDepos, uint totTknAmount, uint rewToRecompute,uint totLGELPMinted) {
+		return (_lgeOngoing,_rewardsGenesis,_rewardsRate,_totalETHDeposited,_ETHDeposited,_totalTokenAmount,_rewardsToRecompute,_totalLGELPtokensMinted);
 	}
 }
