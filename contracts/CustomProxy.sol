@@ -78,7 +78,7 @@ contract CustomProxy {
 	}
 
 	function _setAdmin(address newAdm) internal {
-		require(_governanceSet < 4, "governance already set");
+		require(_governanceSet < 3, "governance already set");
 		_governanceSet += 1;
 		assembly { sstore(ADMIN_SLOT, newAdm) }
 	}
