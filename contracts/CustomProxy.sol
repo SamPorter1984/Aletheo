@@ -21,43 +21,19 @@ contract CustomProxy {
 	uint private _governanceSet;
 	
 	constructor() {
-		require(ADMIN_SLOT == bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1) && LOGIC_SLOT == bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1), "eth ded or code broke");
+		require(ADMIN_SLOT == bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1) && LOGIC_SLOT == bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1), "code broke");
 		_setAdmin(msg.sender);
 		_upgradeBlock = 0;
 		_deadline = block.number + 4204800; // ~2 years as default
 	}
 
-	modifier ifAdmin() {
-		if (msg.sender == _admin()) {
-			_;
-		} else {
-			_fallback();
-		}
-	}
+	modifier ifAdmin() {if (msg.sender == _admin()) {_;} else {_fallback();}}
 
-	function getSettings() external ifAdmin returns(address adm, address logic, uint pgrdBlck, uint ddln) {
-		return (_admin(), _logic(), _upgradeBlock, _deadline);
-	}
-
-	function _logic() internal view returns (address logic) {
-		assembly { logic := sload(LOGIC_SLOT) }
-	}
-
-	function changeAdmin(address newAdm) external ifAdmin {
-		require(newAdm != address(0), "Can't change admin to 0");
-		emit AdminChanged(_admin(), newAdm);
-		_setAdmin(newAdm);
-	}
-
-	function upgradeTo(address newLogic) external ifAdmin {
-		_setlogic(newLogic);
-	}
-
-	function upgradeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {
-		_setlogic(newLogic);
-		(bool success,) = newLogic.delegatecall(data);
-		require(success);
-	}
+	function getSettings() external ifAdmin returns(address adm, address logic, uint pgrdBlck, uint ddln) {return (_admin(), _logic(), _upgradeBlock, _deadline);}
+	function _logic() internal view returns (address logic) {assembly { logic := sload(LOGIC_SLOT) }}
+	function changeAdmin(address newAdm) external ifAdmin {require(newAdm != address(0), "Can't change admin to 0");emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
+	function upgradeTo(address newLogic) external ifAdmin {_setlogic(newLogic);}
+	function upgradeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {_setlogic(newLogic);(bool success,) = newLogic.delegatecall(data);require(success);}
 
 	function _setlogic(address newLogic) internal {
 		require(block.number >= _upgradeBlock && block.number < _deadline, "wait or too late");
@@ -67,34 +43,12 @@ contract CustomProxy {
 		emit Upgraded(newLogic);
 	}
 
-	function _isContract(address account) internal view returns (bool b) {
-		uint256 size;
-		assembly { size := extcodesize(account) }
-		return size > 0;
-	}
-
-	function _admin() internal view returns (address adm) {
-		assembly { adm := sload(ADMIN_SLOT) }
-	}
-
-	function _setAdmin(address newAdm) internal {
-		require(_governanceSet < 3, "governance already set");
-		_governanceSet += 1;
-		assembly { sstore(ADMIN_SLOT, newAdm) }
-	}
-
-	fallback () external payable {
-		_fallback();
-	}
-
-	receive () external payable {
-		_fallback();
-	}
-
-	function _fallback() internal {
-		require(msg.sender != _admin(), "Can't call fallback from admin");
-		_delegate(_logic());
-	}
+	function _isContract(address account) internal view returns (bool b) {uint256 size;assembly { size := extcodesize(account) }return size > 0;}
+	function _admin() internal view returns (address adm) {assembly { adm := sload(ADMIN_SLOT) }}
+	function _setAdmin(address newAdm) internal {require(_governanceSet < 3, "governance already set");_governanceSet += 1;assembly { sstore(ADMIN_SLOT, newAdm) }}
+	fallback () external payable {_fallback();}
+	receive () external payable {_fallback();}
+	function _fallback() internal {require(msg.sender != _admin(), "Can't call fallback from admin");_delegate(_logic());}
 
 	function _delegate(address logic_) internal {
 		assembly {
