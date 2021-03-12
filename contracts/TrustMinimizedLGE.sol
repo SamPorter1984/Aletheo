@@ -103,7 +103,7 @@ contract FoundingEvent {
 		uint rewardsLeft = _founders[msg.sender].rewardsLeft;
 		uint rewardsRate = _rewardsRate;
 		uint halver = block.number/10000000;
-		if (halver>1) {for (uint i=1;i<=halver;i++) {rewardsRate=rewardsRate*5/6;}}
+		if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		if (_founders[msg.sender].firstClaim == false) {
 			_founders[msg.sender].firstClaim = true;
 			uint share = _founders[msg.sender].ethContributed*totalTokenAmount/_ETHDeposited;
