@@ -22,15 +22,10 @@ contract VSRERC20 is Context, IERC20 {
 	uint256 private _totalSupply = 1e30;
 	string private _name;
 	string private _symbol;
-	uint private _emission;
+	uint private _treasuryEmission;
 	uint private _marketingEmission;
 	uint private _withdrawnMfund;
-	uint private _withdrawnFfund;
-	uint private _withdrawnTfund;
-	uint private _withdrawnMRfund;
-	uint private _withdrawnCfund;
-	uint private _withdrawnLpOfund;
-	uint private _withdrawnDfund;
+	uint private _withdrawnTreasury;
 	uint private _governanceSet;
 	bool private _withdrawingFromFunds;
 	address private _governance;
@@ -38,11 +33,6 @@ contract VSRERC20 is Context, IERC20 {
 //// variables for testing purposes. live it should all be hardcoded addresses
 	address private _mFund;
 	address private _tFund;
-	address private _mrFund;
-	address private _charFund;
-	address private _lpOfund;
-	address private _fFund;
-	address private _devFund;
 	uint private _genesisBlock;
 
 	constructor (string memory name_, string memory symbol_) {
@@ -50,17 +40,14 @@ contract VSRERC20 is Context, IERC20 {
 		_symbol = symbol_;
 		_genesisBlock = block.number + 320000; // remove
 		_governance = msg.sender; // for now
-		_emission = 42; // approx 1 bil from a fund in 10 years
+		_treasuryEmission = 420; // approx 1 bil from a fund in 10 years
 		_marketingEmission = 420;
 		_balances[msg.sender] = 1e30;
 	}
 
 	modifier onlyGovernance() {require(msg.sender == _governance, "only governance");_;}
 
-	function stats() public view returns(uint emi, uint mEmi, uint wMf, uint wFf, uint wTf, uint wMRf, uint wCf, uint wLpOf, uint wDf, uint govSet) {
-		return (_emission,_marketingEmission,_withdrawnMfund,_withdrawnFfund,_withdrawnTfund,_withdrawnMRfund,_withdrawnCfund,_withdrawnLpOfund,_withdrawnDfund,_governanceSet);
-	}
-
+	function stats() public view returns(uint emi,uint mEmi,uint wMf,uint wTf,uint govSet) {return(_treasuryEmission,_marketingEmission,_withdrawnMfund,_withdrawnTreasury,_governanceSet);}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view override returns (uint) {return _totalSupply;}
@@ -106,8 +93,8 @@ contract VSRERC20 is Context, IERC20 {
 	}
 
 	function _beforeTokenTransfer(address from, uint amount) internal { // if all addresses are hardcoded almost no cost is added
-		if (from == _devFund || from == _fFund || from == _tFund || from == _mrFund || from == _charFund || from == _lpOfund|| from == _mFund) {
-			require(block.number > _genesisBlock, "too early");
+		if (from == _tFund || from == _mFund) {
+			require(block.number > _genesisBlock, "safe math");
 			require(_withdrawingFromFunds == false, "reentrancy guard");
 			_withdrawingFromFunds = true;
 			if (from == _mFund) {
@@ -115,51 +102,20 @@ contract VSRERC20 is Context, IERC20 {
 				uint allowed = (block.number - _genesisBlock)*_marketingEmission - _withdrawnMfund;
 				require(amount <= allowed, "not yet");
 				_withdrawnMfund += amount;
-			} else if (from == _devFund) {
-				require(amount <= balanceOf(_devFund),"too much");
-				uint allowed = (block.number - _genesisBlock)*_emission - _withdrawnDfund;
-				require(amount <= allowed, "not yet");
-				_withdrawnDfund += amount;
-			} else if (from == _fFund) {
-				require(amount <= balanceOf(_fFund),"too much");
-				uint allowed = (block.number - _genesisBlock)*_emission - _withdrawnFfund;
-				require(amount <= allowed, "not yet");
-				_withdrawnFfund += amount;
 			} else if (from == _tFund) {
 				require(amount <= balanceOf(_tFund),"too much");
-				uint allowed = (block.number - _genesisBlock)*_emission - _withdrawnTfund;
+				uint allowed = (block.number - _genesisBlock)*_treasuryEmission - _withdrawnTreasury;
 				require(amount <= allowed, "not yet");
-				_withdrawnTfund += amount;
-			} else if (from == _mrFund) {
-				require(block.number > _genesisBlock + 10512000, "too early");
-				require(amount <= balanceOf(_mrFund),"too much");
-				uint allowed = (block.number - _genesisBlock + 10512000)*_emission - _withdrawnMRfund;
-				require(amount <= allowed, "not yet");
-				_withdrawnMRfund += amount;
-			} else if (from == _charFund) {
-				require(block.number > _genesisBlock + 10512000, "too early");
-				require(amount <= balanceOf(_charFund),"too much");
-				uint allowed = (block.number - _genesisBlock + 10512000)*_emission - _withdrawnCfund;
-				require(amount <= allowed, "not yet");
-				_withdrawnCfund += amount;
-			} else if (from == _lpOfund) {
-				require(amount <= balanceOf(_lpOfund),"too much");
-				uint allowed = (block.number - _genesisBlock)*_emission - _withdrawnLpOfund;
-				require(amount <= allowed, "not yet");
-				_withdrawnLpOfund += amount;
+				_withdrawnTreasury += amount;
 			}
 			_withdrawingFromFunds = false;
 		}
 	}
 
 	function setNameSymbol(string memory name_, string memory symbol_) public onlyGovernance {_name = name_;_symbol = symbol_;}
-	function setGovernance(address address_) public onlyGovernance {require(_governanceSet < 4, "already set");_governanceSet += 1;_governance = address_;}
-	function setEmission(uint emission) public onlyGovernance {require(emission <= 50 && emission >= 20, "hard limit");_emission = emission;}
-
-	function setMarketingEmission(uint marketingEmission) public onlyGovernance {
-		require(marketingEmission <= 500 && marketingEmission >= 200, "hard limit");
-		_marketingEmission = marketingEmission;
-	}
+	function setGovernance(address address_) public onlyGovernance {require(_governanceSet < 3, "already set");_governanceSet += 1;_governance = address_;}
+	function setTreasuryEmission(uint emission) public onlyGovernance {require(emission <= 500 && emission >= 200, "hard limit");_treasuryEmission = emission;}
+	function setMarketingEmission(uint emission) public onlyGovernance {require(emission <= 500 && emission >= 200, "hard limit");_marketingEmission = emission;}
 
 	function toggleAllowanceContract(address contract_) public onlyGovernance { // not to forget to add uniswap contract
 		require(contract_ != address(0), "forbidden address"); // an address with no bytecode can be added, but it's ok
