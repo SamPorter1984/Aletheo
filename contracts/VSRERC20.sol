@@ -22,17 +22,14 @@ contract VSRERC20 is Context, IERC20 {
 	uint256 private _totalSupply = 1e30;
 	string private _name;
 	string private _symbol;
-	uint private _treasuryEmission;
-	uint private _marketingEmission;
-	uint private _withdrawnMfund;
-	uint private _withdrawnTreasury;
+	uint private _emission;
+	uint private _withdrawn;
 	uint private _governanceSet;
-	bool private _withdrawingFromFunds;
+	bool private _withdrawing;
 	address private _governance;
 
 //// variables for testing purposes. live it should all be hardcoded addresses
-	address private _mFund;
-	address private _tFund;
+	address private _treasury;
 	uint private _genesisBlock;
 
 	constructor (string memory name_, string memory symbol_) {
@@ -47,7 +44,7 @@ contract VSRERC20 is Context, IERC20 {
 
 	modifier onlyGovernance() {require(msg.sender == _governance, "only governance");_;}
 
-	function stats() public view returns(uint emi,uint mEmi,uint wMf,uint wTf,uint govSet) {return(_treasuryEmission,_marketingEmission,_withdrawnMfund,_withdrawnTreasury,_governanceSet);}
+	function stats() public view returns(uint emis, uint withdrawn, uint govSet) {return(_emission,_withdrawn,_governanceSet);}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view override returns (uint) {return _totalSupply;}
@@ -87,35 +84,27 @@ contract VSRERC20 is Context, IERC20 {
 
 	function _approve(address owner, address spender, uint amount) internal {
 		require(owner != address(0), "zero address");
-		require(_allowanceContracts[spender] == true, "forbidden spender");
+		require(_allowanceContracts[spender] == true, "forbidden spender"); // hardcoded uniswap contract also
 		_allowances[owner][spender] = amount;
 		emit Approval(owner, spender, amount);
 	}
 
-	function _beforeTokenTransfer(address from, uint amount) internal { // if all addresses are hardcoded almost no cost is added
-		if (from == _tFund || from == _mFund) {
+	function _beforeTokenTransfer(address from, uint amount) internal { // hardcoded address
+		if (from == _treasury) {
 			require(block.number > _genesisBlock, "safe math");
-			require(_withdrawingFromFunds == false, "reentrancy guard");
-			_withdrawingFromFunds = true;
-			if (from == _mFund) {
-				require(amount <= balanceOf(_mFund),"too much");
-				uint allowed = (block.number - _genesisBlock)*_marketingEmission - _withdrawnMfund;
-				require(amount <= allowed, "not yet");
-				_withdrawnMfund += amount;
-			} else if (from == _tFund) {
-				require(amount <= balanceOf(_tFund),"too much");
-				uint allowed = (block.number - _genesisBlock)*_treasuryEmission - _withdrawnTreasury;
-				require(amount <= allowed, "not yet");
-				_withdrawnTreasury += amount;
-			}
-			_withdrawingFromFunds = false;
+			require(_withdrawing == false, "reentrancy guard");
+			_withdrawing = true;
+			require(amount <= balanceOf(_treasury),"too much");
+			uint allowed = (block.number - _genesisBlock)*_emission - _withdrawn;
+			require(amount <= allowed, "not yet");
+			_withdrawn += amount;
+			_withdrawing = false;
 		}
 	}
 
 	function setNameSymbol(string memory name_, string memory symbol_) public onlyGovernance {_name = name_;_symbol = symbol_;}
 	function setGovernance(address address_) public onlyGovernance {require(_governanceSet < 3, "already set");_governanceSet += 1;_governance = address_;}
-	function setTreasuryEmission(uint emission) public onlyGovernance {require(emission <= 500 && emission >= 200, "hard limit");_treasuryEmission = emission;}
-	function setMarketingEmission(uint emission) public onlyGovernance {require(emission <= 500 && emission >= 200, "hard limit");_marketingEmission = emission;}
+	function setEmission(uint emission) public onlyGovernance {require(emission <= 500 && emission >= 400, "hard limit");_emission = emission;}
 
 	function toggleAllowanceContract(address contract_) public onlyGovernance { // not to forget to add uniswap contract
 		require(contract_ != address(0), "forbidden address"); // an address with no bytecode can be added, but it's ok
