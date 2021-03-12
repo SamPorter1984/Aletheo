@@ -93,7 +93,8 @@ contract FoundingEvent {
 		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].firstClaim == true, "tokens locked or claim rewards");
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
-		require(lpShare <= IERC20(_tokenETHLP).balanceOf(address(this)),"withdrawing too much");
+		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
+		if (lpShare > inStock) {lpShare = inStock;}
 		_ETHDeposited -= ethContributed;
 		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
 		_rewardsToRecompute += _founders[msg.sender].rewardsLeft;
@@ -120,8 +121,8 @@ contract FoundingEvent {
 			uint tokenAmount = _founders[msg.sender].tokenAmount;
 			rewardsToClaim = (block.number - rewardsGenesis)*rewardsRate*tokenAmount/totalTokenAmount;
 			uint rewardsClaimed = tokenAmount - rewardsLeft;
-			rewardsToClaim = rewardsToClaim.sub(rewardsClaimed);
-			_founders[msg.sender].rewardsLeft -= rewardsToClaim;
+			rewardsToClaim = rewardsToClaim.s(rewardsClaimed);
+			_founders[msg.sender].rewardsLeft = rewardsLeft.s(rewardsToClaim);
 		}
 		IERC20(_token).transfer(address(msg.sender), rewardsToClaim);
 	}
@@ -131,6 +132,8 @@ contract FoundingEvent {
 		require(_founders[msg.sender].rewardsLeft == 0, "still rewards left");
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint lpShare = _totalLGELPtokensMinted*ethContributed/_ETHDeposited;
+		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
+		if (lpShare > inStock) {lpShare = inStock;}
 		IERC20(_tokenETHLP).transfer(_lpOraclesFund, lpShare);
 		IlpOraclesFund(_lpOraclesFund).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
 		delete _founders[msg.sender];
