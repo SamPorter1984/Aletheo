@@ -15,8 +15,7 @@ pragma solidity >=0.6.0;
 import "./SafeMath.sol";
 import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Pair.sol";
-import "./ILGE2.sol";
-import "./IlpOraclesFund.sol";
+import "./ITreasury.sol";
 import "./IWETH.sol";
 import "./IERC20.sol";
 import "./IGovernance.sol";
@@ -43,7 +42,7 @@ contract FoundingEvent {
 	address private _uniswapFactory = 0x7FDc955b5E2547CC67759eDba3fd5d7027b9Bd66;
 	uint private _rewardsGenesis; // = hardcoded block.number
 	address private _token; // = hardcoded address
-	address private _lpOraclesFund;
+	address private _treasury;
 	uint private _lgeStart; // not required. replace with hardcoded blocknumbers
 	uint private _totalTokenAmount;
 //////
@@ -110,7 +109,7 @@ contract FoundingEvent {
 		uint rewardsLeft = _founders[msg.sender].rewardsLeft;
 		uint rewardsRate = _rewardsRate;
 		uint halver = block.number/10000000;
-		if (halver>1) {for (uint i=0;i<=halver;i++) {rewardsRate=rewardsRate*5/7;}}
+		if (halver>1) {for (uint i=0;i<=halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		if (_founders[msg.sender].firstClaim == false) {
 			_founders[msg.sender].firstClaim = true;
 			uint share = _founders[msg.sender].ethContributed*totalTokenAmount/_ETHDeposited;
@@ -134,8 +133,8 @@ contract FoundingEvent {
 		uint lpShare = _totalLGELPtokensMinted*ethContributed/_ETHDeposited;
 		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
 		if (lpShare > inStock) {lpShare = inStock;}
-		IERC20(_tokenETHLP).transfer(_lpOraclesFund, lpShare);
-		IlpOraclesFund(_lpOraclesFund).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
+		IERC20(_tokenETHLP).transfer(_treasury, lpShare);
+		ITreasury(_treasury).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
 		delete _founders[msg.sender];
 	}
 
@@ -157,10 +156,10 @@ contract FoundingEvent {
 	function _createLiquidity() internal {
 		delete _lgeOngoing;
 		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
-		IWETH(_WETH).transfer(_tokenETHLP, IWETH(_WETH).balanceOf(address(this)));
-		IERC20(_token).transfer(_tokenETHLP, IERC20(_token).balanceOf(address(this))/6);
+		IERC20(_WETH).transfer(_tokenETHLP, IERC20(_WETH).balanceOf(address(this)));
+		IERC20(_token).transfer(_tokenETHLP, 1e27);
 		IUniswapV2Pair(_tokenETHLP).mint(address(this));
-		_totalLGELPtokensMinted = IUniswapV2Pair(_tokenETHLP).balanceOf(address(this));
+		_totalLGELPtokensMinted = IERC20(_tokenETHLP).balanceOf(address(this));
 		_ETHDeposited = _totalETHDeposited;
 	}
 
@@ -173,8 +172,9 @@ contract FoundingEvent {
 	function setGovernance(address payable account) public onlyGovernance {_governance = account;}
 
 	function recomputeRewardsLeft() public onlyFounder {
-		if(_rewardsToRecompute > 0 && _founders[msg.sender].rewardsLeft == 0) {
-			uint share = _founders[msg.sender].ethContributed*_rewardsToRecompute/_ETHDeposited; _founders[msg.sender].rewardsLeft += share;
+		rewardsToRecompute =_rewardsToRecompute;
+		if(rewardsToRecompute > 0 && _founders[msg.sender].rewardsLeft == 0) {
+			uint share = _founders[msg.sender].ethContributed*rewardsToRecompute/_ETHDeposited; _founders[msg.sender].rewardsLeft += share;
 		}
 	}
 
