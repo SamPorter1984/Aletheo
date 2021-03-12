@@ -69,7 +69,7 @@ contract FoundingEvent {
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
 		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true, "LGE has already ended or didn't start, or no agreement provided");
-		require(msg.value > 0 && _isContract(msg.sender) == false, "amount must be bigger than 0 or contracts can't be Founders");
+		require(_isContract(msg.sender) == false, "contracts can't be Founders");
 		if (_takenAddresses[msg.sender] == true) {
 			address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _linkedAddresses[msg.sender]; delete _takenAddresses[msg.sender];
 		}
