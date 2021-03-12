@@ -112,7 +112,7 @@ contract FoundingEvent {
 			_founders[msg.sender].rewardsLeft = share*5 - rewardsToClaim;
 		} else {
 			uint tokenAmount = _founders[msg.sender].tokenAmount;
-			rewardsToClaim = (block.number - rewardsGenesis)*rewardsRate*tokenAmount/totalTokenAmount;
+			rewardsToClaim = (block.number - rewardsGenesis)*rewardsRate*1e18*tokenAmount/totalTokenAmount;
 			uint rewardsClaimed = tokenAmount - rewardsLeft;
 			rewardsToClaim = rewardsToClaim.s(rewardsClaimed);
 			_founders[msg.sender].rewardsLeft = rewardsLeft.s(rewardsToClaim);
@@ -167,9 +167,10 @@ contract FoundingEvent {
 
 	function recomputeRewardsLeft() public onlyFounder {
 		rewardsToRecompute =_rewardsToRecompute;
-		if(rewardsToRecompute > 0 && _founders[msg.sender].rewardsLeft == 0) {
-			uint share = _founders[msg.sender].ethContributed*rewardsToRecompute/_ETHDeposited; _founders[msg.sender].rewardsLeft += share;
-		}
+		require(rewardsToRecompute > 0 && _founders[msg.sender].rewardsLeft == 0,"nothing to recompute or still rewards left");
+		uint share = _founders[msg.sender].ethContributed*rewardsToRecompute/_ETHDeposited;
+		_founders[msg.sender].rewardsLeft += share;
+		_rewardsToRecompute -= share;
 	}
 
 	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
