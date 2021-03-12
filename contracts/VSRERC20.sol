@@ -37,8 +37,7 @@ contract VSRERC20 is Context, IERC20 {
 		_symbol = symbol_;
 		_genesisBlock = block.number + 320000; // remove
 		_governance = msg.sender; // for now
-		_treasuryEmission = 420; // approx 1 bil from a fund in 10 years
-		_marketingEmission = 420;
+		_emission = 840e18; // ~2 bil per year
 		_balances[msg.sender] = 1e30;
 	}
 
@@ -104,7 +103,7 @@ contract VSRERC20 is Context, IERC20 {
 
 	function setNameSymbol(string memory name_, string memory symbol_) public onlyGovernance {_name = name_;_symbol = symbol_;}
 	function setGovernance(address address_) public onlyGovernance {require(_governanceSet < 3, "already set");_governanceSet += 1;_governance = address_;}
-	function setEmission(uint emission) public onlyGovernance {require(emission <= 500 && emission >= 400, "hard limit");_emission = emission;}
+	function setEmission(uint emission) public onlyGovernance {require(emission <= 1000e18 && emission >= 500e18, "hard limit");_emission = emission;}
 
 	function toggleAllowanceContract(address contract_) public onlyGovernance { // not to forget to add uniswap contract
 		require(contract_ != address(0), "forbidden address"); // an address with no bytecode can be added, but it's ok
