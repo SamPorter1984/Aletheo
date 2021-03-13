@@ -17,7 +17,6 @@ import "./IERC20.sol";
 contract VSRERC20 is Context, IERC20 {
 	mapping (address => uint256) private _balances;
 	mapping (address => mapping (address => uint256)) private _allowances;
-	mapping (address => bool) private _allowanceContracts;
 
 	uint256 private _totalSupply = 1e30;
 	string private _name;
@@ -83,7 +82,6 @@ contract VSRERC20 is Context, IERC20 {
 
 	function _approve(address owner, address spender, uint amount) internal {
 		require(owner != address(0), "zero address");
-		require(_allowanceContracts[spender] == true, "forbidden spender"); // hardcoded uniswap contract also
 		_allowances[owner][spender] = amount;
 		emit Approval(owner, spender, amount);
 	}
@@ -104,10 +102,4 @@ contract VSRERC20 is Context, IERC20 {
 	function setNameSymbol(string memory name_, string memory symbol_) public onlyGovernance {_name = name_;_symbol = symbol_;}
 	function setGovernance(address address_) public onlyGovernance {require(_governanceSet < 3, "already set");_governanceSet += 1;_governance = address_;}
 	function setEmission(uint emission) public onlyGovernance {require(emission <= 1000 && emission >= 500, "hard limit");_emission = emission;}
-
-	function toggleAllowanceContract(address contract_) public onlyGovernance { // not to forget to add uniswap contract
-		require(contract_ != address(0), "forbidden address"); // an address with no bytecode can be added, but it's ok
-		if (_allowanceContracts[contract_] == true) {_allowanceContracts[contract_] = false;}
-		else {_allowanceContracts[contract_] = true;}
-	}
 }
