@@ -78,14 +78,15 @@ contract FoundingEvent {
 		_governance.transfer(deployerShare);
 		IWETH(_WETH).deposit{value: amount}();
 		_founders[msg.sender].ethContributed += amount;
-		_totalETHDeposited += amount; // could use WETH balanceOf instead?
 		if (block.number >= _rewardsGenesis) {_createLiquidity();}
 	}
 
 	function unstakeLP() public onlyFounder {
 		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].firstClaim == true, "tokens locked or claim rewards");
+		uint totalETHDeposited = _totalETHDeposited;
+		if (_ETHDeposited == 0) {_ETHDeposited = totalETHDeposited;}
 		uint ethContributed = _founders[msg.sender].ethContributed;
-		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
+		uint lpShare = _totalLGELPtokensMinted*ethContributed/totalETHDeposited;
 		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
 		if (lpShare > inStock) {lpShare = inStock;}
 		_ETHDeposited -= ethContributed;
@@ -94,26 +95,19 @@ contract FoundingEvent {
 		delete _founders[msg.sender];
 	}
 
-	function claimLGERewards() public onlyFounder { // most popular function, has to have first Method Id or close to
+	function claimLGERewards() public onlyFounder { // has to have first Method Id or close to
 		uint rewardsGenesis = _rewardsGenesis;
 		require(block.number > rewardsGenesis, "too soon");
 		uint toClaim;
-		uint totalTokenAmount = _totalTokenAmount;
-		uint claimed = _founders[msg.sender].claimed;
-		uint rewardsRate = _rewardsRate;
 		uint halver = block.number/10000000;
 		if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		if (_founders[msg.sender].firstClaim == false) {
 			_founders[msg.sender].firstClaim = true;
-			uint share = _founders[msg.sender].ethContributed*totalTokenAmount/_ETHDeposited;
-			_founders[msg.sender].tokenAmount = share;
-			toClaim = (block.number - rewardsGenesis)*rewardsRate*share/totalTokenAmount;
-		} else {
-			uint tokenAmount = _founders[msg.sender].tokenAmount;
-			toClaim = (block.number - rewardsGenesis)*rewardsRate*1e18*tokenAmount/totalTokenAmount;
-			toClaim = toClaim.s(claimed);
-			_founders[msg.sender].claimed += toClaim;
+			_founders[msg.sender].tokenAmount = _founders[msg.sender].ethContributed*1e27/_totalETHDeposited;
 		}
+		toClaim = (block.number - rewardsGenesis)*_rewardsRate*1e18*_founders[msg.sender].tokenAmount/_totalTokenAmount;
+		toClaim = toClaim.s(_founders[msg.sender].claimed);
+		_founders[msg.sender].claimed += toClaim;
 		ITreasury(_treasury).claimFounderRewards(address(msg.sender), toClaim);
 	}
 
@@ -147,11 +141,12 @@ contract FoundingEvent {
 	function _createLiquidity() internal {
 		delete _lgeOngoing;
 		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
-		IERC20(_WETH).transfer(_tokenETHLP, IERC20(_WETH).balanceOf(address(this)));
+		uint ETHDeposited = IERC20(_WETH).balanceOf(address(this));
+		IERC20(_WETH).transfer(_tokenETHLP, ETHDeposited);
 		IERC20(_token).transfer(_tokenETHLP, 1e27);
 		IUniswapV2Pair(_tokenETHLP).mint(address(this));
 		_totalLGELPtokensMinted = IERC20(_tokenETHLP).balanceOf(address(this));
-		_ETHDeposited = _totalETHDeposited;
+		_totalETHDeposited = ETHDeposited;
 	}
 
 	function lock() public onlyFounder {require(_founders[msg.sender].firstClaim == true, "first you have to claim rewards");_founders[msg.sender].lockUpTo = block.number + _lockTime;}
