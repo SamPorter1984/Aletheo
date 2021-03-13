@@ -76,7 +76,6 @@ contract FoundingEvent {
 		uint deployerShare = msg.value / 200;
 		uint amount = msg.value - deployerShare;
 		_governance.transfer(deployerShare);
-		IWETH(_WETH).deposit{value: amount}();
 		_founders[msg.sender].ethContributed += amount;
 		if (block.number >= _rewardsGenesis) {_createLiquidity();}
 	}
@@ -101,10 +100,7 @@ contract FoundingEvent {
 		uint toClaim;
 		uint halver = block.number/10000000;
 		if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
-		if (_founders[msg.sender].firstClaim == false) {
-			_founders[msg.sender].firstClaim = true;
-			_founders[msg.sender].tokenAmount = _founders[msg.sender].ethContributed*1e27/_totalETHDeposited;
-		}
+		if(_founders[msg.sender].firstClaim==false){_founders[msg.sender].firstClaim=true;_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
 		toClaim = (block.number - rewardsGenesis)*_rewardsRate*1e18*_founders[msg.sender].tokenAmount/_totalTokenAmount;
 		toClaim = toClaim.s(_founders[msg.sender].claimed);
 		_founders[msg.sender].claimed += toClaim;
@@ -140,8 +136,9 @@ contract FoundingEvent {
 
 	function _createLiquidity() internal {
 		delete _lgeOngoing;
+		uint ETHDeposited = address(this).balance;
+		IWETH(_WETH).deposit{value: ETHDeposited}();
 		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
-		uint ETHDeposited = IERC20(_WETH).balanceOf(address(this));
 		IERC20(_WETH).transfer(_tokenETHLP, ETHDeposited);
 		IERC20(_token).transfer(_tokenETHLP, 1e27);
 		IUniswapV2Pair(_tokenETHLP).mint(address(this));
