@@ -8,8 +8,9 @@ pragma solidity >=0.7.0;
 // 1. constructor does not require arguments.
 // 2. _deadline variable is a block after which it becomes impossible to upgrade the contract. Defined in constructor and here it's ~2 years.
 // 3. _upgradeBlock defines how often the contract can be upgraded. Defined in _setlogic() function and the internval here is set
-// to 100k blocks.
+// to 172800 blocks ~1 month.
 // 4. Admin can be changed only three times.
+// Even if there won't be a new version of the contract to upgrade, I will reset implementation to current version every month for investors' confidence
 
 contract CustomProxy {
 	event Upgraded(address indexed logic);
@@ -38,7 +39,7 @@ contract CustomProxy {
 	function _setlogic(address newLogic) internal {
 		require(block.number >= _upgradeBlock && block.number < _deadline, "wait or too late");
 		require(_isContract(newLogic), "Can't set to 0 bytecode address");
-		_upgradeBlock = block.number + 100000;
+		_upgradeBlock = block.number + 172800;
 		assembly { sstore(LOGIC_SLOT, newLogic) }
 		emit Upgraded(newLogic);
 	}
