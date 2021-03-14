@@ -139,7 +139,7 @@ contract FoundingEvent {
 		_totalETHDeposited = ETHDeposited;
 	}
 
-	function lock() public onlyFounder {require(_founders[msg.sender].firstClaim == true, "first you have to claim rewards");_founders[msg.sender].lockUpTo = block.number + 10512000;}
+	function lock() public onlyFounder {require(_founders[msg.sender].firstClaim == true, "first you have to claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
 	function isFounder(address account) public view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
 	function _isContract(address account) internal view returns (bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 
