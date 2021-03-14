@@ -30,7 +30,6 @@ contract FoundingEvent {
 	uint private _totalLGELPtokensMinted;
 	bool private _lgeOngoing = true;
 	address private _tokenETHLP; // create2 and hardcode too?
-	uint private _rewardsRate;
 	address payable private _governance;
 	uint private _linkLimit;
 	uint private _lockTime;
@@ -48,7 +47,6 @@ contract FoundingEvent {
 //////
 	constructor() {
 		_governance = msg.sender;
-		_rewardsRate = 95; // aprox 1 billion tokens in 5 years
 		_linkLimit = 1e17; // 0.1 ether
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
 		_rewardsGenesis = block.number + 5;
@@ -98,10 +96,9 @@ contract FoundingEvent {
 		uint rewardsGenesis = _rewardsGenesis;
 		require(block.number > rewardsGenesis, "too soon");
 		uint toClaim;
-		uint halver = block.number/10000000;
-		if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
+		uint halver = block.number/10000000;uint rewardsRate = 100;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		if(_founders[msg.sender].firstClaim==false){_founders[msg.sender].firstClaim=true;_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
-		toClaim = (block.number - rewardsGenesis)*_rewardsRate*1e18*_founders[msg.sender].tokenAmount/_totalTokenAmount;
+		toClaim = (block.number - rewardsGenesis)*rewardsRate*1e18*_founders[msg.sender].tokenAmount/_totalTokenAmount;
 		toClaim = toClaim.s(_founders[msg.sender].claimed);
 		_founders[msg.sender].claimed += toClaim;
 		ITreasury(_treasury).claimFounderRewards(address(msg.sender), toClaim);
@@ -149,7 +146,6 @@ contract FoundingEvent {
 	function lock() public onlyFounder {require(_founders[msg.sender].firstClaim == true, "first you have to claim rewards");_founders[msg.sender].lockUpTo = block.number + _lockTime;}
 	function isFounder(address account) public view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
 	function setLinkLimit(uint value) external onlyGovernance {require(value >= 0 && value < 1e18, "can't override hard limit");_linkLimit = value;}
-	function setRewardsRate(uint rate) public onlyGovernance {require(rate >= 50 && rate <= 100, "can't override hardlimit");_rewardsRate = rate;}
 	function setLockTime(uint lockTime_) public onlyGovernance {require(lockTime_ >= 6307200 && lockTime_ <= 10512000, "can't override hardlimits");_lockTime = lockTime_;} // between 3 and 5 years
 	function _isContract(address account) internal view returns (bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 	function setGovernance(address payable account) public onlyGovernance {_governance = account;}
@@ -173,6 +169,7 @@ contract FoundingEvent {
 	function getFounderTknAmount(address account) external view returns (uint tknAmount) {return _founders[account].tokenAmount;}
 
 	function getLgeInfo() external view returns (bool lgeOng,uint rewGenesis,uint rewRate,uint totEthDepos, uint EthDepos, uint totTknAmount, uint rewToRecompute,uint totLGELPMinted) {
-		return (_lgeOngoing,_rewardsGenesis,_rewardsRate,_totalETHDeposited,_ETHDeposited,_totalTokenAmount,_rewardsToRecompute,_totalLGELPtokensMinted);
+		uint halver=block.number/10000000;uint rewardsRate=100;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
+		return (_lgeOngoing,_rewardsGenesis,rewardsRate,_totalETHDeposited,_ETHDeposited,_totalTokenAmount,_rewardsToRecompute,_totalLGELPtokensMinted);
 	}
 }
