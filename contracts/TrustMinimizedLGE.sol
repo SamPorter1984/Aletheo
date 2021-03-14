@@ -28,13 +28,12 @@ contract FoundingEvent {
 	uint private _totalETHDeposited;
 	uint private _ETHDeposited;
 	uint private _totalLGELPtokensMinted;
-	bool private _lgeOngoing = true;
+	bool private _lgeOngoing;
 	address private _tokenETHLP; // create2 and hardcode too?
 	address payable private _governance;
 	uint private _linkLimit;
-	uint private _lockTime;
 	uint private _reentrancyStatus;
-	uint private _rewardsToRecompute;
+	uint private _totalTokenAmount;
 
 ///////variables for testing purposes
 	address private constant _WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;// testing
@@ -42,16 +41,15 @@ contract FoundingEvent {
 	uint private _rewardsGenesis; // = hardcoded block.number
 	address private _token; // = hardcoded address
 	address private _treasury;
-	uint private _lgeStart; // not required. replace with hardcoded blocknumbers
-	uint private _totalTokenAmount;
+
 //////
 	constructor() {
 		_governance = msg.sender;
 		_linkLimit = 1e17; // 0.1 ether
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
 		_rewardsGenesis = block.number + 5;
-		_lockTime = 10512000;
 		_totalTokenAmount = 1e27;
+		_lgeOngoing = true;
 	}
 
 	struct Founder {uint ethContributed; bool firstClaim; uint claimed; uint tokenAmount; uint lockUpTo;}
@@ -143,10 +141,9 @@ contract FoundingEvent {
 		_totalETHDeposited = ETHDeposited;
 	}
 
-	function lock() public onlyFounder {require(_founders[msg.sender].firstClaim == true, "first you have to claim rewards");_founders[msg.sender].lockUpTo = block.number + _lockTime;}
+	function lock() public onlyFounder {require(_founders[msg.sender].firstClaim == true, "first you have to claim rewards");_founders[msg.sender].lockUpTo = block.number + 10512000;}
 	function isFounder(address account) public view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
 	function setLinkLimit(uint value) external onlyGovernance {require(value >= 0 && value < 1e18, "can't override hard limit");_linkLimit = value;}
-	function setLockTime(uint lockTime_) public onlyGovernance {require(lockTime_ >= 6307200 && lockTime_ <= 10512000, "can't override hardlimits");_lockTime = lockTime_;} // between 3 and 5 years
 	function _isContract(address account) internal view returns (bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 	function setGovernance(address payable account) public onlyGovernance {_governance = account;}
 
@@ -162,14 +159,14 @@ contract FoundingEvent {
 		emit AddressLinked(msg.sender,account);
 	}
 // VIEW FUNCTIONS ==================================================
-	function getFounder(address account) external view returns (uint ethContributed, uint claimed, bool firstClaim, uint lockUpTo, address linked) {
+	function getFounder(address account) external view returns (uint ethContributed, uint claimed, bool firstClaim, address linked) {
 		return (_founders[account].ethContributed,_founders[account].claimed,_founders[account].firstClaim,_founders[account].lockUpTo,_linkedAddresses[account]);
 	}
 
-	function getFounderTknAmount(address account) external view returns (uint tknAmount) {return _founders[account].tokenAmount;}
+	function getFounderTknAmntLckPt(address account) external view returns (uint tknAmount,uint lockUpTo) {return (_founders[account].tokenAmount,_founders[account].lockUpTo);}
 
-	function getLgeInfo() external view returns (bool lgeOng,uint rewGenesis,uint rewRate,uint totEthDepos, uint EthDepos, uint totTknAmount, uint rewToRecompute,uint totLGELPMinted) {
-		uint halver=block.number/10000000;uint rewardsRate=100;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
-		return (_lgeOngoing,_rewardsGenesis,rewardsRate,_totalETHDeposited,_ETHDeposited,_totalTokenAmount,_rewardsToRecompute,_totalLGELPtokensMinted);
+	function getLgeInfo() external view returns (bool lgeOng,uint rewGenesis,uint rewRate,uint totEthDepos, uint EthDepos, uint totTknAmount, uint totLGELPMinted) {
+		uint halver = block.number/10000000;uint rewardsRate = 100;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
+		return (_lgeOngoing,_rewardsGenesis,rewardsRate,_totalETHDeposited,_ETHDeposited,_totalTokenAmount,_totalLGELPtokensMinted);
 	}
 }
