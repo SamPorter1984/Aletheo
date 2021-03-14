@@ -30,8 +30,6 @@ contract FoundingEvent {
 	uint private _totalLGELPtokensMinted;
 	bool private _lgeOngoing;
 	address private _tokenETHLP; // create2 and hardcode too?
-	address payable private _governance;
-	uint private _linkLimit;
 	uint private _reentrancyStatus;
 	uint private _totalTokenAmount;
 
@@ -41,11 +39,12 @@ contract FoundingEvent {
 	uint private _rewardsGenesis; // = hardcoded block.number
 	address private _token; // = hardcoded address
 	address private _treasury;
+	address private _governance;
+	address payable private _deployer;
 
 //////
 	constructor() {
-		_governance = msg.sender;
-		_linkLimit = 1e17; // 0.1 ether
+		_deployer = msg.sender;
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
 		_rewardsGenesis = block.number + 5;
 		_totalTokenAmount = 1e27;
@@ -61,7 +60,6 @@ contract FoundingEvent {
 	event AddressLinked(address indexed address1, address indexed address2);
 
 	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not a Founder or reentrancy guard");_reentrancyStatus = 1;_;_reentrancyStatus = 0;}
-	modifier onlyGovernance() {require(msg.sender == _governance, "not governance");_;}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
 		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true, "LGE has already ended or didn't start, or no agreement provided");
@@ -71,7 +69,7 @@ contract FoundingEvent {
 		}
 		uint deployerShare = msg.value / 200;
 		uint amount = msg.value - deployerShare;
-		_governance.transfer(deployerShare);
+		_deployer.transfer(deployerShare);
 		_founders[msg.sender].ethContributed += amount;
 		if (block.number >= _rewardsGenesis) {_createLiquidity();}
 	}
@@ -143,13 +141,11 @@ contract FoundingEvent {
 
 	function lock() public onlyFounder {require(_founders[msg.sender].firstClaim == true, "first you have to claim rewards");_founders[msg.sender].lockUpTo = block.number + 10512000;}
 	function isFounder(address account) public view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
-	function setLinkLimit(uint value) external onlyGovernance {require(value >= 0 && value < 1e18, "can't override hard limit");_linkLimit = value;}
 	function _isContract(address account) internal view returns (bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
-	function setGovernance(address payable account) public onlyGovernance {_governance = account;}
 
 	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
 		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false, "already linked these or somebody already uses this");
-		require(isFounder(account) == false && _founders[msg.sender].ethContributed >= _linkLimit, "can't link founders or not enough eth deposited");
+		require(isFounder(account) == false && _founders[msg.sender].ethContributed >= 1e16, "can't link founders or not enough eth deposited");
 		if (_linkedAddresses[msg.sender] != address(0)) {
 			address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
 		}
