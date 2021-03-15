@@ -10,7 +10,7 @@ pragma solidity >=0.7.0;
 // 3. _upgradeBlock defines how often the contract can be upgraded. Defined in _setlogic() function and the internval here is set
 // to 172800 blocks ~1 month.
 // 4. Admin can be changed only three times.
-// Even if there won't be a new version of the contract to upgrade, I will reset implementation to current version every month for investors' confidence
+// 5. prolongLock() allows to add to _upgradeBlock. Basically allows to prolong lock.
 
 contract CustomProxy {
 	event Upgraded(address indexed logic);
@@ -35,6 +35,7 @@ contract CustomProxy {
 	function changeAdmin(address newAdm) external ifAdmin {require(newAdm != address(0), "Can't change admin to 0");emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
 	function upgradeTo(address newLogic) external ifAdmin {_setlogic(newLogic);}
 	function upgradeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {_setlogic(newLogic);(bool success,) = newLogic.delegatecall(data);require(success);}
+	function prolongLock(uint block) external ifAdmin {_upgradeBlock+=block;}
 
 	function _setlogic(address newLogic) internal {
 		require(block.number >= _upgradeBlock && block.number < _deadline, "wait or too late");
