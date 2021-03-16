@@ -166,7 +166,7 @@ contract FoundingEvent {
 	}
 // VIEW FUNCTIONS ==================================================
 	function getFounder(address account) external view returns (uint ethContributed, uint claimed, address linked) {
-		return (_founders[account].ethContributed,_founders[account].claimed,_founders[account].lockUpTo,_linkedAddresses[account]);
+		return (_founders[account].ethContributed,_founders[account].claimed,_linkedAddresses[account]);
 	}
 
 	function getFounderTknAmntLckPt(address account) external view returns (uint tknAmount,uint lockUpTo) {return (_founders[account].tokenAmount,_founders[account].lockUpTo);}
