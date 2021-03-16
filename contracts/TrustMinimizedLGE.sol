@@ -79,15 +79,9 @@ contract FoundingEvent {
 
 	function unstakeLP() public onlyFounder {
 		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].tokenAmount > 0, "tokens locked or claim rewards");
-		if (_linkedAddresses[msg.sender] != address(0)) {
-			address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
-		}
-		uint ethContributed = _founders[msg.sender].ethContributed;
-		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
-		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
-		if (lpShare > inStock) {lpShare = inStock;}
+		_cleanUpLinked(msg.sender);
 		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
-		IERC20(_tokenETHLP).transfer(address(msg.sender), lpShare);
+		IERC20(_tokenETHLP).transfer(address(msg.sender), _calcLpShare(msg.sender));
 		delete _founders[msg.sender];
 	}
 
@@ -107,21 +101,15 @@ contract FoundingEvent {
 	function migrate(address contr) public onlyFounder {
 		require(_founders[msg.sender].tokenAmount > 0, "claim rewards before this");
 		require(contr == _treasury || contr == _optimismBridge || contr == _etcBridge,"invalid contract");
-		if (_linkedAddresses[msg.sender] != address(0)) {
-			address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
-		}
-		uint ethContributed = _founders[msg.sender].ethContributed;
-		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
-		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
-		if (lpShare > inStock) {lpShare = inStock;}
+		_cleanUpLinked(msg.sender);
 		if (contr == _treasury) {
-			IERC20(_tokenETHLP).transfer(_treasury, lpShare);
+			IERC20(_tokenETHLP).transfer(_treasury, _calcLpShare(msg.sender));
 			ITreasury(_treasury).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);// should tokenAmount be cut in half here?	
 		} else if (contr == _optimismBridge) {
-			IERC20(_tokenETHLP).transfer(_optimismBridge, lpShare);
+			IERC20(_tokenETHLP).transfer(_optimismBridge, _calcLpShare(msg.sender));
 			IOptimismBridge(_optimismBridge).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].claimed,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
 		} else if (contr == _etcBridge) {
-			IERC20(_tokenETHLP).transfer(_etcBridge, lpShare);
+			IERC20(_tokenETHLP).transfer(_etcBridge, _calcLpShare(msg.sender));
 			IEtcBridge(_etcBridge).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].claimed,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
 		}
 		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
@@ -141,6 +129,35 @@ contract FoundingEvent {
 		_founders[account].lockUpTo = lockUpTo;
 	}
 
+	function lock() public onlyFounder {require(_founders[msg.sender].tokenAmount > 0, "first you have to claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
+	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
+	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
+	function setBridges(address optimism, address etc) external {require(msg.sender == _deployer, "can't"); _optimismBridge = optimism; _etcBridge = etc;}
+
+	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
+		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false, "already linked these or somebody already uses this");
+		require(_isFounder(account) == false && _founders[msg.sender].ethContributed >= 1e16, "can't link founders or not enough eth deposited");
+		_cleanUpLinked(msg.sender);
+		_linkedAddresses[msg.sender] = account;
+		_linkedAddresses[account] = msg.sender;
+		_takenAddresses[account] = true;
+		emit AddressLinked(msg.sender,account);
+	}
+
+	function _cleanUpLinked(address msgsender) internal {
+		if (_linkedAddresses[msgsender] != address(0)) {
+			address linkedAddress = _linkedAddresses[msgsender]; delete _linkedAddresses[msgsender]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
+		}
+	}
+
+	function _calcLpShare(address msgsender) internal {
+		uint ethContributed = _founders[msgsender].ethContributed;
+		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
+		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
+		if (lpShare > inStock) {lpShare = inStock;}
+		return lpShare;
+	}
+
 	function _createLiquidity() internal {
 		delete _lgeOngoing;
 		uint ETHDeposited = address(this).balance;
@@ -151,23 +168,6 @@ contract FoundingEvent {
 		IUniswapV2Pair(_tokenETHLP).mint(address(this));
 		_totalLGELPtokensMinted = IERC20(_tokenETHLP).balanceOf(address(this));
 		_totalETHDeposited = ETHDeposited;
-	}
-
-	function lock() public onlyFounder {require(_founders[msg.sender].tokenAmount > 0, "first you have to claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
-	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
-	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
-	function setBridges(address optimism, address etc) external {require(msg.sender == _deployer, "can't"); _optimismBridge = optimism; _etcBridge = etc;}
-
-	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
-		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false, "already linked these or somebody already uses this");
-		require(_isFounder(account) == false && _founders[msg.sender].ethContributed >= 1e16, "can't link founders or not enough eth deposited");
-		if (_linkedAddresses[msg.sender] != address(0)) {
-			address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
-		}
-		_linkedAddresses[msg.sender] = account;
-		_linkedAddresses[account] = msg.sender;
-		_takenAddresses[account] = true;
-		emit AddressLinked(msg.sender,account);
 	}
 // VIEW FUNCTIONS ==================================================
 	function getFounder(address account) external view returns (uint ethContributed, uint claimed, address linked) {
