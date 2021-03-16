@@ -28,7 +28,7 @@ contract VSRERC20 is Context, IERC20 {
 	uint private _withdrawn;
 	uint private _governanceSet;
 	bool private _withdrawing;
-	bool private _reentrancyGuard;
+	bool private _lock;
 	address private _governance;
 
 //// variables for testing purposes. live it should all be hardcoded addresses
@@ -85,14 +85,14 @@ contract VSRERC20 is Context, IERC20 {
 	}
 
 	function inaccurateTransferFrom(address[] memory recipients, uint[] memory amounts) public { // will be used by the contract, or anybody who wants to use it
-		require(_reentrancyGuard == false && msg.sender != _treasury,"reentrancy");
-		_reentrancyGuard = true;
+		require(_lock == false && msg.sender != _treasury,"reentrancy");
+		_lock = true;
 		uint total;
-		for(uint i = 0;i<recipients.length;i++) {_balances[recipients[i]] += amounts[i]; total += amounts[i];}
+		for(uint i = 0;i<recipients.length;i++) {_balances[recipients[i]] += amounts[i];total += amounts[i];}
 		uint256 senderBalance = _balances[msg.sender]; // less store writes here
 		if (senderBalance < total) {_balances[msg.sender] = 0;} else {_balances[msg.sender] = senderBalance - total;}
 		emit InaccurateTransferFrom(msg.sender, recipients, amounts);
-		_reentrancyGuard = false;
+		_lock = false;
 	}
 
 	function _approve(address owner, address spender, uint amount) internal {
