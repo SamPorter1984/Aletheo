@@ -37,7 +37,7 @@ contract VSRERC20 is Context, IERC20 {
 	constructor (string memory name_, string memory symbol_) {
 		_name = name_;
 		_symbol = symbol_;
-		_genesisBlock = block.number + 320000; // remove
+		_genesisBlock = block.number + 345600; // remove
 		_governance = msg.sender; // for now
 		_emission = 840; // ~2 bil per year
 		_balances[msg.sender] = 1e30;
@@ -102,7 +102,7 @@ contract VSRERC20 is Context, IERC20 {
 	}
 
 	function _beforeTokenTransfer(address from, uint amount) internal { // hardcoded address
-		if (from == _treasury) {
+		if (from == _treasury) { // so the treasury will contain all the funds, it will be one contract instead of several
 			require(block.number > _genesisBlock, "safe math");
 			require(_lock == false, "reentrancy guard");
 			_lock = true;
@@ -116,6 +116,6 @@ contract VSRERC20 is Context, IERC20 {
 
 	function setNameSymbol(string memory name_, string memory symbol_) public onlyGovernance {_name = name_;_symbol = symbol_;}
 	function setGovernance(address address_) public onlyGovernance {require(_governanceSet < 3, "already set");_governanceSet += 1;_governance = address_;}
-	function setEmission(uint emission) public onlyGovernance {require(emission <= 1000 && emission >= 500, "hard limit");_emission = emission;}
+	function setEmission(uint emission) public onlyGovernance {require(emission <= 1000 && emission >= 700, "hard limit");_emission = emission;}
 	function allowanceToContract(address contract_) public onlyGovernance {_allowedContracts[contract_] = true;}// not to forget to add uniswap contract. an address with no bytecode can be added, but it's ok
 }
