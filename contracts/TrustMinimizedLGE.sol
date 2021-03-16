@@ -79,9 +79,8 @@ contract FoundingEvent {
 
 	function unstakeLP() public onlyFounder {
 		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].tokenAmount > 0, "tokens locked or claim rewards");
-		uint totalETHDeposited = _totalETHDeposited;
 		uint ethContributed = _founders[msg.sender].ethContributed;
-		uint lpShare = _totalLGELPtokensMinted*ethContributed/totalETHDeposited;
+		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
 		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
 		if (lpShare > inStock) {lpShare = inStock;}
 		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
@@ -94,7 +93,7 @@ contract FoundingEvent {
 		require(block.number > rewardsGenesis, "too soon");
 		uint toClaim;
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
-		uint halver = block.number/10000000;uint rewardsRate = 100;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
+		uint halver = block.number/10000000;uint rewardsRate = 75;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		if(tokenAmount == 0){_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
 		toClaim = (block.number - rewardsGenesis)*rewardsRate*1e18*tokenAmount/_totalTokenAmount;
 		toClaim = toClaim.s(_founders[msg.sender].claimed);
