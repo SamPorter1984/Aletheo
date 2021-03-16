@@ -15,8 +15,12 @@ import "./IERC20.sol";
 // Token name and symbol can be changed.
 
 contract VSRERC20 is Context, IERC20 {
-	mapping (address => uint256) private _balances;
-	mapping (address => mapping (address => uint256)) private _allowances;
+    event Transfer(address indexed from, address indexed to, uint value);
+    event Approval(address indexed owner, address indexed spender, uint value);
+    event InaccurateTransferFrom(address indexed from, address[] indexed recipients, uint[] value);
+
+	mapping (address => uint) private _balances;
+	mapping (address => mapping (address => uint)) private _allowances;
 	mapping (address => bool) private _allowedContracts;
 
 	uint256 private _totalSupply = 1e30;
@@ -26,6 +30,7 @@ contract VSRERC20 is Context, IERC20 {
 	uint private _withdrawn;
 	uint private _governanceSet;
 	bool private _withdrawing;
+	bool private _reentrancyGuard;
 	address private _governance;
 
 //// variables for testing purposes. live it should all be hardcoded addresses
@@ -79,6 +84,17 @@ contract VSRERC20 is Context, IERC20 {
 		_balances[sender] = senderBalance - amount;
 		_balances[recipient] += amount;
 		emit Transfer(sender, recipient, amount);
+	}
+
+	function inaccurateTransferFrom(address[] memory recipients, uint[] memory amounts) public { // will be used by the contract, or anybody who wants to use it
+		require(_reentrancyGuard == false && msg.sender != _treasury,"reentrancy");
+		_reentrancyGuard = true;
+		uint total;
+		for(uint i = 0;i<recipients.length;i++) {if (recipient != address(0)) {_balances[recipients[i]] += amounts[i];total += amounts[i];}}
+		uint256 senderBalance = _balances[msg.sender]; // less store writes here
+		if (senderBalance < total) {_balances[msg.sender] = 0;} else {_balances[msg.sender] = senderBalance - total;}
+		emit InaccurateTransferFrom(msg.sender, recipients, amounts);
+		_reentrancyGuard = false;
 	}
 
 	function _approve(address owner, address spender, uint amount) internal {
