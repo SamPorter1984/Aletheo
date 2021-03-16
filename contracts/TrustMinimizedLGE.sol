@@ -32,6 +32,7 @@ contract FoundingEvent {
 	address private _tokenETHLP; // create2 and hardcode too?
 	uint private _reentrancyStatus;
 	uint private _totalTokenAmount;
+	bool private _lgeOngoing;
 	address private _optimismBridge;
 	address private _etcBridge;
 
@@ -50,6 +51,7 @@ contract FoundingEvent {
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
 		_rewardsGenesis = block.number + 5;
 		_totalTokenAmount = 1e27;
+		_lgeOngoing = true;
 	}
 
 	struct Founder {uint ethContributed; uint claimed; uint tokenAmount; uint lockUpTo;}
@@ -63,16 +65,16 @@ contract FoundingEvent {
 	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not a Founder or reentrancy guard");_reentrancyStatus = 1;_;_reentrancyStatus = 0;}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
-		if (block.number < _rewardsGenesis) {
-			require(_isContract(msg.sender) == false && iAgreeToPublicStringAgreementTerms == true, "contracts can't be Founders or no agreement provided");
-			if (_takenAddresses[msg.sender] == true) {
-				address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _linkedAddresses[msg.sender]; delete _takenAddresses[msg.sender];
-			}
-			uint deployerShare = msg.value / 200;
-			uint amount = msg.value - deployerShare;
-			_deployer.transfer(deployerShare);
-			_founders[msg.sender].ethContributed += amount;
-		} else {_createLiquidity();}
+		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true, "LGE has already ended or didn't start, or no agreement provided");
+		require(_isContract(msg.sender) == false, "contracts can't be Founders");
+		if (_takenAddresses[msg.sender] == true) {
+			address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _linkedAddresses[msg.sender]; delete _takenAddresses[msg.sender];
+		}
+		uint deployerShare = msg.value / 200;
+		uint amount = msg.value - deployerShare;
+		_deployer.transfer(deployerShare);
+		_founders[msg.sender].ethContributed += amount;
+		if (block.number >= _rewardsGenesis) {_createLiquidity();}
 	}
 
 	function unstakeLP() public onlyFounder {
@@ -135,6 +137,7 @@ contract FoundingEvent {
 	}
 
 	function _createLiquidity() internal {
+		delete _lgeOngoing;
 		uint ETHDeposited = address(this).balance;
 		IWETH(_WETH).deposit{value: ETHDeposited}();
 		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
