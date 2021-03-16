@@ -12,7 +12,6 @@ pragma solidity >=0.7.0;
 
 // Tokens will be staked by default after liquidity will be created, so there is no stake function, and unstaking means losing Founder rewards forever.
 
-import "./SafeMath.sol";
 import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Pair.sol";
 import "./ITreasury.sol";
@@ -23,8 +22,6 @@ import "./IOptimismBridge.sol";
 import "./IEtcBridge.sol";
 
 contract FoundingEvent {
-	using SafeMath for uint;
-
 	// I believe this is required for the safety of investors and other developers joining the project
 	string public AgreementTerms = "I understand that this contract is provided with no warranty of any kind. \n I agree to not hold the contract creator, RAID team members or anyone associated with this event liable for any damage monetary and otherwise I might onccur. \n I understand that any smart contract interaction carries an inherent risk.";
 	uint private _totalETHDeposited;
@@ -90,12 +87,11 @@ contract FoundingEvent {
 		require(block.number > rewardsGenesis, "too soon");
 		uint toClaim;
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
+		uint claimed = _founders[msg.sender].claimed;
 		uint halver = block.number/10000000;uint rewardsRate = 75;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		if(tokenAmount == 0){_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
 		toClaim = (block.number - rewardsGenesis)*rewardsRate*1e18*tokenAmount/_totalTokenAmount;
-		toClaim = toClaim.s(_founders[msg.sender].claimed);
-		_founders[msg.sender].claimed += toClaim;
-		ITreasury(_treasury).claimFounderRewards(address(msg.sender), toClaim);
+		if (toClaim > claimed) {toClaim -= claimed; _founders[msg.sender].claimed += toClaim; ITreasury(_treasury).claimFounderRewards(address(msg.sender), toClaim);}
 	}
 
 	function migrate(address contr) public onlyFounder {
