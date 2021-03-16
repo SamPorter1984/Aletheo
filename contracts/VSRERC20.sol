@@ -27,7 +27,6 @@ contract VSRERC20 is Context, IERC20 {
 	uint private _emission;
 	uint private _withdrawn;
 	uint private _governanceSet;
-	bool private _withdrawing;
 	bool private _lock;
 	address private _governance;
 
@@ -105,13 +104,13 @@ contract VSRERC20 is Context, IERC20 {
 	function _beforeTokenTransfer(address from, uint amount) internal { // hardcoded address
 		if (from == _treasury) {
 			require(block.number > _genesisBlock, "safe math");
-			require(_withdrawing == false, "reentrancy guard");
-			_withdrawing = true;
+			require(_lock == false, "reentrancy guard");
+			_lock = true;
 			require(amount <= balanceOf(_treasury),"too much");
 			uint allowed = (block.number - _genesisBlock)*_emission*1e18 - _withdrawn;
 			require(amount <= allowed, "not yet");
 			_withdrawn += amount;
-			_withdrawing = false;
+			_lock = false;
 		}
 	}
 
