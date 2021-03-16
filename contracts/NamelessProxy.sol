@@ -21,12 +21,16 @@ pragma solidity >=0.7.0;
 contract NamelessProxy {
 	event Upgraded(address indexed logic);
 	event AdminChanged(address previousAdmin, address newAdmin);
+	event NextLogicDefined(address nextLogic);
+	event UpgradePostponed(uint toBlock);
+	
 	bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 	bytes32 internal constant LOGIC_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 	bytes32 internal constant NEXT_LOGIC_SLOT = 0x56c185b2cb0723d5ac9bee49054a51e03ffce668e6ca209d91e6a1878e3ca4aa;
 	uint private _upgradeBlock;
 	uint private _deadline;
 	uint private _governanceSet;
+	uint private _nextLogicBlock;
 	
 	constructor() {
 		require(ADMIN_SLOT == bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1) && LOGIC_SLOT == bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1), "code broke");
@@ -38,12 +42,12 @@ contract NamelessProxy {
 
 	modifier ifAdmin() {if (msg.sender == _admin()) {_;} else {_fallback();}}
 
-	function getSettings() external ifAdmin returns(address adm, address logic, uint pgrdBlck, uint ddln) {return (_admin(), _logic(), _upgradeBlock, _deadline);}
+	function getSettings() external ifAdmin returns(address logic, uint pgrdBlck, uint ddln) {return (_logic(), _upgradeBlock, _deadline);}
 	function _logic() internal view returns (address logic) {assembly { logic := sload(LOGIC_SLOT) }}
 	function changeAdmin(address newAdm) external ifAdmin {require(newAdm != address(0), "Can't change admin to 0");emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
 	function proposeTo(address newLogic) external ifAdmin {_setNextLogic(newLogic);}
 	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {_setNextLogic(newLogic);(bool success,) = newLogic.delegatecall(data);require(success);}
-	function prolongLock(uint block) external ifAdmin {_upgradeBlock+=block;}
+	function prolongLock(uint block) external ifAdmin {_upgradeBlock+=block;emit UpgradePostponed(_upgradeBlock);}
 
 	function _setNextLogic(address nextLogic) internal {
 		require(block.number >= _upgradeBlock && block.number < _deadline, "wait or too late");
