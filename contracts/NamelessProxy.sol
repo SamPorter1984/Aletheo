@@ -56,10 +56,10 @@ contract NamelessProxy {
 
 	function upgrade() external ifAdmin {
 		require(block.number >= _nextLogicBlock, "wait");
-		address nextLogic;
+		address logic;
 		assembly { logic := sload(NEXT_LOGIC_SLOT) }
-		assembly { sstore(LOGIC_SLOT, nextLogic) }
-		emit Upgraded(nextLogic);
+		assembly { sstore(LOGIC_SLOT, logic) }
+		emit Upgraded(logic);
 	}
 
 	function cancelLogic() external ifAdmin {
