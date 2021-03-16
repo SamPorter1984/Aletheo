@@ -79,6 +79,9 @@ contract FoundingEvent {
 
 	function unstakeLP() public onlyFounder {
 		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].tokenAmount > 0, "tokens locked or claim rewards");
+		if (_linkedAddresses[msg.sender] != address(0)) {
+			address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
+		}
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
 		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
@@ -104,6 +107,9 @@ contract FoundingEvent {
 	function migrate(address contr) public onlyFounder {
 		require(_founders[msg.sender].tokenAmount > 0, "claim rewards before this");
 		require(contr == _treasury || contr == _optimismBridge || contr == _etcBridge,"invalid contract");
+		if (_linkedAddresses[msg.sender] != address(0)) {
+			address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
+		}
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
 		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
