@@ -124,7 +124,7 @@ contract FoundingEvent {
 	}
 
 	function changeAddress(address account) public onlyFounder { // no founder, actually nobody should trust dapp interface. only blockchain. a function like this should not be provided through dapp, could use etherscan
-		require(_isContract(account) == false && IGovernance(_governance).getVoting() == false, "contracts can't change to contract or voting is ongoing");
+		require(_isContract(account) == false && IGovernance(_governance).getVoting() == false, "can't change to contract or voting is ongoing");
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint claimed = _founders[msg.sender].claimed;
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
