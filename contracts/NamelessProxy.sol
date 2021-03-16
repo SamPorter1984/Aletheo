@@ -85,7 +85,7 @@ contract NamelessProxy {
 		default { return(0, returndatasize()) }
 		}
 	}
-	function _safety() internal { // could require context
+	function _safety() internal { // could require context, also has to be used in logic so there won't any way to set a mapping or whatever to these bytes32 values
 		require(msg.sender != 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103 && msg.sender != 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc && msg.sender != 0x56c185b2cb0723d5ac9bee49054a51e03ffce668e6ca209d91e6a1878e3ca4aa, "can't");
 	}
 }
