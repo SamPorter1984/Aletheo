@@ -16,7 +16,7 @@ pragma solidity >=0.7.0;
 // Users have time to decide on if the deployer or the governance is malicious and exit safely.
 
 // It fixes upgradeability bug I believe. Consensys won't be so smug about it anymore. They will still point out to something like what
-// if these 3 addresses already being used? We can just restrict mapping to these addresses in logic contract. Also arrays. 
+// if these 3 addresses already being used? We can just restrict using these addresses in logic contract, so there are only weak arguments left i guess. 
 
 contract NamelessProxy {
 	event Upgraded(address indexed logic);
@@ -71,8 +71,8 @@ contract NamelessProxy {
 	function _isContract(address account) internal view returns (bool b) {uint256 size;assembly { size := extcodesize(account) }return size > 0;}
 	function _admin() internal view returns (address adm) {assembly { adm := sload(ADMIN_SLOT) }}
 	function _setAdmin(address newAdm) internal {require(_governanceSet < 3, "governance already set");_governanceSet += 1;assembly { sstore(ADMIN_SLOT, newAdm) }}
-	fallback () external payable {_fallback();}
-	receive () external payable {_fallback();}
+	fallback () external payable {_safety();_fallback();}
+	receive () external payable {_safety();_fallback();}
 	function _fallback() internal {require(msg.sender != _admin(), "Can't call fallback from admin");_delegate(_logic());}
 
 	function _delegate(address logic_) internal {
@@ -84,5 +84,8 @@ contract NamelessProxy {
 		case 0 { revert(0, returndatasize()) }
 		default { return(0, returndatasize()) }
 		}
+	}
+	function _safety() internal { // could require context
+		require(msg.sender != 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103 && msg.sender != 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc && msg.sender != 0x56c185b2cb0723d5ac9bee49054a51e03ffce668e6ca209d91e6a1878e3ca4aa, "can't");
 	}
 }
