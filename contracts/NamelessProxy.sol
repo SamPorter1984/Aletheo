@@ -41,8 +41,8 @@ contract NamelessProxy {
 	function getSettings() external ifAdmin returns(address adm, address logic, uint pgrdBlck, uint ddln) {return (_admin(), _logic(), _upgradeBlock, _deadline);}
 	function _logic() internal view returns (address logic) {assembly { logic := sload(LOGIC_SLOT) }}
 	function changeAdmin(address newAdm) external ifAdmin {require(newAdm != address(0), "Can't change admin to 0");emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
-	function upgradeTo(address newLogic) external ifAdmin {_setNextLogic(newLogic);}
-	function upgradeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {_setNextLogic(newLogic);(bool success,) = newLogic.delegatecall(data);require(success);}
+	function proposeTo(address newLogic) external ifAdmin {_setNextLogic(newLogic);}
+	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {_setNextLogic(newLogic);(bool success,) = newLogic.delegatecall(data);require(success);}
 	function prolongLock(uint block) external ifAdmin {_upgradeBlock+=block;}
 
 	function _setNextLogic(address nextLogic) internal {
@@ -54,7 +54,7 @@ contract NamelessProxy {
 		emit NextLogicDefined(nextLogic);
 	}
 
-	function setLogic() external ifAdmin {
+	function upgrade() external ifAdmin {
 		require(block.number >= _nextLogicBlock, "wait");
 		address nextLogic;
 		assembly { logic := sload(NEXT_LOGIC_SLOT) }
