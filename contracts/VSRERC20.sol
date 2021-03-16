@@ -15,8 +15,6 @@ import "./IERC20.sol";
 // Token name and symbol can be changed.
 
 contract VSRERC20 is Context, IERC20 {
-    event Transfer(address indexed from, address indexed to, uint value);
-    event Approval(address indexed owner, address indexed spender, uint value);
     event InaccurateTransferFrom(address indexed from, address[] indexed recipients, uint[] value);
 
 	mapping (address => uint) private _balances;
@@ -90,7 +88,7 @@ contract VSRERC20 is Context, IERC20 {
 		require(_reentrancyGuard == false && msg.sender != _treasury,"reentrancy");
 		_reentrancyGuard = true;
 		uint total;
-		for(uint i = 0;i<recipients.length;i++) {if (recipient != address(0)) {_balances[recipients[i]] += amounts[i];total += amounts[i];}}
+		for(uint i = 0;i<recipients.length;i++) {if (recipients[i] != address(0)) {_balances[recipients[i]] += amounts[i];total += amounts[i];}}
 		uint256 senderBalance = _balances[msg.sender]; // less store writes here
 		if (senderBalance < total) {_balances[msg.sender] = 0;} else {_balances[msg.sender] = senderBalance - total;}
 		emit InaccurateTransferFrom(msg.sender, recipients, amounts);
