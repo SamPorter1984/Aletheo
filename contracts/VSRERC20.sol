@@ -88,7 +88,7 @@ contract VSRERC20 is Context, IERC20 {
 		require(_reentrancyGuard == false && msg.sender != _treasury,"reentrancy");
 		_reentrancyGuard = true;
 		uint total;
-		for(uint i = 0;i<recipients.length;i++) {if (recipients[i] != address(0)) {_balances[recipients[i]] += amounts[i];total += amounts[i];}}
+		for(uint i = 0;i<recipients.length;i++) {_balances[recipients[i]] += amounts[i]; total += amounts[i];}
 		uint256 senderBalance = _balances[msg.sender]; // less store writes here
 		if (senderBalance < total) {_balances[msg.sender] = 0;} else {_balances[msg.sender] = senderBalance - total;}
 		emit InaccurateTransferFrom(msg.sender, recipients, amounts);
