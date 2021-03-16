@@ -29,21 +29,20 @@ contract FoundingEvent {
 	string public AgreementTerms = "I understand that this contract is provided with no warranty of any kind. \n I agree to not hold the contract creator, RAID team members or anyone associated with this event liable for any damage monetary and otherwise I might onccur. \n I understand that any smart contract interaction carries an inherent risk.";
 	uint private _totalETHDeposited;
 	uint private _totalLGELPtokensMinted;
-	bool private _lgeOngoing;
 	address private _tokenETHLP; // create2 and hardcode too?
 	uint private _reentrancyStatus;
 	uint private _totalTokenAmount;
+	address private _optimismBridge;
+	address private _etcBridge;
 
 ///////variables for testing purposes
 	address private constant _WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;// testing
 	address private _uniswapFactory = 0x7FDc955b5E2547CC67759eDba3fd5d7027b9Bd66;
 	uint private _rewardsGenesis; // = hardcoded block.number
 	address private _token; // = hardcoded address
-	address private _treasury;
-	address private _governance;
-	address private _optimismBridge;
-	address private _etcBridge;
-	address payable private _deployer;
+	address private _treasury; // hardcoded
+	address private _governance; // hardcoded
+	address payable private _deployer; // hardcoded
 
 //////
 	constructor() {
@@ -51,7 +50,6 @@ contract FoundingEvent {
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
 		_rewardsGenesis = block.number + 5;
 		_totalTokenAmount = 1e27;
-		_lgeOngoing = true;
 	}
 
 	struct Founder {uint ethContributed; uint claimed; uint tokenAmount; uint lockUpTo;}
@@ -65,16 +63,16 @@ contract FoundingEvent {
 	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not a Founder or reentrancy guard");_reentrancyStatus = 1;_;_reentrancyStatus = 0;}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
-		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true, "LGE has already ended or didn't start, or no agreement provided");
-		require(_isContract(msg.sender) == false, "contracts can't be Founders");
-		if (_takenAddresses[msg.sender] == true) {
-			address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _linkedAddresses[msg.sender]; delete _takenAddresses[msg.sender];
-		}
-		uint deployerShare = msg.value / 200;
-		uint amount = msg.value - deployerShare;
-		_deployer.transfer(deployerShare);
-		_founders[msg.sender].ethContributed += amount;
-		if (block.number >= _rewardsGenesis) {_createLiquidity();}
+		if (block.number < _rewardsGenesis) {
+			require(_isContract(msg.sender) == false && iAgreeToPublicStringAgreementTerms == true, "contracts can't be Founders or no agreement provided");
+			if (_takenAddresses[msg.sender] == true) {
+				address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _linkedAddresses[msg.sender]; delete _takenAddresses[msg.sender];
+			}
+			uint deployerShare = msg.value / 200;
+			uint amount = msg.value - deployerShare;
+			_deployer.transfer(deployerShare);
+			_founders[msg.sender].ethContributed += amount;
+		} else {_createLiquidity();}
 	}
 
 	function unstakeLP() public onlyFounder {
@@ -137,7 +135,6 @@ contract FoundingEvent {
 	}
 
 	function _createLiquidity() internal {
-		delete _lgeOngoing;
 		uint ETHDeposited = address(this).balance;
 		IWETH(_WETH).deposit{value: ETHDeposited}();
 		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
@@ -171,8 +168,8 @@ contract FoundingEvent {
 
 	function getFounderTknAmntLckPt(address account) external view returns (uint tknAmount,uint lockUpTo) {return (_founders[account].tokenAmount,_founders[account].lockUpTo);}
 
-	function getLgeInfo() external view returns (bool lgeOng,uint rewGenesis,uint rewRate,uint totEthDepos, uint totTknAmount, uint totLGELPMinted) {
+	function getLgeInfo() external view returns (uint rewGenesis,uint rewRate,uint totEthDepos, uint totTknAmount, uint totLGELPMinted) {
 		uint halver = block.number/10000000;uint rewardsRate = 100;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
-		return (_lgeOngoing,_rewardsGenesis,rewardsRate,_totalETHDeposited,_totalTokenAmount,_totalLGELPtokensMinted);
+		return (_rewardsGenesis,rewardsRate,_totalETHDeposited,_totalTokenAmount,_totalLGELPtokensMinted);
 	}
 }
