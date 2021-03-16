@@ -24,9 +24,8 @@ contract FoundingEvent {
 	using SafeMath for uint;
 
 	// I believe this is required for the safety of investors and other developers joining the project
-	string public agreementTerms = "I understand that this contract is provided with no warranty of any kind. \n I agree to not hold the contract creator, RAID team members or anyone associated with this event liable for any damage monetary and otherwise I might onccur. \n I understand that any smart contract interaction carries an inherent risk.";
+	string public AgreementTerms = "I understand that this contract is provided with no warranty of any kind. \n I agree to not hold the contract creator, RAID team members or anyone associated with this event liable for any damage monetary and otherwise I might onccur. \n I understand that any smart contract interaction carries an inherent risk.";
 	uint private _totalETHDeposited;
-	uint private _ETHDeposited;
 	uint private _totalLGELPtokensMinted;
 	bool private _lgeOngoing;
 	address private _tokenETHLP; // create2 and hardcode too?
@@ -40,6 +39,8 @@ contract FoundingEvent {
 	address private _token; // = hardcoded address
 	address private _treasury;
 	address private _governance;
+	address private _optimismBridge;
+	address private _etcBridge;
 	address payable private _deployer;
 
 //////
@@ -51,7 +52,7 @@ contract FoundingEvent {
 		_lgeOngoing = true;
 	}
 
-	struct Founder {uint ethContributed; bool firstClaim; uint claimed; uint tokenAmount; uint lockUpTo;}
+	struct Founder {uint ethContributed; uint claimed; uint tokenAmount; uint lockUpTo;}
 
 	mapping(address => Founder) private _founders;
 	mapping (address => address) private _linkedAddresses;
@@ -75,14 +76,12 @@ contract FoundingEvent {
 	}
 
 	function unstakeLP() public onlyFounder {
-		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].firstClaim == true, "tokens locked or claim rewards");
+		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].tokenAmount > 0, "tokens locked or claim rewards");
 		uint totalETHDeposited = _totalETHDeposited;
-		if (_ETHDeposited == 0) {_ETHDeposited = totalETHDeposited;}
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint lpShare = _totalLGELPtokensMinted*ethContributed/totalETHDeposited;
 		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
 		if (lpShare > inStock) {lpShare = inStock;}
-		_ETHDeposited -= ethContributed;
 		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
 		IERC20(_tokenETHLP).transfer(address(msg.sender), lpShare);
 		delete _founders[msg.sender];
@@ -93,36 +92,43 @@ contract FoundingEvent {
 		require(block.number > rewardsGenesis, "too soon");
 		uint toClaim;
 		uint halver = block.number/10000000;uint rewardsRate = 100;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
-		if(_founders[msg.sender].firstClaim==false){_founders[msg.sender].firstClaim=true;_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
+		if(_founders[msg.sender].tokenAmount == 0){_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
 		toClaim = (block.number - rewardsGenesis)*rewardsRate*1e18*_founders[msg.sender].tokenAmount/_totalTokenAmount;
 		toClaim = toClaim.s(_founders[msg.sender].claimed);
 		_founders[msg.sender].claimed += toClaim;
 		ITreasury(_treasury).claimFounderRewards(address(msg.sender), toClaim);
 	}
 
-	function migrate() public onlyFounder {
-		require(_founders[msg.sender].firstClaim == true && IGovernance(_governance).getVoting() == false, "claim rewards before this or voting is ongoing");
-		require(_founders[msg.sender].claimed == 0, "still rewards left");
+	function migrate(address contr) public onlyFounder {
+		require(_founders[msg.sender].tokenAmount > 0, "claim rewards before this");
+		require(contr == _treasury || contr == _optimismBridge || contr == _etcBridge);
 		uint ethContributed = _founders[msg.sender].ethContributed;
-		uint lpShare = _totalLGELPtokensMinted*ethContributed/_ETHDeposited;
+		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
 		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
 		if (lpShare > inStock) {lpShare = inStock;}
-		IERC20(_tokenETHLP).transfer(_treasury, lpShare);
-		ITreasury(_treasury).stakeFromLgeContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);// should tokenAmount be cut in half here?
+		if (contr == _treasury) {
+			IERC20(_tokenETHLP).transfer(_treasury, lpShare);
+			ITreasury(_treasury).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);// should tokenAmount be cut in half here?	
+		} else if (contr == _optimismBridge) {
+			IERC20(_tokenETHLP).transfer(_optimismBridge, lpShare);
+			IOptimismBridge(_optimismBridge).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].claimed,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
+		} else if (contr == _etcBridge) {
+			IERC20(_tokenETHLP).transfer(_etcBridge, lpShare);
+			IEtcBridge(_etcBridge).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].claimed,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
+		}
+		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
 		delete _founders[msg.sender];
 	}
 
 	function changeAddress(address account) public onlyFounder {
-		require(_isContract(account) == false && IGovernance(_governance).getVoting() == false, "contracts can't be founders or voting is ongoing");
+		require(_isContract(account) == false && IGovernance(_governance).getVoting() == false, "contracts can't change to contract or voting is ongoing");
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint claimed = _founders[msg.sender].claimed;
-		bool firstClaim = _founders[msg.sender].firstClaim;
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
 		uint lockUpTo = _founders[msg.sender].lockUpTo;
 		delete _founders[msg.sender];
 		_founders[account].ethContributed = ethContributed;
 		_founders[account].claimed = claimed;
-		_founders[account].firstClaim = firstClaim;
 		_founders[account].tokenAmount = tokenAmount;
 		_founders[account].lockUpTo = lockUpTo;
 	}
@@ -139,13 +145,13 @@ contract FoundingEvent {
 		_totalETHDeposited = ETHDeposited;
 	}
 
-	function lock() public onlyFounder {require(_founders[msg.sender].firstClaim == true, "first you have to claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
-	function isFounder(address account) public view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
-	function _isContract(address account) internal view returns (bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
+	function lock() public onlyFounder {require(_founders[msg.sender].tokenAmount > 0, "first you have to claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
+	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
+	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 
 	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
 		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false, "already linked these or somebody already uses this");
-		require(isFounder(account) == false && _founders[msg.sender].ethContributed >= 1e16, "can't link founders or not enough eth deposited");
+		require(_isFounder(account) == false && _founders[msg.sender].ethContributed >= 1e16, "can't link founders or not enough eth deposited");
 		if (_linkedAddresses[msg.sender] != address(0)) {
 			address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
 		}
@@ -155,14 +161,14 @@ contract FoundingEvent {
 		emit AddressLinked(msg.sender,account);
 	}
 // VIEW FUNCTIONS ==================================================
-	function getFounder(address account) external view returns (uint ethContributed, uint claimed, bool firstClaim, address linked) {
-		return (_founders[account].ethContributed,_founders[account].claimed,_founders[account].firstClaim,_founders[account].lockUpTo,_linkedAddresses[account]);
+	function getFounder(address account) external view returns (uint ethContributed, uint claimed, address linked) {
+		return (_founders[account].ethContributed,_founders[account].claimed,_founders[account].lockUpTo,_linkedAddresses[account]);
 	}
 
 	function getFounderTknAmntLckPt(address account) external view returns (uint tknAmount,uint lockUpTo) {return (_founders[account].tokenAmount,_founders[account].lockUpTo);}
 
-	function getLgeInfo() external view returns (bool lgeOng,uint rewGenesis,uint rewRate,uint totEthDepos, uint EthDepos, uint totTknAmount, uint totLGELPMinted) {
+	function getLgeInfo() external view returns (bool lgeOng,uint rewGenesis,uint rewRate,uint totEthDepos, uint totTknAmount, uint totLGELPMinted) {
 		uint halver = block.number/10000000;uint rewardsRate = 100;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
-		return (_lgeOngoing,_rewardsGenesis,rewardsRate,_totalETHDeposited,_ETHDeposited,_totalTokenAmount,_totalLGELPtokensMinted);
+		return (_lgeOngoing,_rewardsGenesis,rewardsRate,_totalETHDeposited,_totalTokenAmount,_totalLGELPtokensMinted);
 	}
 }
