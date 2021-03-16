@@ -8,11 +8,11 @@ pragma solidity >=0.7.0;
 // but in one contract with some differences:
 // 1. constructor does not require arguments.
 // 2. _deadline variable is a block after which it becomes impossible to upgrade the contract. Defined in constructor and here it's ~2 years.
-// Maybe not even required for many projects, but I kept it as an option.
+// Maybe not even required, but I kept it as an option.
 // 3. _upgradeBlock defines how often the contract can be upgraded. Defined in _setlogic() function and the internval here is set
 // to 172800 blocks ~1 month.
 // 4. Admin can be changed only three times.
-// 5. prolongLock() allows to add to _upgradeBlock. Basically allows to prolong lock.
+// 5. prolongLock() allows to add to _upgradeBlock. Basically allows to prolong lock. Could prolong for trillions of blocks so the deadline might not be needed 
 // 6. logic contract is not being set suddenly. it's being stored in NEXT_LOGIC_SLOT for a month and only after that it can be set as LOGIC_SLOT.
 // Users have time to decide on if the deployer or the governance is malicious and exit safely.
 
