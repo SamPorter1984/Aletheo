@@ -91,9 +91,10 @@ contract FoundingEvent {
 		uint rewardsGenesis = _rewardsGenesis;
 		require(block.number > rewardsGenesis, "too soon");
 		uint toClaim;
+		uint tokenAmount = _founders[msg.sender].tokenAmount;
 		uint halver = block.number/10000000;uint rewardsRate = 100;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
-		if(_founders[msg.sender].tokenAmount == 0){_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
-		toClaim = (block.number - rewardsGenesis)*rewardsRate*1e18*_founders[msg.sender].tokenAmount/_totalTokenAmount;
+		if(tokenAmount == 0){_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
+		toClaim = (block.number - rewardsGenesis)*rewardsRate*1e18*tokenAmount/_totalTokenAmount;
 		toClaim = toClaim.s(_founders[msg.sender].claimed);
 		_founders[msg.sender].claimed += toClaim;
 		ITreasury(_treasury).claimFounderRewards(address(msg.sender), toClaim);
