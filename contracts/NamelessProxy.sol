@@ -3,7 +3,6 @@ pragma solidity >=0.7.0;
 // OpenZeppelin Upgradeability contracts modified by Sam Porter
 // You can find original set of contracts here: https://github.com/OpenZeppelin/openzeppelin-contracts/tree/master/contracts/proxy
 
-// Upgradeability bug is fixed I believe. Consensys won't be so smug about it anymore.
 // Had to pack OpenZeppelin upgradeability contracts in one single contract for readability. It's basically the same OpenZeppelin functions 
 // but in one contract with some differences:
 // 1. constructor does not require arguments.
@@ -12,9 +11,12 @@ pragma solidity >=0.7.0;
 // 3. _upgradeBlock defines how often the contract can be upgraded. Defined in _setlogic() function and the internval here is set
 // to 172800 blocks ~1 month.
 // 4. Admin can be changed only three times.
-// 5. prolongLock() allows to add to _upgradeBlock. Basically allows to prolong lock. Could set to maximum solidity number so the deadline might not be needed 
+// 5. prolongLock() allows to add to _upgradeBlock. Basically allows to prolong lock. Could prolong for trillions of blocks so the deadline might not be needed 
 // 6. logic contract is not being set suddenly. it's being stored in NEXT_LOGIC_SLOT for a month and only after that it can be set as LOGIC_SLOT.
 // Users have time to decide on if the deployer or the governance is malicious and exit safely.
+
+// It fixes upgradeability bug I believe. Consensys won't be so smug about it anymore. They will still point out to something like what
+// if these 3 addresses already being used? But that's all I guess.
 
 contract NamelessProxy {
 	event Upgraded(address indexed logic);
