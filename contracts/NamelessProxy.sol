@@ -16,7 +16,7 @@ pragma solidity >=0.7.0;
 // Users have time to decide on if the deployer or the governance is malicious and exit safely.
 
 // It fixes upgradeability bug I believe. Consensys won't be so smug about it anymore. They will still point out to something like what
-// if these 3 addresses already being used? But that's all I guess.
+// if these 3 addresses already being used? We can just restrict mapping to these addresses in logic contract. Also arrays. 
 
 contract NamelessProxy {
 	event Upgraded(address indexed logic);
