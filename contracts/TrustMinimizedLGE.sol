@@ -102,14 +102,15 @@ contract FoundingEvent {
 		require(_founders[msg.sender].tokenAmount > 0, "claim rewards before this");
 		require(contr == _treasury || contr == _optimismBridge || contr == _etcBridge,"invalid contract");
 		_cleanUpLinked(msg.sender);
+		uint lpShare = _calcLpShare(msg.sender);
 		if (contr == _treasury) {
-			IERC20(_tokenETHLP).transfer(_treasury, _calcLpShare(msg.sender));
+			IERC20(_tokenETHLP).transfer(_treasury, lpShare);
 			ITreasury(_treasury).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);// should tokenAmount be cut in half here?	
 		} else if (contr == _optimismBridge) {
-			IERC20(_tokenETHLP).transfer(_optimismBridge, _calcLpShare(msg.sender));
+			IERC20(_tokenETHLP).transfer(_optimismBridge, lpShare);
 			IOptimismBridge(_optimismBridge).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].claimed,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
 		} else if (contr == _etcBridge) {
-			IERC20(_tokenETHLP).transfer(_etcBridge, _calcLpShare(msg.sender));
+			IERC20(_tokenETHLP).transfer(_etcBridge, lpShare);
 			IEtcBridge(_etcBridge).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].claimed,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
 		}
 		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
