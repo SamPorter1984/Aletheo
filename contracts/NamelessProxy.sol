@@ -62,7 +62,7 @@ contract NamelessProxy {
 		emit Upgraded(logic);
 	}
 
-	function cancelLogic() external ifAdmin {
+	function cancelUpgrade() external ifAdmin {
 		address logic;
 		assembly { logic := sload(LOGIC_SLOT) }
 		assembly { sstore(NEXT_LOGIC_SLOT, logic) }
