@@ -30,9 +30,9 @@ contract FoundingEvent {
 	uint private _totalETHDeposited;
 	uint private _totalLGELPtokensMinted;
 	address private _tokenETHLP; // create2 and hardcode too?
-	uint private _reentrancyStatus;
 	uint private _totalTokenAmount;
 	bool private _lgeOngoing;
+	bool private _lock;
 	address private _optimismBridge;
 	address private _etcBridge;
 
@@ -62,7 +62,7 @@ contract FoundingEvent {
 
 	event AddressLinked(address indexed address1, address indexed address2);
 
-	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && _reentrancyStatus != 1, "Not a Founder or reentrancy guard");_reentrancyStatus = 1;_;_reentrancyStatus = 0;}
+	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && _lock != true, "Not a Founder or locked");_lock = true;_;_lock = false;}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
 		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true, "LGE has already ended or didn't start, or no agreement provided");
@@ -104,7 +104,7 @@ contract FoundingEvent {
 
 	function migrate(address contr) public onlyFounder {
 		require(_founders[msg.sender].tokenAmount > 0, "claim rewards before this");
-		require(contr == _treasury || contr == _optimismBridge || contr == _etcBridge);
+		require(contr == _treasury || contr == _optimismBridge || contr == _etcBridge,"invalid contract");
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
 		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
@@ -166,7 +166,7 @@ contract FoundingEvent {
 	}
 // VIEW FUNCTIONS ==================================================
 	function getFounder(address account) external view returns (uint ethContributed, uint claimed, address linked) {
-		return (_founders[account].ethContributed,_founders[account].claimed,_linkedAddresses[account]);
+		return (_founders[account].ethContributed,_founders[account].claimed,_founders[account].lockUpTo,_linkedAddresses[account]);
 	}
 
 	function getFounderTknAmntLckPt(address account) external view returns (uint tknAmount,uint lockUpTo) {return (_founders[account].tokenAmount,_founders[account].lockUpTo);}
