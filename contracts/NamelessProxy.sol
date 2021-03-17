@@ -18,11 +18,11 @@ pragma solidity >=0.7.0;
 // It fixes upgradeability bug I believe. Consensys won't be so smug about it anymore.
 
 contract NamelessProxy {
-	event Upgraded(address indexed logic);
-	event AdminChanged(address previousAdmin, address newAdmin);
-	event NextLogicDefined(address nextLogic);
+	event Upgraded(address indexed toLogic);
+	event AdminChanged(address indexed previousAdmin, address indexed newAdmin);
+	event NextLogicDefined(address indexed nextLogic);
 	event UpgradePostponed(uint toBlock);
-	event CanceledTo(address logic);
+	event Canceled(address indexed toLogic);
 
 	bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 	bytes32 internal constant LOGIC_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
@@ -60,7 +60,7 @@ contract NamelessProxy {
 
 	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock,"wait");address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT, logic)}emit Upgraded(logic);}
 
-	function cancelUpgrade() external ifAdmin {address logic;assembly {logic := sload(LOGIC_SLOT)sstore(NEXT_LOGIC_SLOT, logic)}emit CanceledTo(logic);}
+	function cancelUpgrade() external ifAdmin {address logic;assembly {logic := sload(LOGIC_SLOT)sstore(NEXT_LOGIC_SLOT, logic)}emit Canceled(logic);}
 
 	function _isContract(address account) internal view returns (bool b) {uint256 size;assembly { size := extcodesize(account) }return size > 0;}
 	function _admin() internal view returns (address adm) {assembly { adm := sload(ADMIN_SLOT) }}
