@@ -22,6 +22,7 @@ contract NamelessProxy {
 	event AdminChanged(address previousAdmin, address newAdmin);
 	event NextLogicDefined(address nextLogic);
 	event UpgradePostponed(uint toBlock);
+	event CanceledTo(address logic);
 
 	bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 	bytes32 internal constant LOGIC_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
@@ -46,7 +47,7 @@ contract NamelessProxy {
 	function changeAdmin(address newAdm) external ifAdmin {require(newAdm != address(0), "Can't change admin to 0");emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
 	function proposeTo(address newLogic) external ifAdmin {_setNextLogic(newLogic);}
 	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {_setNextLogic(newLogic);(bool success,) = newLogic.delegatecall(data);require(success);}
-	function prolongLock(uint block) external ifAdmin {_upgradeBlock+=block;emit UpgradePostponed(_upgradeBlock);}
+	function prolongLock(uint block_) external ifAdmin {_upgradeBlock+=block_;emit UpgradePostponed(_upgradeBlock);}
 
 	function _setNextLogic(address nextLogic) internal {
 		require(block.number >= _upgradeBlock && block.number < _deadline, "wait or too late");
@@ -57,19 +58,9 @@ contract NamelessProxy {
 		emit NextLogicDefined(nextLogic);
 	}
 
-	function upgrade() external ifAdmin {
-		require(block.number >= _nextLogicBlock, "wait");
-		address logic;
-		assembly { logic := sload(NEXT_LOGIC_SLOT) }
-		assembly { sstore(LOGIC_SLOT, logic) }
-		emit Upgraded(logic);
-	}
+	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock,"wait");address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT, logic)}emit Upgraded(logic);}
 
-	function cancelUpgrade() external ifAdmin {
-		address logic;
-		assembly { logic := sload(LOGIC_SLOT) }
-		assembly { sstore(NEXT_LOGIC_SLOT, logic) }
-	}
+	function cancelUpgrade() external ifAdmin {address logic;assembly {logic := sload(LOGIC_SLOT)sstore(NEXT_LOGIC_SLOT, logic)}emit CanceledTo(logic);}
 
 	function _isContract(address account) internal view returns (bool b) {uint256 size;assembly { size := extcodesize(account) }return size > 0;}
 	function _admin() internal view returns (address adm) {assembly { adm := sload(ADMIN_SLOT) }}
@@ -80,12 +71,12 @@ contract NamelessProxy {
 
 	function _delegate(address logic_) internal {
 		assembly {
-		calldatacopy(0, 0, calldatasize())
-		let result := delegatecall(gas(), logic_, 0, calldatasize(), 0, 0)
-		returndatacopy(0, 0, returndatasize())
-		switch result
-		case 0 { revert(0, returndatasize()) }
-		default { return(0, returndatasize()) }
+			calldatacopy(0, 0, calldatasize())
+			let result := delegatecall(gas(), logic_, 0, calldatasize(), 0, 0)
+			returndatacopy(0, 0, returndatasize())
+			switch result
+			case 0 { revert(0, returndatasize()) }
+			default { return(0, returndatasize()) }
 		}
 	}
 }
