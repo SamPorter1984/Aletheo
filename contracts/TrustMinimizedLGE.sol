@@ -1,4 +1,4 @@
-pragma solidity >=0.7.0;
+pragma solidity >=0.7.0 <=0.8.0;
 
 // Author: Sam Porter
 
@@ -32,7 +32,6 @@ contract FoundingEvent {
 	bool private _lock;
 	address private _optimismBridge;
 	address private _etcBridge;
-
 ///////variables for testing purposes
 	address private constant _WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;// testing
 	address private _uniswapFactory = 0x7FDc955b5E2547CC67759eDba3fd5d7027b9Bd66;
@@ -51,7 +50,7 @@ contract FoundingEvent {
 		_lgeOngoing = true;
 	}
 
-	struct Founder {uint ethContributed; uint claimed; uint tokenAmount; uint lockUpTo;}
+	struct Founder {uint ethContributed; uint claimed; uint tokenAmount; uint lockUpTo;address newAddress;}
 
 	mapping(address => Founder) private _founders;
 	mapping (address => address) private _linkedAddresses;
@@ -113,8 +112,11 @@ contract FoundingEvent {
 		delete _founders[msg.sender];
 	}
 
-	function changeAddress(address account) public onlyFounder { // no founder, actually nobody should trust dapp interface. only blockchain. a function like this should not be provided through dapp, could use etherscan
-		require(_isContract(account) == false && IGovernance(_governance).getVoting() == false, "can't change to contract or voting is ongoing");
+	function newAddress(address account) public onlyFounder {require(_isContract(account) == false, "can't change to contract");_founders[msg.sender].newAddress = account;}
+
+	function changeAddress() public onlyFounder { // no founder, actually nobody should trust dapp interface. only blockchain. a function like this should not be provided through dapp, could use etherscan
+		require(IGovernance(_governance).getVoting() == false, "voting is ongoing");
+		address account = _founders[msg.sender].newAddress;
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint claimed = _founders[msg.sender].claimed;
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
@@ -129,7 +131,7 @@ contract FoundingEvent {
 	function lock() public onlyFounder {require(_founders[msg.sender].tokenAmount > 0, "first you have to claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
 	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
 	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
-	function setBridges(address optimism, address etc) external {require(msg.sender == _deployer, "can't"); _optimismBridge = optimism; _etcBridge = etc;}
+	function setBridges(address optimism, address etc) external {require(msg.sender==_deployer,"can't");_optimismBridge = optimism;_etcBridge = etc;}
 
 	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
 		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false, "already linked these or somebody already uses this");
@@ -167,14 +169,14 @@ contract FoundingEvent {
 		_totalETHDeposited = ETHDeposited;
 	}
 // VIEW FUNCTIONS ==================================================
-	function getFounder(address account) external view returns (uint ethContributed, uint claimed, address linked) {
-		return (_founders[account].ethContributed,_founders[account].claimed,_linkedAddresses[account]);
+	function getFounder(address account) external view returns (address newAddress,uint ethContributed, uint claimed, address linked) {
+		return (_founders[msg.sender].newAddress,_founders[account].ethContributed,_founders[account].claimed,_linkedAddresses[account]);
 	}
 
 	function getFounderTknAmntLckPt(address account) external view returns (uint tknAmount,uint lockUpTo) {return (_founders[account].tokenAmount,_founders[account].lockUpTo);}
 
 	function getLgeInfo() external view returns (uint rewGenesis,uint rewRate,uint totEthDepos, uint totTknAmount, uint totLGELPMinted) {
-		uint halver = block.number/10000000;uint rewardsRate = 100;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
+		uint halver = block.number/10000000;uint rewardsRate = 75;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		return (_rewardsGenesis,rewardsRate,_totalETHDeposited,_totalTokenAmount,_totalLGELPtokensMinted);
 	}
 }
