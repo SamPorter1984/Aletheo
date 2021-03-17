@@ -81,7 +81,7 @@ contract VSRERC20 is Context, IERC20 {
 	}
 
 	function bulkTransfer(address[] memory recipients, uint[] memory amounts) public { // will be used by the contract, or anybody who wants to use it
-		require(recipients.length == amounts.length && amounts.length < 500,"array length does not match or too long");
+		require(recipients.length == amounts.length && amounts.length < 500,"human error");
 		require(sender != address(0), "zero address");
 		uint senderBalance = _balances[msg.sender];
 		uint total;
