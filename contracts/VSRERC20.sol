@@ -84,14 +84,15 @@ contract VSRERC20 is Context, IERC20 {
 	}
 
 	function inaccurateTransferFrom(address[] memory recipients, uint[] memory amounts) public { // will be used by the contract, or anybody who wants to use it
-		require(_lock == false && msg.sender != _treasury,"reentrancy");
-		_lock = true;
+		require(recipients.length == amounts.length,"array length does not match");
+		uint256 senderBalance = _balances[msg.sender];
 		uint total;
-		for(uint i = 0;i<recipients.length;i++) {_balances[recipients[i]] += amounts[i];total += amounts[i];}
-		uint256 senderBalance = _balances[msg.sender]; // less store writes here
-		if (senderBalance < total) {_balances[msg.sender] = 0;} else {_balances[msg.sender] = senderBalance - total;}
+		for(uint i = 0;i<amounts.length;i++) {total += amounts[i];}
+		require(senderBalance >= total, "don't");
+		if (msg.sender == _treasury) {_beforeTokenTransfer(msg.sender, total);}
+		_balances[msg.sender] = senderBalance - total;
+		for(uint i = 0;i<recipients.length;i++) {_balances[recipients[i]] += amounts[i];}
 		emit InaccurateTransferFrom(msg.sender, recipients, amounts);
-		_lock = false;
 	}
 
 	function _approve(address owner, address spender, uint amount) internal {
