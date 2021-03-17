@@ -112,11 +112,14 @@ contract FoundingEvent {
 		delete _founders[msg.sender];
 	}
 
-	function newAddress(address account) public onlyFounder {require(_isContract(account) == false, "can't change to contract");_founders[msg.sender].newAddress = account;}
+	function newAddress(address account) public onlyFounder {require(_isContract(account) == false, "can't change to contract");//has to be expensive as alert of something fishy just in case
+		for (uint i = 0;i<10;i++) {delete _founders[msg.sender].newAddress;_founders[msg.sender].newAddress = account;} // metamask has to somehow provide more info about a transaction
+	}
 
-	function changeAddress() public onlyFounder { // no founder, actually nobody should trust dapp interface. only blockchain. a function like this should not be provided through dapp, could use etherscan
+	function changeAddress() public onlyFounder { // no founder, nobody should trust dapp interface. only blockchain. maybe a function like this should not be provided through dapp at all
 		require(IGovernance(_governance).getVoting() == false, "voting is ongoing");
 		address account = _founders[msg.sender].newAddress;
+		require(account != address(0),"new address wasn't set");
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint claimed = _founders[msg.sender].claimed;
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
@@ -132,6 +135,7 @@ contract FoundingEvent {
 	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
 	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 	function setBridges(address optimism, address etc) external {require(msg.sender==_deployer,"can't");_optimismBridge = optimism;_etcBridge = etc;}
+	function setTotalTknMnt(uint amount) external onlyBridgeOracle {_totalTokenAmount = amount;}
 
 	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
 		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false, "already linked these or somebody already uses this");
