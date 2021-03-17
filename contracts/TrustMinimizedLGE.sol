@@ -73,8 +73,8 @@ contract FoundingEvent {
 		if (block.number >= _rewardsGenesis) {_createLiquidity();}
 	}
 
-	function unstakeLP() public onlyFounder {
-		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].tokenAmount > 0, "tokens locked or claim rewards");
+	function unstakeLP(bool ok) public onlyFounder {
+		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].tokenAmount > 0 && ok == true, "tokens locked or claim rewards");
 		_cleanUpLinked(msg.sender);
 		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
 		IERC20(_tokenETHLP).transfer(address(msg.sender), _calcLpShare(msg.sender));
@@ -131,7 +131,7 @@ contract FoundingEvent {
 		_founders[account].lockUpTo = lockUpTo;
 	}
 
-	function lock(bool ok) public onlyFounder{require(ok==true,_founders[msg.sender].tokenAmount>0, "first claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
+	function lock(bool ok) public onlyFounder{require(ok==true,_founders[msg.sender].tokenAmount>0,"first claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
 	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
 	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 	function setBridges(address optimism, address etc) external {require(msg.sender==_deployer,"can't");_optimismBridge = optimism;_etcBridge = etc;}
