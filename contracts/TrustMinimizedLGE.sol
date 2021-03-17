@@ -50,7 +50,7 @@ contract FoundingEvent {
 		_lgeOngoing = true;
 	}
 
-	struct Founder {uint ethContributed; uint claimed; uint tokenAmount; uint lockUpTo;address newAddress;}
+	struct Founder {uint ethContributed;uint claimed;uint tokenAmount;uint lockUpTo;address newAddress;}
 
 	mapping(address => Founder) private _founders;
 	mapping (address => address) private _linkedAddresses;
@@ -84,12 +84,11 @@ contract FoundingEvent {
 	function claimLGERewards() public onlyFounder { // has to have first Method Id or close to
 		uint rewardsGenesis = _rewardsGenesis;
 		require(block.number > rewardsGenesis, "too soon");
-		uint toClaim;
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
 		uint claimed = _founders[msg.sender].claimed;
 		uint halver = block.number/10000000;uint rewardsRate = 75;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		if(tokenAmount == 0){_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
-		toClaim = (block.number - rewardsGenesis)*rewardsRate*1e18*tokenAmount/_totalTokenAmount;
+		uint toClaim = (block.number - rewardsGenesis)*rewardsRate*1e18*tokenAmount/_totalTokenAmount;
 		if (toClaim > claimed) {toClaim -= claimed; _founders[msg.sender].claimed += toClaim; ITreasury(_treasury).claimFounderRewards(address(msg.sender), toClaim);}
 	}
 
@@ -132,7 +131,7 @@ contract FoundingEvent {
 		_founders[account].lockUpTo = lockUpTo;
 	}
 
-	function lock(bool ok) public onlyFounder{require(ok==true&&_founders[msg.sender].tokenAmount>0,"first claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
+	function lock(bool ok) public onlyFounder{require(ok==true && _founders[msg.sender].tokenAmount>0,"first claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
 	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
 	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 	function setBridges(address optimism, address etc) external {require(msg.sender==_deployer,"can't");_optimismBridge = optimism;_etcBridge = etc;}
