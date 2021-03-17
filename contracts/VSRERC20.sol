@@ -42,7 +42,7 @@ contract VSRERC20 is Context, IERC20 {
 
 	modifier onlyGovernance() {require(msg.sender == _governance, "only governance");_;}
 
-	function stats() public view returns(uint emis, uint withdrawn, uint govSet) {return(840e18,_withdrawn,_governanceSet);}
+	function stats() public view returns(uint emis, uint withdrawn, uint govSet) {return(42e19,_withdrawn,_governanceSet);}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view override returns (uint) {return ((block.number - _genesisBlock)*42e19);}
