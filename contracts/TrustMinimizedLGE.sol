@@ -1,15 +1,3 @@
-// SPDX-License-Identifier: MIT
-
-pragma solidity >=0.6.0 <0.8.0;
-interface IWETH {function deposit() external payable;}
-interface IERC20 {function balanceOf(address account) external view returns (uint256);function transfer(address recipient, uint256 amount) external returns (bool);}
-interface IUniswapV2Pair {function mint(address to) external returns (uint liquidity);function sync() external;function initialize(address, address) external;}
-interface IUniswapV2Factory {function createPair(address tokenA, address tokenB) external returns (address pair);}
-interface IGovernance {function getVoting() external view returns (bool voting);}
-interface ITreasury {function claimFounderRewards(address acc,uint rewToClaim) external; function fromFoundersContract(address acc, uint lpShare,uint tknAmount,uint lockUpTo) external;}
-interface IOptimismBridge {function fromFoundersContract(address acc,uint lpShare,uint claimed,uint tknAmount,uint lockUpTo) external;}
-interface IEtcBridge{function fromFoundersContract(address acc,uint lpShare,uint claimed,uint tknAmount,uint lockUpTo) external;}
-
 pragma solidity >=0.7.0 <=0.8.0;
 
 // Author: Sam Porter
