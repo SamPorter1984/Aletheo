@@ -23,7 +23,6 @@ contract VSRERC20 is Context, IERC20 {
 
 	string private _name;
 	string private _symbol;
-	uint private _emission;
 	uint private _withdrawn;
 	uint private _governanceSet;
 	bool private _lock;
@@ -38,16 +37,15 @@ contract VSRERC20 is Context, IERC20 {
 		_symbol = symbol_;
 		_genesisBlock = block.number + 345600; // remove
 		_governance = msg.sender; // for now
-		_emission = 840; // ~2 bil per year
 		_balances[msg.sender] = 1e30;
 	}
 
 	modifier onlyGovernance() {require(msg.sender == _governance, "only governance");_;}
 
-	function stats() public view returns(uint emis, uint withdrawn, uint govSet) {return(_emission,_withdrawn,_governanceSet);}
+	function stats() public view returns(uint emis, uint withdrawn, uint govSet) {return(840e18,_withdrawn,_governanceSet);}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
-	function totalSupply() public view override returns (uint) {return 1e30;}
+	function totalSupply() public view override returns (uint) {return ((block.number - _genesisBlock)*840e18);}
 	function decimals() public pure returns (uint) {return 18;}
 	function allowance(address owner, address spender) public view override returns (uint) {return _allowances[owner][spender];}
 	function balanceOf(address account) public view override returns (uint) {return _balances[account];}
@@ -108,7 +106,7 @@ contract VSRERC20 is Context, IERC20 {
 			require(_lock == false, "reentrancy guard");
 			_lock = true;
 			require(amount <= balanceOf(_treasury),"too much");
-			uint allowed = (block.number - _genesisBlock)*_emission*1e18 - _withdrawn;
+			uint allowed = (block.number - _genesisBlock)*840e18 - _withdrawn;
 			require(amount <= allowed, "not yet");
 			_withdrawn += amount;
 			_lock = false;
@@ -117,6 +115,5 @@ contract VSRERC20 is Context, IERC20 {
 
 	function setNameSymbol(string memory name_, string memory symbol_) public onlyGovernance {_name = name_;_symbol = symbol_;}
 	function setGovernance(address address_) public onlyGovernance {require(_governanceSet < 3, "already set");_governanceSet += 1;_governance = address_;}
-	function setEmission(uint emission) public onlyGovernance {require(emission <= 1000 && emission >= 600, "hard limit");_emission = emission;}
 	function allowanceToContract(address contract_) public onlyGovernance {_allowedContracts[contract_] = true;}// not to forget to add uniswap contract. an address with no bytecode can be added, but it's ok
 }
