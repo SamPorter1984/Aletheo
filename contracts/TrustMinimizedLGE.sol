@@ -111,9 +111,10 @@ contract FoundingEvent {
 		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
 		delete _founders[msg.sender];
 	}
-
-	function newAddress(address account) public onlyFounder {require(_isContract(account) == false, "can't change to contract");//has to be expensive as alert of something fishy just in case
-		for (uint i = 0;i<10;i++) {delete _founders[msg.sender].newAddress;_founders[msg.sender].newAddress = account;} // metamask has to somehow provide more info about a transaction
+//reentrancy for every founder function is not sufficient. this function has to be expensive as alert of something fishy just in case
+// metamask has to somehow provide more info about a transaction
+	function newAddress(address account) public onlyFounder {require(_isContract(account) == false, "can't change to contract");
+		for (uint i = 0;i<10;i++) {delete _founders[msg.sender].newAddress;_founders[msg.sender].newAddress = account;} 
 	}
 
 	function changeAddress() public onlyFounder { // no founder, nobody should trust dapp interface. only blockchain. maybe a function like this should not be provided through dapp at all
