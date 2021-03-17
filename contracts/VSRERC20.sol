@@ -15,13 +15,12 @@ import "./IERC20.sol";
 // Token name and symbol can be changed.
 
 contract VSRERC20 is Context, IERC20 {
-    event InaccurateTransferFrom(address indexed from, address[] indexed recipients, uint[] value);
+    event BulkTransferFrom(address indexed from, address[] indexed recipients, uint[] value);
 
 	mapping (address => uint) private _balances;
 	mapping (address => mapping (address => uint)) private _allowances;
 	mapping (address => bool) private _allowedContracts;
 
-	uint256 private _totalSupply = 1e30;
 	string private _name;
 	string private _symbol;
 	uint private _emission;
@@ -48,7 +47,7 @@ contract VSRERC20 is Context, IERC20 {
 	function stats() public view returns(uint emis, uint withdrawn, uint govSet) {return(_emission,_withdrawn,_governanceSet);}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
-	function totalSupply() public view override returns (uint) {return _totalSupply;}
+	function totalSupply() public view override returns (uint) {return 1e30;}
 	function decimals() public pure returns (uint) {return 18;}
 	function allowance(address owner, address spender) public view override returns (uint) {return _allowances[owner][spender];}
 	function balanceOf(address account) public view override returns (uint) {return _balances[account];}
@@ -58,7 +57,7 @@ contract VSRERC20 is Context, IERC20 {
 
 	function transferFrom(address sender, address recipient, uint amount) public override returns (bool) {
 		_transfer(sender, recipient, amount);
-		uint256 currentAllowance = _allowances[sender][_msgSender()];
+		uint currentAllowance = _allowances[sender][_msgSender()];
 		require(currentAllowance >= amount, "exceeds allowance");
 		_approve(sender, _msgSender(), currentAllowance - amount);
 		return true;
@@ -67,7 +66,7 @@ contract VSRERC20 is Context, IERC20 {
 	function increaseAllowance(address spender, uint addedValue) public returns (bool) {_approve(_msgSender(), spender, _allowances[_msgSender()][spender] + addedValue);return true;}
 
 	function decreaseAllowance(address spender, uint subtractedValue) public returns (bool) {
-		uint256 currentAllowance = _allowances[_msgSender()][spender];
+		uint currentAllowance = _allowances[_msgSender()][spender];
 		require(currentAllowance >= subtractedValue, "below zero");
 		_approve(_msgSender(), spender, currentAllowance - subtractedValue);
 		return true;
@@ -76,27 +75,28 @@ contract VSRERC20 is Context, IERC20 {
 	function _transfer(address sender, address recipient, uint amount) internal {
 		require(sender != address(0) && recipient != address(0), "zero address");
 		_beforeTokenTransfer(sender, amount);
-		uint256 senderBalance = _balances[sender];
+		uint senderBalance = _balances[sender];
 		require(senderBalance >= amount, "exceeds balance");
 		_balances[sender] = senderBalance - amount;
 		_balances[recipient] += amount;
 		emit Transfer(sender, recipient, amount);
 	}
 
-	function inaccurateTransferFrom(address[] memory recipients, uint[] memory amounts) public { // will be used by the contract, or anybody who wants to use it
+	function bulkTransfer(address[] memory recipients, uint[] memory amounts) public { // will be used by the contract, or anybody who wants to use it
 		require(recipients.length == amounts.length,"array length does not match");
-		uint256 senderBalance = _balances[msg.sender];
+		require(sender != address(0), "zero address");
+		uint senderBalance = _balances[msg.sender];
 		uint total;
-		for(uint i = 0;i<amounts.length;i++) {total += amounts[i];}
+		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0)) {total += amounts[i];}else{revert();}}
 		require(senderBalance >= total, "don't");
 		if (msg.sender == _treasury) {_beforeTokenTransfer(msg.sender, total);}
 		_balances[msg.sender] = senderBalance - total;
 		for(uint i = 0;i<recipients.length;i++) {_balances[recipients[i]] += amounts[i];}
-		emit InaccurateTransferFrom(msg.sender, recipients, amounts);
+		emit BulkTransfer(msg.sender, recipients, amounts);
 	}
 
 	function _approve(address owner, address spender, uint amount) internal {
-		require(owner != address(0), "zero address");
+		require(owner != address(0) && spender != address(0), "zero address");
 		require(_allowedContracts[spender] == true, "forbidden spender"); // hardcoded uniswap contract also
 		_allowances[owner][spender] = amount;
 		emit Approval(owner, spender, amount);
@@ -117,6 +117,6 @@ contract VSRERC20 is Context, IERC20 {
 
 	function setNameSymbol(string memory name_, string memory symbol_) public onlyGovernance {_name = name_;_symbol = symbol_;}
 	function setGovernance(address address_) public onlyGovernance {require(_governanceSet < 3, "already set");_governanceSet += 1;_governance = address_;}
-	function setEmission(uint emission) public onlyGovernance {require(emission <= 1000 && emission >= 700, "hard limit");_emission = emission;}
+	function setEmission(uint emission) public onlyGovernance {require(emission <= 1000 && emission >= 600, "hard limit");_emission = emission;}
 	function allowanceToContract(address contract_) public onlyGovernance {_allowedContracts[contract_] = true;}// not to forget to add uniswap contract. an address with no bytecode can be added, but it's ok
 }
