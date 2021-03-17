@@ -1,3 +1,15 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity >=0.6.0 <0.8.0;
+interface IWETH {function deposit() external payable;}
+interface IERC20 {function balanceOf(address account) external view returns (uint256);function transfer(address recipient, uint256 amount) external returns (bool);}
+interface IUniswapV2Pair {function mint(address to) external returns (uint liquidity);function sync() external;function initialize(address, address) external;}
+interface IUniswapV2Factory {function createPair(address tokenA, address tokenB) external returns (address pair);}
+interface IGovernance {function getVoting() external view returns (bool voting);}
+interface ITreasury {function claimFounderRewards(address acc,uint rewToClaim) external; function fromFoundersContract(address acc, uint lpShare,uint tknAmount,uint lockUpTo) external;}
+interface IOptimismBridge {function fromFoundersContract(address acc,uint lpShare,uint claimed,uint tknAmount,uint lockUpTo) external;}
+interface IEtcBridge{function fromFoundersContract(address acc,uint lpShare,uint claimed,uint tknAmount,uint lockUpTo) external;}
+
 pragma solidity >=0.7.0 <=0.8.0;
 
 // Author: Sam Porter
@@ -108,7 +120,7 @@ contract FoundingEvent {
 			IERC20(_tokenETHLP).transfer(_etcBridge, lpShare);
 			IEtcBridge(_etcBridge).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].claimed,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
 		}
-		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
+		_totalTokenAmount -= _founders[msg.sender].tokenAmount; // intended. attempts to split liquidity evenly between eth, optimism and etc pools. etc is certainly habitable
 		delete _founders[msg.sender];
 	}
 // _lock for every founder function is not sufficient. this function has to be expensive as alert of something fishy just in case
