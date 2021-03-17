@@ -85,11 +85,11 @@ contract VSRERC20 is Context, IERC20 {
 		require(sender != address(0), "zero address");
 		uint senderBalance = _balances[msg.sender];
 		uint total;
-		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0)) {total += amounts[i];}else{revert();}}
+		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];}else{revert();}}
 		require(senderBalance >= total, "don't");
 		if (msg.sender == _treasury) {_beforeTokenTransfer(msg.sender, total);}
 		_balances[msg.sender] = senderBalance - total;
-		for(uint i = 0;i<recipients.length;i++) {_balances[recipients[i]] += amounts[i];}
+		for(uint i = 0;i<amounts.length;i++) {_balances[recipients[i]] += amounts[i];}
 		emit BulkTransfer(msg.sender, recipients, amounts);
 	}
 
