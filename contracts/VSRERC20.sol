@@ -45,7 +45,7 @@ contract VSRERC20 is Context, IERC20 {
 	function stats() public view returns(uint emis, uint withdrawn, uint govSet) {return(840e18,_withdrawn,_governanceSet);}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
-	function totalSupply() public view override returns (uint) {return ((block.number - _genesisBlock)*840e18);}
+	function totalSupply() public view override returns (uint) {return ((block.number - _genesisBlock)*42e19);}
 	function decimals() public pure returns (uint) {return 18;}
 	function allowance(address owner, address spender) public view override returns (uint) {return _allowances[owner][spender];}
 	function balanceOf(address account) public view override returns (uint) {return _balances[account];}
@@ -106,7 +106,7 @@ contract VSRERC20 is Context, IERC20 {
 			require(_lock == false, "reentrancy guard");
 			_lock = true;
 			require(amount <= balanceOf(_treasury),"too much");
-			uint allowed = (block.number - _genesisBlock)*840e18 - _withdrawn;
+			uint allowed = (block.number - _genesisBlock)*42e19 - _withdrawn;
 			require(amount <= allowed, "not yet");
 			_withdrawn += amount;
 			_lock = false;
