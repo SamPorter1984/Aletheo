@@ -57,6 +57,7 @@ contract FoundingEvent {
 	mapping (address => bool) private _takenAddresses;
 
 	event AddressLinked(address indexed address1, address indexed address2);
+	event BridgesDefined(address indexed optimism,address indexed etc);
 
 	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && _lock != true, "Not a Founder or locked");_lock = true;_;_lock = false;}
 
@@ -86,9 +87,9 @@ contract FoundingEvent {
 		require(block.number > rewardsGenesis, "too soon");
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
 		uint claimed = _founders[msg.sender].claimed;
-		uint halver = block.number/10000000;uint rewardsRate = 75;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
+		uint halver = block.number/10000000;uint rewardsRate = 75e18;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		if(tokenAmount == 0){_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
-		uint toClaim = (block.number - rewardsGenesis)*rewardsRate*1e18*tokenAmount/_totalTokenAmount;
+		uint toClaim = (block.number - rewardsGenesis)*rewardsRate*tokenAmount/_totalTokenAmount;
 		if (toClaim > claimed) {toClaim -= claimed; _founders[msg.sender].claimed += toClaim; ITreasury(_treasury).claimFounderRewards(address(msg.sender), toClaim);}
 	}
 
@@ -134,7 +135,7 @@ contract FoundingEvent {
 	function lock(bool ok) public onlyFounder{require(ok==true && _founders[msg.sender].tokenAmount>0,"first claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
 	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
 	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
-	function setBridges(address optimism, address etc) external {require(msg.sender==_deployer,"can't");_optimismBridge = optimism;_etcBridge = etc;}
+	function setBridges(address optimism, address etc) external {require(msg.sender==_deployer,"can't");_optimismBridge = optimism;_etcBridge = etc;emit BridgesDefined(optimism,etc);}
 	function setTotalTknMnt(uint amount) external onlyBridgeOracle {_totalTokenAmount = amount;}
 
 	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
@@ -180,7 +181,7 @@ contract FoundingEvent {
 	function getFounderTknAmntLckPt(address account) external view returns (uint tknAmount,uint lockUpTo) {return (_founders[account].tokenAmount,_founders[account].lockUpTo);}
 
 	function getLgeInfo() external view returns (uint rewGenesis,uint rewRate,uint totEthDepos, uint totTknAmount, uint totLGELPMinted) {
-		uint halver = block.number/10000000;uint rewardsRate = 75;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
+		uint halver = block.number/10000000;uint rewardsRate = 75e18;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		return (_rewardsGenesis,rewardsRate,_totalETHDeposited,_totalTokenAmount,_totalLGELPtokensMinted);
 	}
 }
