@@ -87,7 +87,7 @@ contract FoundingEvent {
 		require(block.number > rewardsGenesis, "too soon");
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
 		uint claimed = _founders[msg.sender].claimed;
-		uint halver = block.number/10000000;uint rewardsRate = 75e18;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
+		uint halver = block.number/10000000;uint rewardsRate = 42e18;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		if(tokenAmount == 0){_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
 		uint toClaim = (block.number - rewardsGenesis)*rewardsRate*tokenAmount/_totalTokenAmount;
 		if (toClaim > claimed) {toClaim -= claimed; _founders[msg.sender].claimed += toClaim; ITreasury(_treasury).claimFounderRewards(address(msg.sender), toClaim);}
@@ -181,7 +181,7 @@ contract FoundingEvent {
 	function getFounderTknAmntLckPt(address account) external view returns (uint tknAmount,uint lockUpTo) {return (_founders[account].tokenAmount,_founders[account].lockUpTo);}
 
 	function getLgeInfo() external view returns (uint rewGenesis,uint rewRate,uint totEthDepos, uint totTknAmount, uint totLGELPMinted) {
-		uint halver = block.number/10000000;uint rewardsRate = 75e18;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
+		uint halver = block.number/10000000;uint rewardsRate = 42e18;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		return (_rewardsGenesis,rewardsRate,_totalETHDeposited,_totalTokenAmount,_totalLGELPtokensMinted);
 	}
 }
