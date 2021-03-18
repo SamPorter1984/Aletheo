@@ -10,9 +10,10 @@ import "./IERC20.sol";
 // Very slow erc20 implementation. Limits release of the funds with emission rate in _beforeTokenTransfer().
 // Even if there will be a vulnerability in upgradeable contracts defined in _beforeTokenTransfer(), it won't be devastating.
 // Developers can't simply rug.
-// Allowances are possible only for approved by the governance contracts.
+// Allowances are possible only for approved by the governance contracts. In fact, _allowances are completely wiped, only _allowedContracts check exists.
 // _mint() and _burn() functions are removed.
 // Token name and symbol can be changed.
+// Bulk transfer allows to transact in bulk cheaper by making almost three times less store writes in comparison to regular erc-20 transfers
 
 contract VSRERC20 is Context, IERC20 {
     event BulkTransfer(address indexed from, address[] indexed recipients, uint[] value);
@@ -72,7 +73,7 @@ contract VSRERC20 is Context, IERC20 {
 
 	function bulkTransfer(address[] memory recipients, uint[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
 		require(recipients.length == amounts.length && amounts.length < 500,"human error");
-		require(sender != address(0) && block.number >= _nextBulkBlock, "zero address or just no");
+		require(block.number >= _nextBulkBlock, "just no");
 		_nextBulkBlock = block.number + 5;
 		uint senderBalance = _balances[msg.sender];
 		uint total;
