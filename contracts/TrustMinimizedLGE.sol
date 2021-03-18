@@ -75,7 +75,7 @@ contract FoundingEvent {
 	}
 
 	function unstakeAllLpAndForeverLoseFounderRewards(bool ok) public onlyFounder {
-		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].tokenAmount > 0 && ok == true, "tokens locked or claim rewards");
+		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].tokenAmount > 0 && ok == true, "tokens locked or get rewards");
 		_cleanUpLinked(msg.sender);
 		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
 		IERC20(_tokenETHLP).transfer(address(msg.sender), _calcLpShare(msg.sender));
@@ -90,17 +90,17 @@ contract FoundingEvent {
 		uint halver = block.number/10000000;uint rewardsRate = 21e18;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		if(tokenAmount == 0){_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
 		uint toClaim = (block.number - rewardsGenesis)*rewardsRate*tokenAmount/_totalTokenAmount;
-		if (toClaim > claimed) {toClaim -= claimed; _founders[msg.sender].claimed += toClaim; ITreasury(_treasury).claimFounderRewards(address(msg.sender), toClaim);}
+		if (toClaim > claimed) {toClaim -= claimed; _founders[msg.sender].claimed += toClaim; ITreasury(_treasury).getFounderRewards(address(msg.sender), toClaim);}
 	}
 
 	function migrate(address contr) public onlyFounder {
-		require(_founders[msg.sender].tokenAmount > 0, "claim rewards before this");
+		require(_founders[msg.sender].tokenAmount > 0, "get rewards before this");
 		require(contr == _treasury || contr == _optimismBridge || contr == _etcBridge,"invalid contract");
 		_cleanUpLinked(msg.sender);
 		uint lpShare = _calcLpShare(msg.sender);
 		if (contr == _treasury) {
 			IERC20(_tokenETHLP).transfer(_treasury, lpShare);
-			ITreasury(_treasury).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);// should tokenAmount be cut in half here?	
+			ITreasury(_treasury).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
 		} else if (contr == _optimismBridge) {
 			IERC20(_tokenETHLP).transfer(_optimismBridge, lpShare);
 			IOptimismBridge(_optimismBridge).fromFoundersContract(msg.sender,lpShare,_founders[msg.sender].claimed,_founders[msg.sender].tokenAmount,_founders[msg.sender].lockUpTo);
@@ -132,7 +132,7 @@ contract FoundingEvent {
 		_founders[account].lockUpTo = lockUpTo;
 	}
 
-	function lockFor3Years(bool ok) public onlyFounder{require(ok==true && _founders[msg.sender].tokenAmount>0,"first claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
+	function lockFor3Years(bool ok) public onlyFounder{require(ok==true && _founders[msg.sender].tokenAmount>0,"first get rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
 	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
 	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 	function setBridges(address optimism, address etc) external {require(msg.sender==_deployer,"can't");_optimismBridge = optimism;_etcBridge = etc;emit BridgesDefined(optimism,etc);}
@@ -153,8 +153,7 @@ contract FoundingEvent {
 	}
 
 	function _calcLpShare(address msgsender) internal view returns (uint lps){
-		uint ethContributed = _founders[msgsender].ethContributed;
-		uint lpShare = _totalLGELPtokensMinted*ethContributed/_totalETHDeposited;
+		uint lpShare = _totalLGELPtokensMinted*_founders[msgsender].ethContributed/_totalETHDeposited;
 		uint inStock = IERC20(_tokenETHLP).balanceOf(address(this));
 		if (lpShare > inStock) {lpShare = inStock;}
 		return lpShare;
