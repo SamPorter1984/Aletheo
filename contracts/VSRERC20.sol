@@ -74,7 +74,7 @@ contract VSRERC20 is Context, IERC20 {
 	function bulkTransfer(address[] memory recipients, uint[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
 		require(recipients.length == amounts.length && amounts.length < 500,"human error");
 		require(block.number >= _nextBulkBlock, "just no");
-		_nextBulkBlock = block.number + 5;
+		_nextBulkBlock = block.number + 20; // maybe should be more, because of potential network congestion transfers like this could create. especially if more projects use it.
 		uint senderBalance = _balances[msg.sender];
 		uint total;
 		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];_balances[recipients[i]] += amounts[i];}else{revert();}}
@@ -88,7 +88,7 @@ contract VSRERC20 is Context, IERC20 {
 	function bulkTransferFrom(address[] memory senders, address recipient, uint[] memory amounts) public returns (bool) { // unsafe if there won't be restrictions for contract allowances
 		require(senders.length == amounts.length && amounts.length < 400,"human error");
 		require(block.number >= _nextBulkBlock && _allowedContracts[_msgSender()] == true, "don't");
-		_nextBulkBlock = block.number + 5;
+		_nextBulkBlock = block.number + 20;
 		uint total;
 		for (uint i = 0;i<amounts.length;i++) {
 			if (amounts[i] > 0 && _balances[senders[i]] >= amounts[i]){total+= amounts[i];_balances[senders[i]]-=amounts[i];} else {revert();}
