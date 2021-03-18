@@ -42,7 +42,7 @@ contract VSRERC20 is Context, IERC20 {
 		_balances[msg.sender] = 1e30;
 	}
 
-	modifier onlyGovernance() {require(msg.sender == _governance, "only governance");_;}
+	modifier onlyGovernance() {require(msg.sender == _governance);_;}
 
 	function stats() public view returns(uint emis, uint withdrawn, uint govSet) {return(42e19,_withdrawn,_governanceSet);}
 	function name() public view returns (string memory) {return _name;}
@@ -53,19 +53,19 @@ contract VSRERC20 is Context, IERC20 {
 	function balanceOf(address account) public view override returns (uint) {return _balances[account];}
 
 	function transfer(address recipient, uint amount) public override returns (bool) {_transfer(_msgSender(), recipient, amount);return true;}
-	function approve(address spender, uint amount) public override returns (bool) {if (_allowedContracts[spender] == true) {return true;} else {revert();}}
+	function approve(address spender, uint amount) public override returns (bool) {if (_allowedContracts[spender] == true) {return true;} else {return false;}}//kept it just in case for complience to erc20
 
 	function transferFrom(address sender, address recipient, uint amount) public override returns (bool) {
-		require(_allowedContracts[_msgSender()] == true, "exceeds allowance");
+		require(_allowedContracts[_msgSender()] == true);
 		_transfer(sender, recipient, amount);
 		return true;
 	}
 
 	function _transfer(address sender, address recipient, uint amount) internal {
-		require(sender != address(0) && recipient != address(0), "zero address");
+		require(sender != address(0) && recipient != address(0));
 		_beforeTokenTransfer(sender, amount);
 		uint senderBalance = _balances[sender];
-		require(senderBalance >= amount, "exceeds balance");
+		require(senderBalance >= amount);
 		_balances[sender] = senderBalance - amount;
 		_balances[recipient] += amount;
 		emit Transfer(sender, recipient, amount);
@@ -73,12 +73,12 @@ contract VSRERC20 is Context, IERC20 {
 
 	function bulkTransfer(address[] memory recipients, uint[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
 		require(recipients.length == amounts.length && amounts.length < 500,"human error");
-		require(block.number >= _nextBulkBlock, "just no");
+		require(block.number >= _nextBulkBlock);
 		_nextBulkBlock = block.number + 20; // maybe should be more, because of potential network congestion transfers like this could create. especially if more projects use it.
 		uint senderBalance = _balances[msg.sender];
 		uint total;
 		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];_balances[recipients[i]] += amounts[i];}else{revert();}}
-		require(senderBalance >= total, "don't");
+		require(senderBalance >= total);
 		if (msg.sender == _treasury) {_beforeTokenTransfer(msg.sender, total);}
 		_balances[msg.sender] = senderBalance - total;
 		emit BulkTransfer(_msgSender(), recipients, amounts);
@@ -87,7 +87,7 @@ contract VSRERC20 is Context, IERC20 {
 
 	function bulkTransferFrom(address[] memory senders, address recipient, uint[] memory amounts) public returns (bool) { // unsafe if there won't be restrictions for contract allowances
 		require(senders.length == amounts.length && amounts.length < 400,"human error");
-		require(block.number >= _nextBulkBlock && _allowedContracts[_msgSender()] == true, "don't");
+		require(block.number >= _nextBulkBlock && _allowedContracts[_msgSender()] == true);
 		_nextBulkBlock = block.number + 20;
 		uint total;
 		for (uint i = 0;i<amounts.length;i++) {
@@ -100,18 +100,17 @@ contract VSRERC20 is Context, IERC20 {
 
 	function _beforeTokenTransfer(address from, uint amount) internal { // hardcoded address
 		if (from == _treasury) { // so the treasury will contain all the funds, it will be one contract instead of several
-			require(block.number > _genesisBlock, "safe math");
-			require(_lock == false, "reentrancy guard");
+			require(block.number > _genesisBlock);
+			require(_lock == false);
 			_lock = true;
-			require(amount <= balanceOf(_treasury),"too much");
 			uint allowed = (block.number - _genesisBlock)*42e19 - _withdrawn;
-			require(amount <= allowed, "not yet");
+			require(amount <= allowed && amount <= balanceOf(_treasury), "too much");
 			_withdrawn += amount;
 			_lock = false;
 		}
 	}
 
 	function setNameSymbol(string memory name_, string memory symbol_) public onlyGovernance {_name = name_;_symbol = symbol_;}
-	function setGovernance(address address_) public onlyGovernance {require(_governanceSet < 3, "already set");_governanceSet += 1;_governance = address_;}
+	function setGovernance(address address_) public onlyGovernance {require(_governanceSet < 3);_governanceSet += 1;_governance = address_;}
 	function allowanceToContract(address contract_) public onlyGovernance {_allowedContracts[contract_] = true;}// not to forget to add uniswap contract. an address with no bytecode can be added, but it's ok
 }
