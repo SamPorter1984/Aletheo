@@ -3,8 +3,7 @@ pragma solidity >=0.7.0 <0.9.0;
 // OpenZeppelin Upgradeability contracts modified by Sam Porter. Proxy for Nameless Protocol contracts
 // You can find original set of contracts here: https://github.com/OpenZeppelin/openzeppelin-contracts/tree/master/contracts/proxy
 
-// Had to pack OpenZeppelin upgradeability contracts in one single contract for readability. It's basically the same OpenZeppelin functions 
-// but in one contract with some differences:
+// Had to pack OpenZeppelin upgradeability contracts in one single contract for readability. Some differences:
 // 1. DEADLINE is a block after which it becomes impossible to upgrade the contract. Defined in constructor and here it's ~2 years.
 // Maybe not even required for most contracts, but I kept it as an option.
 // 2. UPGRADE_BLOCK defines how often the contract can be upgraded. Defined in _setNextLogic() function and the interval here is set
