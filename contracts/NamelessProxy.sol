@@ -14,6 +14,7 @@ pragma solidity >=0.7.0 <0.9.0;
 // 5. prolongLock() allows to add to UPGRADE_BLOCK. Basically allows to prolong lock. Could prolong to maximum solidity number so the deadline might not be needed 
 // 6. logic contract is not being set suddenly. it's being stored in NEXT_LOGIC_SLOT for a month and only after that it can be set as LOGIC_SLOT.
 // Users have time to decide on if the deployer or the governance is malicious and exit safely.
+// 7. Admin rights are now burnable
 
 // It fixes upgradeability bug I believe. Consensys won't be so smug about it anymore.
 
@@ -45,13 +46,14 @@ contract NamelessProxy {
 		assembly {sstore(DEADLINE_SLOT,deadline)}
 	}
 	modifier ifAdmin() {if (msg.sender == _admin()) {_;} else {_fallback();}}
+
 	function getSettings() external ifAdmin returns(address logic, uint pgrdBlck, uint ddln) {return (_logic(), _upgradeBlock(), _deadline());}
 	function _logic() internal view returns (address logic) {assembly { logic := sload(LOGIC_SLOT) }}
 	function _upgradeBlock() internal view returns (uint bl) {assembly { bl := sload(UPGRADE_BLOCK_SLOT) }}
 	function _nextLogicBlock() internal view returns (uint bl) {assembly { bl := sload(NEXT_LOGIC_BLOCK_SLOT) }}
 	function _deadline() internal view returns (uint bl) {assembly { bl := sload(DEADLINE_SLOT) }}
 	function _governanceSet() internal view returns (uint t) {assembly { t := sload(GOVERNANCE_SLOT) }}
-	function changeAdmin(address newAdm) external ifAdmin {require(newAdm != address(0), "Can't change admin to 0");emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
+	function changeAdmin(address newAdm) external ifAdmin {emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
 	function proposeTo(address newLogic) external ifAdmin {_setNextLogic(newLogic);}
 	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {_setNextLogic(newLogic);(bool success,) = newLogic.delegatecall(data);require(success);}
 	function prolongLock(uint block_) external ifAdmin {uint ub; assembly {ub := sload(UPGRADE_BLOCK_SLOT) ub := add(ub,block_) sstore(UPGRADE_BLOCK_SLOT,ub)}emit UpgradePostponed(ub);}
