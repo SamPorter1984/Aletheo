@@ -1,6 +1,6 @@
 pragma solidity >=0.7.0 <0.9.0;
 
-// EIP-1984: https://ethereum-magicians.org/t/eip-1984-trust-minimized-proxy/5742 this is big for DeFi, but certainly not as big for eips in general,
+// EIP-1984: this is big for DeFi, but certainly not as big for eips in general,
 // either way I hope it becomes a standard which will allow to easily distinguish genuine anonymous devs from scammers.
 
 // OpenZeppelin Upgradeability contracts modified by Sam Porter. Proxy for Nameless Protocol contracts
@@ -17,7 +17,8 @@ pragma solidity >=0.7.0 <0.9.0;
 // 5. logic contract is not being set suddenly. it's being stored in NEXT_LOGIC_SLOT for a month and only after that it can be set as LOGIC_SLOT.
 // Users have time to decide on if the deployer or the governance is malicious and exit safely.
 
-// It fixes "upgradeability bug" I believe.
+// It fixes "upgradeability bug" I believe. Also I sincerely believe that upgradeability is not about fixing bugs, but about upgradeability,
+// so yeah, proposed logic has to clean.
 
 contract TrustMinimizedProxy {
 	event Upgraded(address indexed toLogic);
