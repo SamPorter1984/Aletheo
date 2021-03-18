@@ -1,0 +1,10 @@
+@font-face {
+	font-family: Ubuntu;
+	src: url(Ubuntu.ttf);
+}
+
+body {
+	font-family: Ubuntu, Arial, Verdana;
+	width:700px;
+	margin: auto;
+}
