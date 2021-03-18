@@ -13,7 +13,7 @@ import "./IERC20.sol";
 // Allowances are possible only for approved by the governance contracts. In fact, _allowances are completely wiped, only _allowedContracts check exists.
 // _mint() and _burn() functions are removed.
 // Token name and symbol can be changed.
-// Bulk transfer allows to transact in bulk cheaper by making almost three times less store writes in comparison to regular erc-20 transfers
+// Bulk transfer allows to transact in bulk cheaper by making up to three times less store writes in comparison to regular erc-20 transfers
 
 contract VSRERC20 is Context, IERC20 {
     event BulkTransfer(address indexed from, address[] indexed recipients, uint[] value);
