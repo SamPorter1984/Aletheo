@@ -7,7 +7,7 @@ pragma solidity >=0.7.0 <0.9.0;
 // but in one contract with some differences:
 // 1. constructor does not require arguments.
 // 2. _deadline variable is a block after which it becomes impossible to upgrade the contract. Defined in constructor and here it's ~2 years.
-// Maybe not even required, but I kept it as an option.
+// Maybe not even required for most contracts, but I kept it as an option.
 // 3. _upgradeBlock defines how often the contract can be upgraded. Defined in _setNextLogic() function and the interval here is set
 // to 172800 blocks ~1 month.
 // 4. Admin can be changed only three times.
@@ -27,38 +27,41 @@ contract NamelessProxy {
 	bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 	bytes32 internal constant LOGIC_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 	bytes32 internal constant NEXT_LOGIC_SLOT = 0x56c185b2cb0723d5ac9bee49054a51e03ffce668e6ca209d91e6a1878e3ca4aa;
-	uint private _upgradeBlock;
-	uint private _deadline;
-	uint private _governanceSet;
-	uint private _nextLogicBlock;
+	bytes32 internal constant NEXT_LOGIC_BLOCK_SLOT = 0x717ada2fcd4aad6ac93cdada14e28f6d4a8483da76e136464708d860266d8f95;//nameless.proxy.nextLogicBlock
+	bytes32 internal constant UPGRADE_BLOCK = ;
+	bytes32 internal constant DEADLINE = ;
+	bytes32 internal constant GOVERNANCE_SET = ;
+
 	
 	constructor() {
 		require(ADMIN_SLOT == bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1) && LOGIC_SLOT == bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1), "code broke");
-		require(NEXT_LOGIC_SLOT == bytes32(uint256(keccak256('nameless.proxy.nextLogic')) - 1), "code broke");
+		require(NEXT_LOGIC_SLOT == bytes32(uint256(keccak256('nameless.proxy.nextLogic')) - 1));
+		require(NEXT_LOGIC_BLOCK_SLOT == bytes32(uint256(keccak256('nameless.proxy.nextLogicBlock')) - 1));
 		_setAdmin(msg.sender);
-		_upgradeBlock = 0;
 		_deadline = block.number + 4204800; // ~2 years as default
 	}
 
-	modifier ifAdmin() {if (msg.sender == _admin()) {_;} else {_fallback();}}
-
-	function getSettings() external ifAdmin returns(address logic, uint pgrdBlck, uint ddln) {return (_logic(), _upgradeBlock, _deadline);}
+	function getSettings() external ifAdmin returns(address logic, uint pgrdBlck, uint ddln) {return (_logic(), _upgradeBlock(), _deadline());}
 	function _logic() internal view returns (address logic) {assembly { logic := sload(LOGIC_SLOT) }}
+	function _upgradeBlock() internal view returns (uint bl) {assembly { bl := sload(UPGRADE_BLOCK) }}
+	function _nextLogicBlock() internal view returns (uint bl) {assembly { bl := sload(NEXT_LOGIC_BLOCK_SLOT) }}
+	function _deadline() internal view returns (uint bl) {assembly { bl := sload(DEADLINE) }}
+	function _governanceSet() internal view returns (uint t) {assembly { t := sload(GOVERNANCE_SET) }}
 	function changeAdmin(address newAdm) external ifAdmin {require(newAdm != address(0), "Can't change admin to 0");emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
 	function proposeTo(address newLogic) external ifAdmin {_setNextLogic(newLogic);}
 	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {_setNextLogic(newLogic);(bool success,) = newLogic.delegatecall(data);require(success);}
 	function prolongLock(uint block_) external ifAdmin {_upgradeBlock+=block_;emit UpgradePostponed(_upgradeBlock);}
 
 	function _setNextLogic(address nextLogic) internal {
-		require(block.number >= _upgradeBlock && block.number < _deadline, "wait or too late");
+		require(block.number >= _upgradeBlock() && block.number < _deadline(), "wait or too late");
 		require(_isContract(nextLogic), "Can't set to 0 bytecode");
-		_upgradeBlock = block.number + 172800;
-		_nextLogicBlock = block.number + 172800;
-		assembly { sstore(NEXT_LOGIC_SLOT, nextLogic) }
+		uint upgradeBlock = block.number + 172800;
+		uint nextLogicBlock = block.number + 172800;
+		assembly { sstore(NEXT_LOGIC_SLOT, nextLogic) sstore(NEXT_LOGIC_BLOCK_SLOT, nextLogicBlock) sstore(UPGRADE_BLOCK, upgradeBlock) }
 		emit NextLogicDefined(nextLogic);
 	}
 
-	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock,"wait");address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT, logic)}emit Upgraded(logic);}
+	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock(),"wait");address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT, logic)}emit Upgraded(logic);}
 
 	function cancelUpgrade() external ifAdmin {address logic;assembly {logic := sload(LOGIC_SLOT)sstore(NEXT_LOGIC_SLOT, logic)}emit Canceled(logic);}
 
