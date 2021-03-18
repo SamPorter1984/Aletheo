@@ -14,7 +14,7 @@ pragma solidity >=0.7.0 <0.9.0;
 // 5. prolongLock() allows to add to UPGRADE_BLOCK. Basically allows to prolong lock. Could prolong to maximum solidity number so the deadline might not be needed 
 // 6. logic contract is not being set suddenly. it's being stored in NEXT_LOGIC_SLOT for a month and only after that it can be set as LOGIC_SLOT.
 // Users have time to decide on if the deployer or the governance is malicious and exit safely.
-// 7. Admin rights are now burnable
+// 7. Admin rights are burnable
 
 // It fixes upgradeability bug I believe. Consensys won't be so smug about it anymore.
 
