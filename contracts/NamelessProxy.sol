@@ -44,7 +44,7 @@ contract NamelessProxy {
 		uint deadline = block.number + 4204800; // ~2 years as default
 		assembly {sstore(DEADLINE_SLOT,deadline)}
 	}
-
+	modifier ifAdmin() {if (msg.sender == _admin()) {_;} else {_fallback();}}
 	function getSettings() external ifAdmin returns(address logic, uint pgrdBlck, uint ddln) {return (_logic(), _upgradeBlock(), _deadline());}
 	function _logic() internal view returns (address logic) {assembly { logic := sload(LOGIC_SLOT) }}
 	function _upgradeBlock() internal view returns (uint bl) {assembly { bl := sload(UPGRADE_BLOCK_SLOT) }}
@@ -54,7 +54,7 @@ contract NamelessProxy {
 	function changeAdmin(address newAdm) external ifAdmin {require(newAdm != address(0), "Can't change admin to 0");emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
 	function proposeTo(address newLogic) external ifAdmin {_setNextLogic(newLogic);}
 	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {_setNextLogic(newLogic);(bool success,) = newLogic.delegatecall(data);require(success);}
-	function prolongLock(uint block_) external ifAdmin {assembly {let ub := sload(UPGRADE_BLOCK_SLOT) ub := add(ub,block_) sstore(UPGRADE_BLOCK_SLOT,ub)}emit UpgradePostponed(upgradeBlock);}
+	function prolongLock(uint block_) external ifAdmin {uint ub; assembly {ub := sload(UPGRADE_BLOCK_SLOT) ub := add(ub,block_) sstore(UPGRADE_BLOCK_SLOT,ub)}emit UpgradePostponed(ub);}
 
 	function _setNextLogic(address nextLogic) internal {
 		require(block.number >= _upgradeBlock() && block.number < _deadline(), "wait or too late");
