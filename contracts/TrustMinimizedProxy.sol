@@ -1,6 +1,6 @@
 pragma solidity >=0.7.0 <0.9.0;
 
-// EIP-1984: this is big for DeFi, but certainly not as big for eips in general,
+// EIP-1984: https://ethereum-magicians.org/t/eip-1984-trust-minimized-proxy/5742/2 this is big for DeFi, but certainly not as big for eips in general,
 // either way I hope it becomes a standard which will allow to easily distinguish genuine anonymous devs from scammers.
 
 // OpenZeppelin Upgradeability contracts modified by Sam Porter. Proxy for Nameless Protocol contracts
