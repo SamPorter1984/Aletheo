@@ -96,7 +96,9 @@ contract FoundingEvent {
 	function migrate(address contr) public onlyFounder {
 		require(_founders[msg.sender].tokenAmount > 0, "claim rewards before this");
 		require(contr == _treasury || contr == _optimismBridge || contr == _etcBridge,"invalid contract");
-		_cleanUpLinked(msg.sender);
+		if (_linkedAddresses[msg.sender] != address(0)) {
+			address linkedAddress = _linkedAddresses[msgsender]; delete _linkedAddresses[msgsender]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
+		}
 		uint lpShare = _calcLpShare(msg.sender);
 		if (contr == _treasury) {
 			IERC20(_tokenETHLP).transfer(_treasury, lpShare);
@@ -132,7 +134,7 @@ contract FoundingEvent {
 		_founders[account].lockUpTo = lockUpTo;
 	}
 
-	function lock(bool ok) public onlyFounder{require(ok==true && _founders[msg.sender].tokenAmount>0,"first claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
+	function lockFor3Years(bool ok) public onlyFounder{require(ok==true && _founders[msg.sender].tokenAmount>0,"first claim rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
 	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
 	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 	function setBridges(address optimism, address etc) external {require(msg.sender==_deployer,"can't");_optimismBridge = optimism;_etcBridge = etc;emit BridgesDefined(optimism,etc);}
@@ -140,17 +142,10 @@ contract FoundingEvent {
 	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
 		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false, "already linked these or somebody already uses this");
 		require(_isFounder(account) == false && _founders[msg.sender].ethContributed >= 1e16, "can't link founders or not enough eth deposited");
-		_cleanUpLinked(msg.sender);
 		_linkedAddresses[msg.sender] = account;
 		_linkedAddresses[account] = msg.sender;
 		_takenAddresses[account] = true;
 		emit AddressLinked(msg.sender,account);
-	}
-
-	function _cleanUpLinked(address msgsender) internal {
-		if (_linkedAddresses[msgsender] != address(0)) {
-			address linkedAddress = _linkedAddresses[msgsender]; delete _linkedAddresses[msgsender]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
-		}
 	}
 
 	function _calcLpShare(address msgsender) internal view returns (uint lps){
