@@ -28,13 +28,13 @@ contract DatabaseTestnet {
 
 	constructor() {_governance = msg.sender;}
 
-	modifier onlyOracle() {require(_oracles[msg.sender] == true, "not an oracle");_;}
-	modifier onlyGovernance() {require(msg.sender == _governance, "not a governance address");_;}
+	modifier onlyOracle() {require(_oracles[msg.sender] == true);_;}
+	modifier onlyGovernance() {require(msg.sender == _governance);_;}
 
-	modifier onlyFounder() {require(_founders[msg.sender] > 0, "Not a Founder");_;}
+	modifier onlyFounder() {require(_founders[msg.sender] > 0);_;}
 
 	function recordEntry(bytes32 _hash, string memory _entry) public { // method id
-		require(_blockNumbers[msg.sender] + 25 >= block.number, "too early"); // mandatory for free testnet
+		require(_blockNumbers[msg.sender] + 25 >= block.number); // mandatory for free testnet
 		if (_approvalRequired == false) {_blockNumbers[msg.sender] = block.number; emit Entry(msg.sender, _hash, _entry);}
 		else if (_workers[msg.sender] == true) {_blockNumbers[msg.sender] = block.number; emit Entry(msg.sender, _hash, _entry);}
 	}
@@ -48,15 +48,15 @@ contract DatabaseTestnet {
 		}
 	}
 
-	function newPeriod(uint endB) public onlyGovernance {
+	function newPeriod(uint endB) public onlyGovernance { // this function is not required on testnet, it's a point of reference for decentralized oracle network
 		uint counter = _periodCounter;
-		require(block.number >= _periods[counter].endBlock,"too soon");
+		require(block.number >= _periods[counter].endBlock);
 		uint previousEndB = _periods[counter].endBlock;
 		uint startB = previousEndB+1;
 		if (previousEndB == 0) {
 			startB = block.number;	
 		}
-		require(endB > startB,"forbidden");
+		require(endB > startB);
 		_periodCounter++;
 		counter++;
 		_periods[counter].startBlock = startB;
