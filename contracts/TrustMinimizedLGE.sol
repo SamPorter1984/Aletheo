@@ -59,11 +59,10 @@ contract FoundingEvent {
 	event AddressLinked(address indexed address1, address indexed address2);
 	event BridgesDefined(address indexed optimism,address indexed etc);
 
-	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && _lock != true, "Not a Founder or locked");_lock = true;_;_lock = false;}
+	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && _lock != true);_lock = true;_;_lock = false;}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
-		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true, "LGE has already ended or didn't start, or no agreement provided");
-		require(_isContract(msg.sender) == false, "contracts can't be Founders");
+		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true && _isContract(msg.sender) == false);
 		if (_takenAddresses[msg.sender] == true) {
 			address linkedAddress = _linkedAddresses[msg.sender]; delete _linkedAddresses[linkedAddress]; delete _linkedAddresses[msg.sender]; delete _takenAddresses[msg.sender];
 		}
@@ -75,7 +74,7 @@ contract FoundingEvent {
 	}
 
 	function unstakeAllLpAndForeverLoseFounderRewards(bool ok) public onlyFounder {
-		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].tokenAmount > 0 && ok == true, "tokens locked or get rewards");
+		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].tokenAmount > 0 && ok == true);
 		_cleanUpLinked(msg.sender);
 		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
 		IERC20(_tokenETHLP).transfer(address(msg.sender), _calcLpShare(msg.sender));
@@ -84,7 +83,7 @@ contract FoundingEvent {
 
 	function getRewards() public onlyFounder {
 		uint rewardsGenesis = _rewardsGenesis;
-		require(block.number > rewardsGenesis, "too soon");
+		require(block.number > rewardsGenesis);
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
 		uint claimed = _founders[msg.sender].claimed;
 		uint halver = block.number/10000000;uint rewardsRate = 21e18;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
@@ -94,8 +93,8 @@ contract FoundingEvent {
 	}
 
 	function migrate(address contr) public onlyFounder {
-		require(_founders[msg.sender].tokenAmount > 0, "get rewards before this");
-		require(contr == _treasury || contr == _optimismBridge || contr == _etcBridge,"invalid contract");
+		require(_founders[msg.sender].tokenAmount > 0);
+		require(contr == _treasury || contr == _optimismBridge || contr == _etcBridge);
 		_cleanUpLinked(msg.sender);
 		uint lpShare = _calcLpShare(msg.sender);
 		if (contr == _treasury) {
@@ -113,14 +112,13 @@ contract FoundingEvent {
 	}
 // _lock for every founder function is not sufficient. this function has to be expensive as alert of something fishy just in case
 // metamask has to somehow provide more info about a transaction
-	function newAddress(address account) public onlyFounder {require(_isContract(account) == false, "can't change to contract");
+	function newAddress(address account) public onlyFounder {require(_isContract(account) == false);
 		for (uint i = 0;i<10;i++) {delete _founders[msg.sender].newAddress;_founders[msg.sender].newAddress = account;} 
 	}
 
 	function changeAddress() public onlyFounder { // no founder, nobody should trust dapp interface. only blockchain. maybe a function like this should not be provided through dapp at all
-		require(IGovernance(_governance).getVoting() == false, "voting is ongoing");
 		address account = _founders[msg.sender].newAddress;
-		require(account != address(0),"new address wasn't set");
+		require(account != address(0) && IGovernance(_governance).getVoting() == false);
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint claimed = _founders[msg.sender].claimed;
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
@@ -132,14 +130,13 @@ contract FoundingEvent {
 		_founders[account].lockUpTo = lockUpTo;
 	}
 
-	function lockFor3Years(bool ok) public onlyFounder{require(ok==true && _founders[msg.sender].tokenAmount>0,"first get rewards");_founders[msg.sender].lockUpTo = block.number + 6307200;}
+	function lockFor3Years(bool ok) public onlyFounder{require(ok==true && _founders[msg.sender].tokenAmount>0);_founders[msg.sender].lockUpTo = block.number + 6307200;}
 	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
 	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
-	function setBridges(address optimism, address etc) external {require(msg.sender==_deployer,"can't");_optimismBridge = optimism;_etcBridge = etc;emit BridgesDefined(optimism,etc);}
+	function setBridges(address optimism, address etc) external {require(msg.sender==_deployer);_optimismBridge = optimism;_etcBridge = etc;emit BridgesDefined(optimism,etc);}
 
 	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
-		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false, "already linked these or somebody already uses this");
-		require(_isFounder(account) == false && _founders[msg.sender].ethContributed >= 1e16, "can't link founders or not enough eth deposited");
+		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false && _isFounder(account) == false && _founders[msg.sender].ethContributed >= 1e16);
 		_linkedAddresses[msg.sender] = account;
 		_linkedAddresses[account] = msg.sender;
 		_takenAddresses[account] = true;
