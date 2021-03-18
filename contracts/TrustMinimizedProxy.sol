@@ -35,7 +35,7 @@ contract TrustMinimizedProxy {
 	constructor(address logic, bytes memory data) payable {
 		require(ADMIN_SLOT == bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1) && LOGIC_SLOT == bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1) && // this require is simply against human error, can be removed if you know what you are doing
 		NEXT_LOGIC_SLOT == bytes32(uint256(keccak256('eip1984.proxy.nextLogic')) - 1) && NEXT_LOGIC_BLOCK_SLOT == bytes32(uint256(keccak256('eip1984.proxy.nextLogicBlock')) - 1) &&
-		PROPOSE_BLOCK_SLOT == bytes32(uint256(keccak256('eip1984.proxy.proposeBlock')) - 1) && DEADLINE_SLOT == bytes32(uint256(keccak256('eip1984.proxy.deadline')) - 1), "code broke");
+		PROPOSE_BLOCK_SLOT == bytes32(uint256(keccak256('eip1984.proxy.proposeBlock')) - 1) && DEADLINE_SLOT == bytes32(uint256(keccak256('eip1984.proxy.deadline')) - 1));
 		_setAdmin(msg.sender);
 		if(data.length > 0) {
 			(bool success,) = logic.delegatecall(data);
@@ -57,15 +57,15 @@ contract TrustMinimizedProxy {
 	function prolongLock(uint block_) external ifAdmin {uint pb; assembly {pb := sload(PROPOSE_BLOCK_SLOT) pb := add(pb,block_) sstore(PROPOSE_BLOCK_SLOT,pb)}emit ProposalsRestrictedUntil(pb);}
 
 	function _setNextLogic(address nextLogic) internal {
-		require(block.number >= _proposeBlock() && block.number < _deadline(), "wait or too late");
-		require(_isContract(nextLogic), "Can't set to 0 bytecode");
+		require(block.number >= _proposeBlock() && block.number < _deadline());
+		require(_isContract(nextLogic));
 		uint proposeBlock = block.number + 172800;
 		uint nextLogicBlock = block.number + 172800;
 		assembly { sstore(NEXT_LOGIC_SLOT, nextLogic) sstore(NEXT_LOGIC_BLOCK_SLOT, nextLogicBlock) sstore(PROPOSE_BLOCK_SLOT, proposeBlock) }
 		emit NextLogicDefined(nextLogic);
 	}
 
-	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock(),"wait");address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT,logic)}emit Upgraded(logic);}
+	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock());address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT,logic)}emit Upgraded(logic);}
 
 	function cancelUpgrade() external ifAdmin {address logic;assembly {logic := sload(LOGIC_SLOT)sstore(NEXT_LOGIC_SLOT, logic)}emit Canceled(logic);}
 
@@ -75,7 +75,7 @@ contract TrustMinimizedProxy {
 
 	fallback () external payable {_fallback();}
 	receive () external payable {_fallback();}
-	function _fallback() internal {require(msg.sender != _admin(), "Can't call fallback from admin");_delegate(_logic());}
+	function _fallback() internal {require(msg.sender != _admin());_delegate(_logic());}
 
 	function _delegate(address logic_) internal {
 		assembly {
