@@ -50,7 +50,7 @@ contract NamelessProxy {
 	function changeAdmin(address newAdm) external ifAdmin {require(newAdm != address(0), "Can't change admin to 0");emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
 	function proposeTo(address newLogic) external ifAdmin {_setNextLogic(newLogic);}
 	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {_setNextLogic(newLogic);(bool success,) = newLogic.delegatecall(data);require(success);}
-	function prolongLock(uint block_) external ifAdmin {_upgradeBlock+=block_;emit UpgradePostponed(_upgradeBlock);}
+	function prolongLock(uint block_) external ifAdmin {assembly {let ub := sload(UPGRADE_BLOCK) ub := add(ub,block_) sstore(UPGRADE_BLOCK,ub)}emit UpgradePostponed(upgradeBlock);}
 
 	function _setNextLogic(address nextLogic) internal {
 		require(block.number >= _upgradeBlock() && block.number < _deadline(), "wait or too late");
@@ -67,7 +67,8 @@ contract NamelessProxy {
 
 	function _isContract(address account) internal view returns (bool b) {uint256 size;assembly { size := extcodesize(account) }return size > 0;}
 	function _admin() internal view returns (address adm) {assembly { adm := sload(ADMIN_SLOT) }}
-	function _setAdmin(address newAdm) internal {require(_governanceSet < 3, "governance already set");_governanceSet += 1;assembly { sstore(ADMIN_SLOT, newAdm) }}
+	function _setAdmin(address newAdm) internal {uint gs = _governanceSet();require(gs < 3);assembly {gs := add(gs,1) sstore(ADMIN_SLOT, newAdm) sstore(GOVERNANCE_SET, gs)}}
+
 	fallback () external payable {_fallback();}
 	receive () external payable {_fallback();}
 	function _fallback() internal {require(msg.sender != _admin(), "Can't call fallback from admin");_delegate(_logic());}
