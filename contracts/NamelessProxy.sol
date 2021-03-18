@@ -28,9 +28,9 @@ contract NamelessProxy {
 	bytes32 internal constant LOGIC_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 	bytes32 internal constant NEXT_LOGIC_SLOT = 0x56c185b2cb0723d5ac9bee49054a51e03ffce668e6ca209d91e6a1878e3ca4aa;
 	bytes32 internal constant NEXT_LOGIC_BLOCK_SLOT = 0x717ada2fcd4aad6ac93cdada14e28f6d4a8483da76e136464708d860266d8f95;//nameless.proxy.nextLogicBlock
-	bytes32 internal constant UPGRADE_BLOCK = ;
-	bytes32 internal constant DEADLINE = ;
-	bytes32 internal constant GOVERNANCE_SET = ;
+	bytes32 internal constant UPGRADE_BLOCK_SLOT = ;
+	bytes32 internal constant DEADLINE_SLOT = ;
+	bytes32 internal constant GOVERNANCE_SET_SLOT = ;
 
 	
 	constructor() {
@@ -38,36 +38,37 @@ contract NamelessProxy {
 		require(NEXT_LOGIC_SLOT == bytes32(uint256(keccak256('nameless.proxy.nextLogic')) - 1));
 		require(NEXT_LOGIC_BLOCK_SLOT == bytes32(uint256(keccak256('nameless.proxy.nextLogicBlock')) - 1));
 		_setAdmin(msg.sender);
-		_deadline = block.number + 4204800; // ~2 years as default
+		uint deadline = block.number + 4204800; // ~2 years as default
+		assembly {sstore(DEADLINE_SLOT,deadline)}
 	}
 
 	function getSettings() external ifAdmin returns(address logic, uint pgrdBlck, uint ddln) {return (_logic(), _upgradeBlock(), _deadline());}
 	function _logic() internal view returns (address logic) {assembly { logic := sload(LOGIC_SLOT) }}
-	function _upgradeBlock() internal view returns (uint bl) {assembly { bl := sload(UPGRADE_BLOCK) }}
+	function _upgradeBlock() internal view returns (uint bl) {assembly { bl := sload(UPGRADE_BLOCK_SLOT) }}
 	function _nextLogicBlock() internal view returns (uint bl) {assembly { bl := sload(NEXT_LOGIC_BLOCK_SLOT) }}
-	function _deadline() internal view returns (uint bl) {assembly { bl := sload(DEADLINE) }}
-	function _governanceSet() internal view returns (uint t) {assembly { t := sload(GOVERNANCE_SET) }}
+	function _deadline() internal view returns (uint bl) {assembly { bl := sload(DEADLINE_SLOT) }}
+	function _governanceSet() internal view returns (uint t) {assembly { t := sload(GOVERNANCE_SET_SLOT) }}
 	function changeAdmin(address newAdm) external ifAdmin {require(newAdm != address(0), "Can't change admin to 0");emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
 	function proposeTo(address newLogic) external ifAdmin {_setNextLogic(newLogic);}
 	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {_setNextLogic(newLogic);(bool success,) = newLogic.delegatecall(data);require(success);}
-	function prolongLock(uint block_) external ifAdmin {assembly {let ub := sload(UPGRADE_BLOCK) ub := add(ub,block_) sstore(UPGRADE_BLOCK,ub)}emit UpgradePostponed(upgradeBlock);}
+	function prolongLock(uint block_) external ifAdmin {assembly {let ub := sload(UPGRADE_BLOCK_SLOT) ub := add(ub,block_) sstore(UPGRADE_BLOCK_SLOT,ub)}emit UpgradePostponed(upgradeBlock);}
 
 	function _setNextLogic(address nextLogic) internal {
 		require(block.number >= _upgradeBlock() && block.number < _deadline(), "wait or too late");
 		require(_isContract(nextLogic), "Can't set to 0 bytecode");
 		uint upgradeBlock = block.number + 172800;
 		uint nextLogicBlock = block.number + 172800;
-		assembly { sstore(NEXT_LOGIC_SLOT, nextLogic) sstore(NEXT_LOGIC_BLOCK_SLOT, nextLogicBlock) sstore(UPGRADE_BLOCK, upgradeBlock) }
+		assembly { sstore(NEXT_LOGIC_SLOT, nextLogic) sstore(NEXT_LOGIC_BLOCK_SLOT, nextLogicBlock) sstore(UPGRADE_BLOCK_SLOT, upgradeBlock) }
 		emit NextLogicDefined(nextLogic);
 	}
 
-	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock(),"wait");address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT, logic)}emit Upgraded(logic);}
+	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock(),"wait");address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT,logic)}emit Upgraded(logic);}
 
 	function cancelUpgrade() external ifAdmin {address logic;assembly {logic := sload(LOGIC_SLOT)sstore(NEXT_LOGIC_SLOT, logic)}emit Canceled(logic);}
 
 	function _isContract(address account) internal view returns (bool b) {uint256 size;assembly { size := extcodesize(account) }return size > 0;}
 	function _admin() internal view returns (address adm) {assembly { adm := sload(ADMIN_SLOT) }}
-	function _setAdmin(address newAdm) internal {uint gs = _governanceSet();require(gs < 3);assembly {gs := add(gs,1) sstore(ADMIN_SLOT, newAdm) sstore(GOVERNANCE_SET, gs)}}
+	function _setAdmin(address newAdm) internal {uint gs = _governanceSet();require(gs < 3);assembly {gs := add(gs,1) sstore(ADMIN_SLOT, newAdm) sstore(GOVERNANCE_SET_SLOT, gs)}}
 
 	fallback () external payable {_fallback();}
 	receive () external payable {_fallback();}
