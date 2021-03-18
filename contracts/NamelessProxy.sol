@@ -1,6 +1,6 @@
 pragma solidity >=0.7.0 <0.9.0;
 
-// OpenZeppelin Upgradeability contracts modified by Sam Porter. Proxy for Nameless Protocol, can be called in any way
+// OpenZeppelin Upgradeability contracts modified by Sam Porter. Proxy for Nameless Protocol contracts
 // You can find original set of contracts here: https://github.com/OpenZeppelin/openzeppelin-contracts/tree/master/contracts/proxy
 
 // Had to pack OpenZeppelin upgradeability contracts in one single contract for readability. It's basically the same OpenZeppelin functions 
