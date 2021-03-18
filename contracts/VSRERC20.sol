@@ -49,7 +49,7 @@ contract VSRERC20 is Context, IERC20 {
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view override returns (uint) {uint supply = (block.number - _genesisBlock)*42e19;if (supply > 1e30) {supply = 1e30;}return supply;}
 	function decimals() public pure returns (uint) {return 18;}
-	function allowance(address owner, address spender) public view override returns (uint) {if (_allowedContracts[spender] == true) {return 2**200 - 1;} else {return 0;}}
+	function allowance(address owner, address spender) public view override returns (uint) {if (_allowedContracts[spender] == true) {return 2**256 - 1;} else {return 0;}}
 	function balanceOf(address account) public view override returns (uint) {return _balances[account];}
 
 	function transfer(address recipient, uint amount) public override returns (bool) {_transfer(_msgSender(), recipient, amount);return true;}
