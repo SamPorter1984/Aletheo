@@ -15,16 +15,17 @@ import "./IERC20.sol";
 // Token name and symbol can be changed.
 
 contract VSRERC20 is Context, IERC20 {
-    event BulkTransferFrom(address indexed from, address[] indexed recipients, uint[] value);
+    event BulkTransfer(address indexed from, address[] indexed recipients, uint[] value);
+    event BulkTransferFrom(address[] indexed senders, uint[] amounts, address indexed recipient);
 
 	mapping (address => uint) private _balances;
-	mapping (address => mapping (address => uint)) private _allowances;
 	mapping (address => bool) private _allowedContracts;
 
 	string private _name;
 	string private _symbol;
 	uint private _withdrawn;
 	uint private _governanceSet;
+	uint private _nextBulkBlock;
 	bool private _lock;
 	address private _governance;
 
@@ -47,26 +48,15 @@ contract VSRERC20 is Context, IERC20 {
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view override returns (uint) {uint supply = (block.number - _genesisBlock)*42e19;if (supply > 1e30) {supply = 1e30;}return supply;}
 	function decimals() public pure returns (uint) {return 18;}
-	function allowance(address owner, address spender) public view override returns (uint) {return _allowances[owner][spender];}
+	function allowance(address owner, address spender) public view override returns (uint) {if (_allowedContracts[_msgSender()] == true) {return 2**256 - 1;} else {return 0;}}
 	function balanceOf(address account) public view override returns (uint) {return _balances[account];}
 
 	function transfer(address recipient, uint amount) public override returns (bool) {_transfer(_msgSender(), recipient, amount);return true;}
-	function approve(address spender, uint amount) public override returns (bool) {_approve(_msgSender(), spender, amount);return true;}
+	function approve(address spender, uint amount) public override returns (bool) {if (_allowedContracts[_msgSender()] == true) {return true;} else {revert();}}
 
 	function transferFrom(address sender, address recipient, uint amount) public override returns (bool) {
+		require(_allowedContracts[_msgSender()] == true, "exceeds allowance");
 		_transfer(sender, recipient, amount);
-		uint currentAllowance = _allowances[sender][_msgSender()];
-		require(currentAllowance >= amount, "exceeds allowance");
-		_approve(sender, _msgSender(), currentAllowance - amount);
-		return true;
-	}
-
-	function increaseAllowance(address spender, uint addedValue) public returns (bool) {_approve(_msgSender(), spender, _allowances[_msgSender()][spender] + addedValue);return true;}
-
-	function decreaseAllowance(address spender, uint subtractedValue) public returns (bool) {
-		uint currentAllowance = _allowances[_msgSender()][spender];
-		require(currentAllowance >= subtractedValue, "below zero");
-		_approve(_msgSender(), spender, currentAllowance - subtractedValue);
 		return true;
 	}
 
@@ -80,24 +70,31 @@ contract VSRERC20 is Context, IERC20 {
 		emit Transfer(sender, recipient, amount);
 	}
 
-	function bulkTransfer(address[] memory recipients, uint[] memory amounts) public { // will be used by the contract, or anybody who wants to use it
+	function bulkTransfer(address[] memory recipients, uint[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
 		require(recipients.length == amounts.length && amounts.length < 500,"human error");
-		require(sender != address(0), "zero address");
+		require(sender != address(0) && block.number >= _nextBulkBlock, "zero address or just no");
+		_nextBulkBlock = block.number + 5;
 		uint senderBalance = _balances[msg.sender];
 		uint total;
-		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];}else{revert();}}
+		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];_balances[recipients[i]] += amounts[i];}else{revert();}}
 		require(senderBalance >= total, "don't");
 		if (msg.sender == _treasury) {_beforeTokenTransfer(msg.sender, total);}
 		_balances[msg.sender] = senderBalance - total;
-		for(uint i = 0;i<amounts.length;i++) {_balances[recipients[i]] += amounts[i];}
-		emit BulkTransfer(msg.sender, recipients, amounts);
+		emit BulkTransfer(_msgSender(), recipients, amounts);
+		return true;
 	}
 
-	function _approve(address owner, address spender, uint amount) internal {
-		require(owner != address(0) && spender != address(0), "zero address");
-		require(_allowedContracts[spender] == true, "forbidden spender"); // hardcoded uniswap contract also
-		_allowances[owner][spender] = amount;
-		emit Approval(owner, spender, amount);
+	function bulkTransferFrom(address[] memory senders, address recipient, uint[] memory amounts) public returns (bool) { // unsafe if there won't be restrictions for contract allowances
+		require(senders.length == amounts.length && amounts.length < 400,"human error");
+		require(block.number >= _nextBulkBlock && _allowedContracts[_msgSender()] == true, "don't");
+		_nextBulkBlock = block.number + 5;
+		uint total;
+		for (uint i = 0;i<amounts.length;i++) {
+			if (amounts[i] > 0 && _balances[senders[i]] >= amounts[i]){total+= amounts[i];_balances[senders[i]]-=amounts[i];} else {revert();}
+		}
+		_balances[_msgSender()] += total; // the function does not bother with decreasing allowance at all, since allowance number is a lie and a wasteful computation, after it approves infinity-1
+		emit BulkTransferFrom(senders, amounts, recipient);
+		return true;
 	}
 
 	function _beforeTokenTransfer(address from, uint amount) internal { // hardcoded address
