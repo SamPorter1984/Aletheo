@@ -74,7 +74,7 @@ contract FoundingEvent {
 		if (block.number >= _rewardsGenesis) {_createLiquidity();}
 	}
 
-	function unstakeLP(bool ok) public onlyFounder {
+	function unstakeAllLpAndForeverLoseFounderRewards(bool ok) public onlyFounder {
 		require(_founders[msg.sender].lockUpTo <= block.number && _founders[msg.sender].tokenAmount > 0 && ok == true, "tokens locked or claim rewards");
 		_cleanUpLinked(msg.sender);
 		_totalTokenAmount -= _founders[msg.sender].tokenAmount;
@@ -82,7 +82,7 @@ contract FoundingEvent {
 		delete _founders[msg.sender];
 	}
 
-	function claimLGERewards() public onlyFounder { // has to have first Method Id or close to
+	function getRewards() public onlyFounder {
 		uint rewardsGenesis = _rewardsGenesis;
 		require(block.number > rewardsGenesis, "too soon");
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
