@@ -96,9 +96,7 @@ contract FoundingEvent {
 	function migrate(address contr) public onlyFounder {
 		require(_founders[msg.sender].tokenAmount > 0, "claim rewards before this");
 		require(contr == _treasury || contr == _optimismBridge || contr == _etcBridge,"invalid contract");
-		if (_linkedAddresses[msg.sender] != address(0)) {
-			address linkedAddress = _linkedAddresses[msgsender]; delete _linkedAddresses[msgsender]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
-		}
+		_cleanUpLinked(msg.sender);
 		uint lpShare = _calcLpShare(msg.sender);
 		if (contr == _treasury) {
 			IERC20(_tokenETHLP).transfer(_treasury, lpShare);
@@ -146,6 +144,12 @@ contract FoundingEvent {
 		_linkedAddresses[account] = msg.sender;
 		_takenAddresses[account] = true;
 		emit AddressLinked(msg.sender,account);
+	}
+
+	function _cleanUpLinked(address msgsender) internal {
+		if (_linkedAddresses[msgsender] != address(0)) {
+			address linkedAddress = _linkedAddresses[msgsender]; delete _linkedAddresses[msgsender]; delete _linkedAddresses[linkedAddress]; delete _takenAddresses[linkedAddress];
+		}
 	}
 
 	function _calcLpShare(address msgsender) internal view returns (uint lps){
