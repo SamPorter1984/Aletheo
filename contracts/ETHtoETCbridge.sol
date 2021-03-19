@@ -24,6 +24,7 @@ contract ETHtoETCbridge {
 	uint public callAcrossCost;
 	uint public baseCost;
 	bool private _l;
+	uint public ethBalance;
 	address payable private _aggregator;
 	address private _governance;
 	constructor() {baseCost = 1e16;callAcrossCost = 1e15;_governance = msg.sender;} // and then probably a governance of some sort if not Nameless Protocol governance
@@ -58,7 +59,8 @@ contract ETHtoETCbridge {
 	function registerBridges(address[] memory tknTH,address[] memory tknTC)public onlyAggregator{
 		require(tknTH.length==tknTC.length&&tknTH.length<500);for(uint i=0;i<tknTH.length;i++){bridges[tknTH[i]]=tknTC[i];}
 	}
-
+	function depositEth() public payable{_ethDeposits[msg.sender]+=msg.value;}
+	function withdraw(uint mnt) public{require(_ethDeposits[msg.sender]>= mnt);msg.sender.transfer(mnt);}
 	function _cross(address sndr,address tkn, uint mnt, address t) internal {if (t == address(0)) {emit Cross(sndr,tkn,mnt);} else {emit CrossTo(sndr,tkn,mnt,t);}}
 	function requestBridge(address tkn) public {emit BridgeRequested(tkn);}
 	function updateCost(uint bs, uint cll) public onlyGovernance {baseCost=bs;callAcrossCost=cll;}
