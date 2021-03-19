@@ -26,12 +26,10 @@ contract ETHtoETCbridge {
 	uint public etcBalance;
 	uint public callAcrossCost;
 	uint public baseCost;
-	uint public percentage;
 	bool private _l;
 	address payable private _aggregator;
 	address private _governance;
 	constructor() {
-		percentage = 10000;
 		baseCost = 1e16;
 		callAcrossCost = 1e15;
 		_governance = msg.sender; // and then probably a governance of some sort if not Nameless Protocol governance
@@ -41,18 +39,22 @@ contract ETHtoETCbridge {
 	modifier onlyGovernance(){require(msg.sender ==_governance);_;}
 
 	function cross(address tkn, uint mnt, address t)payable public{
-		uint cost = baseCost*percentage/10000;
-		require(msg.value>cost);
-		if(tkn==address(0)){uint msgvalue = msg.value-cost;_cross(msg.sender,address(0),msgvalue,t);}
+		uint cost = baseCost;
+		uint deposit = msg.value +_ethDeposits[msg.sender];
+		require(deposit>=cost);
+		deposit -= cost;
+		if(tkn==address(0)){require(deposit>=mnt);deposit-=mnt;_cross(msg.sender,address(0),mnt,t);}
 		else {require(bridges[tkn] != address(0) && IERC20(tkn).balanceOf(msg.sender) >= mnt && mnt>0);IERC20(tkn).transferFrom(msg.sender,address(this),mnt);_cross(msg.sender,tkn,mnt,t);}
+		_ethDeposits[msg.sender] = deposit;
 	}
 
-	function _cross(address sndr,address tkn, uint mnt, address t) internal {if (t == address(0)) {mnt-=baseCost;emit Cross(sndr,tkn,mnt);} else {emit CrossTo(sndr,tkn,mnt,t);}}
+	function _cross(address sndr,address tkn, uint mnt, address t) internal {if (t == address(0)) {emit Cross(sndr,tkn,mnt);} else {emit CrossTo(sndr,tkn,mnt,t);}}
 
 	function callAcross(address t, bytes memory dt) payable public {
-		uint cost = dt.length * callAcrossCost + baseCost*percentage/10000;
-		require(msg.value >= cost);
-		if (msg.value>cost) {uint rmndr = msg.value - cost; _ethDeposits[msg.sender] += rmndr; ethBalance+=rmndr;}
+		uint cost = dt.length * callAcrossCost + baseCost;
+		uint deposit = msg.value +_ethDeposits[msg.sender];
+		require(deposit>=cost);
+		_ethDeposits[msg.sender] = deposit;
 		emit CallAcross(msg.sender,t,dt);
 	}
 
@@ -69,7 +71,7 @@ contract ETHtoETCbridge {
 	}
 
 	function updateETCBalance(uint mnt) public onlyAggregator {etcBalance = mnt;}
-	function updateCost(uint bs, uint cll, uint prcntg) public onlyGovernance {baseCost=bs;callAcrossCost=cll;percentage=prcntg;}
+	function updateCost(uint bs, uint cll) public onlyGovernance {baseCost=bs;callAcrossCost=cll;}
 	function setAggregator(address payable ggrgtr) public onlyGovernance {_aggregator = ggrgtr;}
 	function setGovernance(address gvrnnc) public onlyGovernance {_governance = gvrnnc;}
 	function getBridge(address tkn) public view returns(address tknTC){return bridges[tkn];}
