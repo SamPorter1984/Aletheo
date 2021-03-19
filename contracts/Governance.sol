@@ -1,8 +1,8 @@
 pragma solidity >=0.7.0;
 // Author: SamPorter1984
-// You could find some resemblance with Compound governance. It's heavily modified, simplified, cheaper version
+// You could find some resemblance with Compound governance. It's heavily modified, simplified, cheaper version with very high minimum quorum.
 // Again, as little store writes as possible, accuracy is expensive, therefore it's cheaper to make founders and liquidity providers to
-// check their privelege regularly, instead of maintaining expensive computation.
+// check their privelege regularly, instead of maintaining expensive accurate computation.
 import "./ITreasury.sol";
 import "./IFoundingEvent.sol";
 import "./IERC20.sol";
