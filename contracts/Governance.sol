@@ -1,16 +1,16 @@
 pragma solidity >=0.7.0;
 // Author: SamPorter1984
 // You could find some resemblance with Compound governance. It's heavily modified, simplified, cheaper version with very high minimum quorum.
-// Again, as little store writes as possible, accuracy is expensive, therefore it's cheaper to make founders and liquidity providers to
-// check their privelege regularly, instead of maintaining expensive accurate computation.
+// Again, as little store writes as possible, accuracy is expensive, therefore it's cheaper to allow founders and liquidity providers
+// freely check their privelege regularly, instead of maintaining expensive accurate computation.
 import "./ITreasury.sol";
 import "./IFoundingEvent.sol";
 import "./IERC20.sol";
 
 contract Governance {
 	event ProposalCreated(uint id, address proposer, address destination, bytes data, uint endBlock);
-    event ExecuteProposal(uint id,address dstntn,bytes dt);
-    
+	event ExecuteProposal(uint id,address dstntn,bytes dt);
+	
 	struct Proposal {
 		address destination;
 		uint endBlock;
@@ -61,7 +61,8 @@ contract Governance {
 		proposals[id].votes[msg.sender] = true;
 	}
 
-	function lockFor3years(uint amount) external {
+	function lockFor3years(uint amount, bool ok) external {
+		require(ok == true && IERC20(_token).balanceOf(msg.sender) >= amount);
 		IERC20(_token).transferFrom(msg.sender,address(this),amount);
 		_votingPower[msg.sender] += amount;
 		_lock[msg.sender] += 6307200;
