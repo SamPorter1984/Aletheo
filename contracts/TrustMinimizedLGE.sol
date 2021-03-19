@@ -118,7 +118,7 @@ contract FoundingEvent {
 
 	function changeAddress() public onlyFounder { // no founder, nobody should trust dapp interface. only blockchain. maybe a function like this should not be provided through dapp at all
 		address account = _founders[msg.sender].newAddress;
-		require(account != address(0) && IGovernance(_governance).getVoting() == false);
+		require(account != address(0) && block.number + 172800 > IGovernance(_governance).getLastVoted(msg.sender));
 		uint ethContributed = _founders[msg.sender].ethContributed;
 		uint claimed = _founders[msg.sender].claimed;
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
@@ -128,6 +128,7 @@ contract FoundingEvent {
 		_founders[account].claimed = claimed;
 		_founders[account].tokenAmount = tokenAmount;
 		_founders[account].lockUpTo = lockUpTo;
+		IGovernance(_governance).changeAddress(msg.sender,account);
 	}
 
 	function lockFor3Years(bool ok) public onlyFounder{require(ok==true && _founders[msg.sender].tokenAmount>0);_founders[msg.sender].lockUpTo = block.number + 6307200;}
