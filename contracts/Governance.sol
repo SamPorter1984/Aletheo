@@ -56,9 +56,9 @@ contract Governance {
 		uint vote;
 		if(block.number < _lastPrivelegeCheck[msg.sender] + 172800) {vote = _totalVotingPower[msg.sender];} else {vote = _votingPower[msg.sender];} 
 		require(block.number<proposals[id].endBlock&&vote>0&&proposals[id].votes[msg.sender]==false&&_lock[msg.sender]-1036800>=block.number&&_lastVoted[msg.sender]+10<block.number);
+		_lastVoted[msg.sender] = block.number;
 		if(support==true) {proposals[id].forVotes += vote;} else {proposals[id].againstVotes += vote;}
 		proposals[id].votes[msg.sender] = true;
-		_lastVoted[msg.sender] = block.number;
 	}
 
 	function lockFor3years(uint amount) external {
@@ -78,12 +78,15 @@ contract Governance {
 	function resolveVoting(uint id) external {
 		uint forVotes = proposals[id].forVotes;
 		require(forVotes>=300e24 && block.number>=proposals[id].endBlock && proposals[id].executed == false);//300 mil, depends on founders if there will be any executed proposals in first year
+		proposals[id].executed = true;
 		uint totalVotes = forVotes + proposals[id].againstVotes;
 		uint percent = 100*forVotes/totalVotes;
 		if(percent > 60) {_execute(id);}
 	}
 
 	function checkPrivelege() external {
+		require(_lastPrivelegeCheck[msg.sender]+100000 < block.number);
+		_lastPrivelegeCheck[msg.sender] = block.number;
 		uint totalVotingPower = 0;
 		(uint amount,uint lock) = IFoundingEvent(_founding).getFounderTknAmntLckPt(msg.sender);
 		if (lock == 0 || lock - 1036800 < block.number) {amount = 0;} 
@@ -92,7 +95,7 @@ contract Governance {
 		if (lock == 0 || lock - 1036800 < block.number) {amount = 0;} 
 		totalVotingPower += amount;
 		_totalVotingPower[msg.sender] = totalVotingPower;
-		_lastPrivelegeCheck[msg.sender] = block.number;
+		
 	}
 
 	function getLastVoted(address account) external view returns(uint lstVtd) {return _lastVoted[account];}
@@ -111,6 +114,5 @@ contract Governance {
 		bytes memory dt = proposals[id].data;
 		dstntn.call(dt);
 		emit ExecuteProposal(id,dstntn,dt);
-		proposals[id].executed = true;
 	}
 }
