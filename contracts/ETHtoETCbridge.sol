@@ -9,6 +9,7 @@ pragma solidity >=0.7.0 <=0.9.0;
 // oracles will probably create standard erc-20 with a prefix "c" lowercase, as a reference to classic i guess.
 // minimum store writes, so it does not track token balances for both bridges, so it will work only for tokens which were created on ETH,
 // i am skeptical that anybody who wants to create anything interesting will start on ETC instead of ETH, so it's probably a win-win decision.
+// However if such a situation, that genuinely good high liquidity will be created on ETC, then we can make this bridge upgradeable
 // An equivalent of this bridge also could used for matic, even if matic and trust minimized do not fit in one sentence its still important.
 // PS. I seriously believe that the code is the most auditable when it fits in one screen. I hate infinite scrolling :(
 import "./IERC20.sol";
