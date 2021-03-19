@@ -58,7 +58,7 @@ contract ETHtoETCbridge {
 	function crossBack(address frm, address tkn, uint mnt, address t, bytes memory dt) public onlyAggregator {
 		require(IERC20(tkn).balanceOf(address(this)) >= mnt);
 		if(t==address(0)) {IERC20(tkn).transfer(frm,mnt);}
-		else {if(dt.length==0){IERC20(tkn).transfer(t,mnt);} else {IERC20(tkn).transfer(t,mnt);t.delegatecall(dt);}}
+		else {if(dt.length==0){IERC20(tkn).transfer(t,mnt);} else {IERC20(tkn).transfer(t,mnt);t.call(dt);}}
 	}
 
 	function registerBridges(address[] memory tknTH,address[] memory tknTC)public onlyAggregator{
