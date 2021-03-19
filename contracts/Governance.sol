@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
-
-interface ITreasury {function getTknAmntLckPt(address account)external view returns(uint amount,uint lock);}
-interface IFoundingEvent {function getFounderTknAmntLckPt(address account)external view returns(uint amount,uint lock);}
-
 pragma solidity >=0.7.0;
-
+// Author: SamPorter1984
+// You could find some resemblance with Compound governance. It's heavily modified, simplified, cheaper version
 import "./ITreasury.sol";
 import "./IFoundingEvent.sol";
 import "./IERC20.sol";
