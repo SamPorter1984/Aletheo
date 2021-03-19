@@ -60,8 +60,12 @@ contract ETHtoETCbridge {
 	function registerBridges(address[] memory tknTH,address[] memory tknTC)public onlyAggregator{
 		require(tknTH.length==tknTC.length&&tknTH.length<500);for(uint i=0;i<tknTH.length;i++){bridges[tknTH[i]]=tknTC[i];}
 	}
-	function depositEth() public payable{_ethDeposits[msg.sender]+=msg.value;}
-	function withdraw(uint mnt) public{require(_ethDeposits[msg.sender]>= mnt && _l == false);_l = true;msg.sender.transfer(mnt);_l = false;}
+
+	function withdraw(uint mnt) public{
+		require(_ethDeposits[msg.sender]>=mnt&&_l==false);_l=true;uint ethB=ethBalance;if(ethB>=mnt){ethBalance=ethB-mnt;}else{mnt=ethB;ethBalance=0;}msg.sender.transfer(mnt);_l=false;
+	}
+
+	function depositEth() public payable{_ethDeposits[msg.sender]+=msg.value;ethBalance+=amount;}
 	function _cross(address sndr,address tkn, uint mnt, address t) internal {if (t == address(0)) {emit Cross(sndr,tkn,mnt);} else {emit CrossTo(sndr,tkn,mnt,t);}}
 	function requestBridge(address tkn) public {emit BridgeRequested(tkn);}
 	function updateCost(uint bs, uint cll) public onlyGovernance {baseCost=bs;callAcrossCost=cll;}
