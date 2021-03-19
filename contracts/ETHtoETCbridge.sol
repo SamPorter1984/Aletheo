@@ -21,8 +21,6 @@ contract ETHtoETCbridge {
 
 	mapping(address => address) public bridges;
 	mapping(address => uint) private _ethDeposits;
-	uint public ethBalance;
-	uint public etcBalance;
 	uint public callAcrossCost;
 	uint public baseCost;
 	bool private _l;
@@ -63,7 +61,6 @@ contract ETHtoETCbridge {
 
 	function _cross(address sndr,address tkn, uint mnt, address t) internal {if (t == address(0)) {emit Cross(sndr,tkn,mnt);} else {emit CrossTo(sndr,tkn,mnt,t);}}
 	function requestBridge(address tkn) public {emit BridgeRequested(tkn);}
-	function updateETCBalance(uint mnt) public onlyAggregator {etcBalance = mnt;}
 	function updateCost(uint bs, uint cll) public onlyGovernance {baseCost=bs;callAcrossCost=cll;}
 	function setAggregator(address payable ggrgtr) public onlyGovernance {_aggregator = ggrgtr;}
 	function setGovernance(address gvrnnc) public onlyGovernance {_governance = gvrnnc;}
