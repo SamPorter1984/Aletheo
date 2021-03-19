@@ -40,7 +40,7 @@ contract Governance {
 	function propose(address dstntn,bytes memory dt) public {
 		uint vote;
 		if(block.number < _lastPrivelegeCheck[msg.sender] + 172800) {vote = _totalVotingPower[msg.sender];} else {vote = _votingPower[msg.sender];}
-		require(vote > 1000e18 && dstntn != address(0) && dt.length > 0 && _lock[msg.sender] - 1036800 >= block.number);
+		require(vote > 10000e18 && dstntn != address(0) && dt.length > 0 && _lock[msg.sender] - 1036800 >= block.number);
 		_proposalCount++;
 		uint id = _proposalCount;
 		uint endBlock = block.number + 172800;
@@ -78,7 +78,7 @@ contract Governance {
 
 	function resolveVoting(uint id) external {
 		uint forVotes = proposals[id].forVotes;
-		require(forVotes>=300e24 && block.number>=proposals[id].endBlock && proposals[id].executed == false);//300 mil, depends on founders if there will be any executed proposals in first year
+		require(forVotes>=500e24 && block.number>=proposals[id].endBlock && proposals[id].executed == false);//500 mil, depends on founders if there will be any executed proposals in first year
 		proposals[id].executed = true;
 		uint totalVotes = forVotes + proposals[id].againstVotes;
 		uint percent = 100*forVotes/totalVotes;
@@ -96,7 +96,6 @@ contract Governance {
 		if (lock == 0 || lock - 1036800 < block.number) {amount = 0;} 
 		totalVotingPower += amount;
 		_totalVotingPower[msg.sender] = totalVotingPower;
-		
 	}
 
 	function getLastVoted(address account) external view returns(uint lstVtd) {return _lastVoted[account];}
