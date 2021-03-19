@@ -10,10 +10,10 @@ pragma solidity >=0.7.0 <=0.9.0;
 // minimum store writes, so it does not track token balances for both bridges, so it will work only for tokens which were created on ETH,
 // i am skeptical that anybody who wants to create anything interesting will start on ETC instead of ETH, so it's probably a win-win decision.
 // An equivalent of this bridge also could used for matic, even if matic and trust minimized do not fit in one sentence its still important.
-
+// PS. I seriously believe that the code is the most auditable when it fits in one screen. I hate infinite scrolling :(
 import "./IERC20.sol";
 
-contract ETHtoETCbridge {
+contract ETHtoETCbridge { 
 	event Cross(address indexed ccnt,address indexed tkn,uint mnt);
 	event CrossTo(address indexed ccnt,address indexed tkn,uint mnt,address indexed t);
 	event CallAcross(address indexed ccnt,address indexed t,bytes dt);
@@ -21,7 +21,6 @@ contract ETHtoETCbridge {
 
 	mapping(address => address) public bridges;
 	mapping(address => uint) private _ethDeposits;
-	mapping(address => mapping(address => uint)) private _deposits;
 	uint public ethBalance;
 	uint public etcBalance;
 	uint public callAcrossCost;
@@ -29,11 +28,7 @@ contract ETHtoETCbridge {
 	bool private _l;
 	address payable private _aggregator;
 	address private _governance;
-	constructor() {
-		baseCost = 1e16;
-		callAcrossCost = 1e15;
-		_governance = msg.sender; // and then probably a governance of some sort if not Nameless Protocol governance
-	}
+	constructor() {baseCost = 1e16;callAcrossCost = 1e15;_governance = msg.sender;} // and then probably a governance of some sort if not Nameless Protocol governance
 
 	modifier onlyAggregator(){require(msg.sender==_aggregator);_;}
 	modifier onlyGovernance(){require(msg.sender ==_governance);_;}
@@ -48,8 +43,6 @@ contract ETHtoETCbridge {
 		_ethDeposits[msg.sender] = deposit;
 	}
 
-	function _cross(address sndr,address tkn, uint mnt, address t) internal {if (t == address(0)) {emit Cross(sndr,tkn,mnt);} else {emit CrossTo(sndr,tkn,mnt,t);}}
-
 	function callAcross(address t, bytes memory dt) payable public {
 		uint cost = dt.length * callAcrossCost + baseCost;
 		uint deposit = msg.value +_ethDeposits[msg.sender];
@@ -57,8 +50,6 @@ contract ETHtoETCbridge {
 		_ethDeposits[msg.sender] = deposit;
 		emit CallAcross(msg.sender,t,dt);
 	}
-
-	function requestBridge(address tkn) public {emit BridgeRequested(tkn);}
 
 	function crossBack(address frm, address tkn, uint mnt, address t, bytes memory dt) public onlyAggregator {
 		require(IERC20(tkn).balanceOf(address(this)) >= mnt);
@@ -70,18 +61,12 @@ contract ETHtoETCbridge {
 		require(tknTH.length==tknTC.length&&tknTH.length<500);for(uint i=0;i<tknTH.length;i++){bridges[tknTH[i]]=tknTC[i];}
 	}
 
+	function _cross(address sndr,address tkn, uint mnt, address t) internal {if (t == address(0)) {emit Cross(sndr,tkn,mnt);} else {emit CrossTo(sndr,tkn,mnt,t);}}
+	function requestBridge(address tkn) public {emit BridgeRequested(tkn);}
 	function updateETCBalance(uint mnt) public onlyAggregator {etcBalance = mnt;}
 	function updateCost(uint bs, uint cll) public onlyGovernance {baseCost=bs;callAcrossCost=cll;}
 	function setAggregator(address payable ggrgtr) public onlyGovernance {_aggregator = ggrgtr;}
 	function setGovernance(address gvrnnc) public onlyGovernance {_governance = gvrnnc;}
 	function getBridge(address tkn) public view returns(address tknTC){return bridges[tkn];}
 	function getRewards() public onlyAggregator {uint rewards = address(this).balance - ethBalance;_aggregator.transfer(rewards);}
-
-/*	function fund(address tkn,uint mnt) payable public {// funders will gain interest from cross volume in that token. this is useless for everything except native eth etc and their wrappings
-		if (tkn==address(0)) {require(msg.value > 0);_ethDeposits[msg.sender] += msg.value; ethBalance+=msg.value;}
-		else {require(IERC20(tkn).balanceOf(msg.sender) >= mnt);IERC20(tkn).transferFrom(msg.sender,address(this),mnt);_deposits[msg.sender][tkn] += mnt;}
-	}
-
-	function withdraw(address tkn,uint mnt) public {require(_deposits[msg.sender][tkn]>=mnt&&_l==false);_l=true;_deposits[msg.sender][tkn]-=mnt;IERC20(tkn).transfer(msg.sender,mnt);_l=false;} // and can withdraw
-*/	
 }
