@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0;
 // Author: SamPorter1984
 // You could find some resemblance with Compound governance. It's heavily modified, simplified, cheaper version
@@ -16,7 +15,6 @@ contract Governance {
 		address destination;
 		uint endBlock;
 		bool executed;
-		bool canceled;
 		uint forVotes;
 		uint againstVotes;
 		bytes data;
@@ -24,7 +22,6 @@ contract Governance {
 	}
 
 	uint private _proposalCount;
-	uint private _proposalThreshold;
 	address private _initializer;
 	address private _token;
 	address private _founding;
@@ -80,7 +77,7 @@ contract Governance {
 
 	function resolveVoting(uint id) external {
 		uint forVotes = proposals[id].forVotes;
-		require(forVotes>=300e24 && block.number>=proposals[id].endBlock);//300 mil, depends on founders if there will be any executed proposals in first year
+		require(forVotes>=300e24 && block.number>=proposals[id].endBlock && proposals[id].executed == false);//300 mil, depends on founders if there will be any executed proposals in first year
 		uint totalVotes = forVotes + proposals[id].againstVotes;
 		uint percent = 100*forVotes/totalVotes;
 		if(percent > 60) {_execute(id);}
@@ -114,5 +111,6 @@ contract Governance {
 		bytes memory dt = proposals[id].data;
 		dstntn.call(dt);
 		emit ExecuteProposal(id,dstntn,dt);
+		proposals[id].executed = true;
 	}
 }
