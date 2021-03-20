@@ -4,6 +4,7 @@ pragma solidity >=0.7.0;
 // Again, as little store writes as possible, accuracy is expensive, therefore it's cheaper to allow founders and liquidity providers
 // freely check their privelege regularly, instead of maintaining expensive accurate computation.
 // This version is not fundamentally pure yet. Also I didn't yet thought very well about minimum quorum, in here it's crazy, but the contract is upgradeable before deadline, so.
+// The contract might never be published on mainnet, maybe we need to finalize governance model first
 import "./ITreasury.sol";
 import "./IFoundingEvent.sol";
 import "./IERC20.sol";
@@ -14,10 +15,10 @@ contract Governance is IGovernance {
 	
 	struct Proposal {
 		address destination;//a consideration to increase address length to 32 exists, it's somewhere on ethresearch or ethereum magicians
-		uint96 endBlock;
-		bytes data;
-		uint forVotes;
+		uint48 endBlock;
+		uint40 forVotes;
 		bool executed;
+		bytes data;
 		uint againstVotes;
 		mapping (address => bool) votes;
 	}
@@ -28,13 +29,7 @@ contract Governance is IGovernance {
 	address private _founding;
 	address private _treasury;
 
-	struct Voter {
-		uint128 votingPower;
-		uint128 lock;
-		uint128 totalVotingPower;
-		uint128 lastPrivelegeCheck;
-		uint lastVoted;
-	}
+	struct Voter {uint128 votingPower;uint128 lock;uint128 totalVotingPower;uint128 lastPrivelegeCheck;uint lastVoted;}
 	mapping(address => Voter) private _voters;
 	mapping(address => uint) private _votingPower;
 	mapping(address => uint) private _totalVotingPower;
@@ -54,19 +49,19 @@ contract Governance is IGovernance {
 		uint id = _proposalCount;
 		uint endBlock = block.number + 172800;
 		proposals[id].destination = dstntn;
-		proposals[id].endBlock = uint96(endBlock);
-		proposals[id].data = dt;
-		proposals[id].forVotes = vote;
+		proposals[id].endBlock = uint48(endBlock);
+		proposals[id].forVotes = uint40(vote/1e18);
 		proposals[id].votes[msg.sender] = true;
+		proposals[id].data = dt;
 		emit ProposalCreated(id, msg.sender, dstntn, dt, endBlock);
 	}
 
-	function castVote(uint id, bool support) external {
+	function castVote(uint id, bool support) external {//has to be first method id
 		uint vote;
 		if(block.number < _voters[msg.sender].lastPrivelegeCheck + 172800) {vote = _voters[msg.sender].totalVotingPower;} else {vote = _voters[msg.sender].votingPower;} 
 		require(block.number<proposals[id].endBlock&&vote>0&&proposals[id].votes[msg.sender]==false&&_voters[msg.sender].lock-1036800>=block.number&&_voters[msg.sender].lastVoted+10<block.number);
 		_voters[msg.sender].lastVoted = block.number;
-		if(support==true) {proposals[id].forVotes += vote;} else {proposals[id].againstVotes += vote;}
+		if(support==true) {proposals[id].forVotes += uint40(vote/1e18);} else {proposals[id].againstVotes += vote;}
 		proposals[id].votes[msg.sender] = true;
 	}
 
