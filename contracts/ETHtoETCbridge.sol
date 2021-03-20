@@ -13,12 +13,12 @@ pragma solidity >=0.7.0 <=0.9.0;
 // An equivalent of this bridge also could used for matic, even if matic and trust minimized do not fit in one sentence its still important.
 // PS. I seriously believe that the code is the most auditable when it fits in one screen. I hate infinite scrolling :(
 
-// It will be like stated in the paper, but better, since both ETH and ETC are very reliable sources, then accuracy of all Chainlink nodes will always
+// It will be like stated in the paper, but better, since both ETH and ETC(with Mess) are very reliable sources, then accuracy of all Chainlink nodes will always
 // approach 100%. Therefore the punishment for lies in this particular case can be very-very significant. So it's possible to adjust the system
 // in such a way, when game theory will deem attempts of lies completely not worth it, regardless of transaction value.
 // At the time of writing, ETH has 50x more hashrate than ETC. The oracles have to monitor ETC network activity to foresee any attempts of reorg.
 // It's possible to develop a system that shut downs automatically just in case, even if the operator is asleep or away.
-// With MESS, ETC is habitable.
+// All it needs is to decide on what finality is safe. Could wait a day.
 import "./IERC20.sol";
 
 contract ETHtoETCbridge { 
@@ -28,10 +28,10 @@ contract ETHtoETCbridge {
 	event BridgeRequested(address indexed tkn);
 
 	mapping(address => address) public bridges;
-	mapping(address => uint) private _ethDeposits;
+	struct Holder {uint128 deposit; uint128 lock;}
+	mapping(address => Holder) private _holders;
 	uint public callAcrossCost;
 	uint public baseCost;
-	bool private _l;
 	uint public ethBalance;
 	address payable private _aggregator;
 	address private _governance;
@@ -42,19 +42,20 @@ contract ETHtoETCbridge {
 
 	function cross(address tkn, uint mnt, address t)payable public{
 		uint cost = baseCost;
-		uint deposit = msg.value +_ethDeposits[msg.sender];
+		uint deposit = msg.value +_holders[msg.sender].deposit;
 		require(deposit>=cost);
 		deposit -= cost;
 		if(tkn==address(0)){require(deposit>=mnt);deposit-=mnt;_cross(msg.sender,address(0),mnt,t);}
 		else {require(bridges[tkn] != address(0) && IERC20(tkn).balanceOf(msg.sender) >= mnt && mnt>0);IERC20(tkn).transferFrom(msg.sender,address(this),mnt);_cross(msg.sender,tkn,mnt,t);}
-		_ethDeposits[msg.sender] = deposit;
+		_holders[msg.sender].deposit = uint128(deposit);
 	}
 
 	function callAcross(address t, bytes memory dt) payable public {
 		uint cost = dt.length * callAcrossCost + baseCost;
-		uint deposit = msg.value +_ethDeposits[msg.sender];
+		uint deposit = msg.value +_holders[msg.sender].deposit;
 		require(deposit>=cost);
-		_ethDeposits[msg.sender] = deposit;
+		deposit -= cost;
+		_holders[msg.sender].deposit = uint128(deposit);
 		emit CallAcross(msg.sender,t,dt);
 	}
 
@@ -69,10 +70,16 @@ contract ETHtoETCbridge {
 	}
 
 	function withdraw(uint mnt) public{
-		require(_ethDeposits[msg.sender]>=mnt&&_l==false);_l=true;uint ethB=ethBalance;if(ethB>=mnt){ethBalance=ethB-mnt;}else{mnt=ethB;ethBalance=0;}msg.sender.transfer(mnt);_l=false;
+		uint128 l = _holders[msg.sender].lock;
+		require(_holders[msg.sender].deposit>=mnt&&block.number>l);
+		_holders[msg.sender].lock = l+10;
+		uint ethB=ethBalance;
+		if(ethB>=mnt){ethBalance=ethB-mnt;}else{mnt=ethB;ethBalance=0;}
+		_holders[msg.sender].deposit -= uint128(mnt);
+		msg.sender.transfer(mnt);
 	}
 
-	function depositEth() public payable{_ethDeposits[msg.sender]+=msg.value;ethBalance+=amount;}
+	function depositEth() public payable{_holders[msg.sender].deposit+=uint128(msg.value);ethBalance+=msg.value;}
 	function _cross(address sndr,address tkn, uint mnt, address t) internal {if (t == address(0)) {emit Cross(sndr,tkn,mnt);} else {emit CrossTo(sndr,tkn,mnt,t);}}
 	function requestBridge(address tkn) public {emit BridgeRequested(tkn);}
 	function updateCost(uint bs, uint cll) public onlyGovernance {baseCost=bs;callAcrossCost=cll;}
