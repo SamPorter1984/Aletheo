@@ -13,9 +13,12 @@ pragma solidity >=0.7.0 <=0.9.0;
 // An equivalent of this bridge also could used for matic, even if matic and trust minimized do not fit in one sentence its still important.
 // PS. I seriously believe that the code is the most auditable when it fits in one screen. I hate infinite scrolling :(
 
-// It will be like stated in schizopaper, but better, since both ETH and ETC are very reliable sources, then accuracy of all Chainlink nodes will always
+// It will be like stated in the paper, but better, since both ETH and ETC are very reliable sources, then accuracy of all Chainlink nodes will always
 // approach 100%. Therefore the punishment for lies in this particular case can be very-very significant. So it's possible to adjust the system
 // in such a way, when game theory will deem attempts of lies completely not worth it, regardless of transaction value.
+// At the time of writing, ETH has 50x more hashrate than ETC. The oracles have to monitor ETC network activity to foresee any attempts of reorg.
+// It's possible to develop a system that shut downs automatically just in case, even if the operator is asleep or away.
+
 import "./IERC20.sol";
 
 contract ETHtoETCbridge { 
