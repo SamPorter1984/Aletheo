@@ -28,6 +28,7 @@ contract VSRERC20 is Context, IERC20 {
 	uint private _governanceSet;
 	uint private _nextBulkBlock;
 	address private _governance;
+	address private _inaccurateContract;// a non-upgradeable transfer contract
 
 //// variables for testing purposes. live it should all be hardcoded addresses
 	address private _treasury;
@@ -69,7 +70,7 @@ contract VSRERC20 is Context, IERC20 {
 	}
 
 	function bulkTransfer(address[] memory recipients, uint128[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
-		require(recipients.length == amounts.length && amounts.length < 500,"human error");
+		require(recipients.length == amounts.length && amounts.length < 100,"human error");
 		require(block.number >= _nextBulkBlock);
 		_nextBulkBlock = block.number + 20; // maybe should be more, because of potential network congestion transfers like this could create. especially if more projects use it.
 		uint128 senderBalance = _holders[msg.sender].balance;
@@ -82,9 +83,9 @@ contract VSRERC20 is Context, IERC20 {
 		return true;
 	}
 
-	function bulkTransferFrom(address[] memory senders, address recipient, uint128[] memory amounts) public returns (bool) { // unsafe if there won't be restrictions for contract allowances
-		require(senders.length == amounts.length && amounts.length < 400,"human error");
-		require(block.number >= _nextBulkBlock && _allowedContracts[_msgSender()] == true);
+	function bulkTransferFrom(address[] memory senders, address recipient, uint128[] memory amounts) public returns (bool) {
+		require(senders.length == amounts.length && amounts.length < 100,"human error");
+		require(block.number >= _nextBulkBlock && msg.sender == _inaccurateContract);
 		_nextBulkBlock = block.number + 20;
 		uint128 total;
 		for (uint i = 0;i<amounts.length;i++) {
