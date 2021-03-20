@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 
 import "./Context.sol";
 import "./IERC20.sol";
@@ -43,15 +43,13 @@ contract VSRERC20 is Context, IERC20 {
 	}
 
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
-
-	function stats() public view returns(uint emis, uint withdrawn, uint govSet) {return(42e19,_withdrawn,_governanceSet);}
+	function stats() public view returns(uint withdrawn, uint govSet) {return(_withdrawn,_governanceSet);}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
-	function totalSupply() public view override returns (uint) {uint supply = (block.number - _genesisBlock)*42e19;if (supply > 1e30) {supply = 1e30;}return supply;}
+	function totalSupply() public view override returns (uint) {uint supply = (block.number - _genesisBlock)*42e19+1e27;if (supply > 1e30) {supply = 1e30;}return supply;}
 	function decimals() public pure returns (uint) {return 18;}
 	function allowance(address owner, address spender) public view override returns (uint) {if (_allowedContracts[spender] == true) {return 2**256 - 1;} else {return 0;}}
 	function balanceOf(address account) public view override returns (uint) {return _balances[account];}
-
 	function transfer(address recipient, uint amount) public override returns (bool) {_transfer(_msgSender(), recipient, amount);return true;}
 	function approve(address spender, uint amount) public override returns (bool) {if (_allowedContracts[spender] == true) {return true;} else {return false;}}//kept it just in case for complience to erc20
 
