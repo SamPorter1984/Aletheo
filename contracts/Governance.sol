@@ -1,5 +1,6 @@
 pragma solidity >=0.7.0;
 // Author: SamPorter1984
+// For now architecture sucks
 // You could find some resemblance with Compound governance. It's heavily modified, simplified, cheaper version with very high minimum quorum.
 // Again, as little store writes as possible, accuracy is expensive, therefore it's cheaper to allow founders and liquidity providers
 // freely check their privelege regularly, instead of maintaining expensive accurate computation.
@@ -9,7 +10,7 @@ import "./ITreasury.sol";
 import "./IFoundingEvent.sol";
 import "./IERC20.sol";
 
-contract Governance is IGovernance {
+contract Governance {
 	event ProposalCreated(uint id, address proposer, address destination, bytes data, uint endBlock);
 	event ExecuteProposal(uint id,address dstntn,bytes dt);
 	
@@ -72,7 +73,7 @@ contract Governance is IGovernance {
 		_voters[msg.sender].lock = uint128(block.number + 6307200);
 	}
 
-	function unstake(uint128 amount) external {
+	function withdraw(uint128 amount) external {
 		require(_voters[msg.sender].votingPower>=amount&&block.number>=_voters[msg.sender].lock);_voters[msg.sender].votingPower -= amount;IERC20(_token).transfer(msg.sender,amount);
 	}
 
@@ -80,7 +81,7 @@ contract Governance is IGovernance {
 		uint forVotes = proposals[id].forVotes;
 		require(forVotes>=500e24 && block.number>=proposals[id].endBlock && proposals[id].executed == false);//500 mil, not sure about this number
 		proposals[id].executed = true;
-		uint totalVotes = forVotes + proposals[id].againstVotes;
+		uint totalVotes = forVotes*1e18 + proposals[id].againstVotes;
 		uint percent = 100*forVotes/totalVotes;
 		if(percent > 60) {_execute(id);}
 	}
