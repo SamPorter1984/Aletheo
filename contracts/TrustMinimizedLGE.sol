@@ -29,7 +29,7 @@ contract FoundingEvent {
 	address private _tokenETHLP; // create2 and hardcode too?
 	uint private _totalTokenAmount;
 	bool private _lgeOngoing;
-	bool private _lock;
+	uint private _lock;// -1 store write for reentrancy at the expense of transaction throughput
 	address private _optimismBridge;
 	address private _etcBridge;
 ///////variables for testing purposes
@@ -59,7 +59,7 @@ contract FoundingEvent {
 	event AddressLinked(address indexed address1, address indexed address2);
 	event BridgesDefined(address indexed optimism,address indexed etc);
 
-	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && _lock != true);_lock = true;_;_lock = false;}
+	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && block.number > _lock);_lock = block.number+1;_;}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
 		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true && _isContract(msg.sender) == false);
@@ -110,9 +110,9 @@ contract FoundingEvent {
 		_totalTokenAmount -= _founders[msg.sender].tokenAmount; // intended. attempts to split liquidity evenly between eth, optimism and etc pools. etc is certainly habitable
 		delete _founders[msg.sender];
 	}
-// _lock for every founder function is not sufficient. this function has to be expensive as alert of something fishy just in case
+// this function has to be expensive as alert of something fishy just in case
 // metamask has to somehow provide more info about a transaction
-	function newAddress(address account) public onlyFounder {require(_isContract(account) == false);
+	function newAddress(address account) public {require(_isContract(account) == false);
 		for (uint i = 0;i<10;i++) {delete _founders[msg.sender].newAddress;_founders[msg.sender].newAddress = account;} 
 	}
 
@@ -131,12 +131,12 @@ contract FoundingEvent {
 		IGovernance(_governance).changeAddress(msg.sender,account);
 	}
 
-	function lockFor3Years(bool ok) public onlyFounder{require(ok==true && _founders[msg.sender].tokenAmount>0);_founders[msg.sender].lockUpTo = block.number + 6307200;}
+	function lockFor3Years(bool ok) public onlyFounder {require(ok==true && _founders[msg.sender].tokenAmount>0);_founders[msg.sender].lockUpTo = block.number + 6307200;}
 	function _isFounder(address account) internal view returns(bool) {if (_founders[account].ethContributed > 0) {return true;} else {return false;}}
 	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 	function setBridges(address optimism, address etc) external {require(msg.sender==_deployer);_optimismBridge = optimism;_etcBridge = etc;emit BridgesDefined(optimism,etc);}
 
-	function linkAddress(address account) external onlyFounder { // can be used to limit the amount of testers to only approved addresses
+	function linkAddress(address account) external { // can be used to limit the amount of testers to only approved addresses
 		require(_linkedAddresses[msg.sender] != account && _takenAddresses[account] == false && _isFounder(account) == false && _founders[msg.sender].ethContributed >= 1e16);
 		_linkedAddresses[msg.sender] = account;
 		_linkedAddresses[account] = msg.sender;
@@ -159,14 +159,17 @@ contract FoundingEvent {
 
 	function _createLiquidity() internal {
 		delete _lgeOngoing;
+		address token = _token;
+		address WETH = _WETH;
 		uint ETHDeposited = address(this).balance;
-		IWETH(_WETH).deposit{value: ETHDeposited}();
-		_tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(_token, _WETH);
-		IERC20(_WETH).transfer(_tokenETHLP, ETHDeposited);
-		IERC20(_token).transfer(_tokenETHLP, 1e27);
-		IUniswapV2Pair(_tokenETHLP).mint(address(this));
-		_totalLGELPtokensMinted = IERC20(_tokenETHLP).balanceOf(address(this));
+		IWETH(WETH).deposit{value: ETHDeposited}();
+		address tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(token, WETH);
+		IERC20(WETH).transfer(tokenETHLP, ETHDeposited);
+		IERC20(token).transfer(tokenETHLP, 1e27);
+		IUniswapV2Pair(tokenETHLP).mint(address(this));
+		_totalLGELPtokensMinted = IERC20(tokenETHLP).balanceOf(address(this));
 		_totalETHDeposited = ETHDeposited;
+		_tokenETHLP = tokenETHLP;
 	}
 // VIEW FUNCTIONS ==================================================
 	function getFounder(address account) external view returns (address nwAddress,uint ethContributed, uint claimed, address linked) {
