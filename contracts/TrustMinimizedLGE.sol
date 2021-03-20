@@ -29,7 +29,6 @@ contract FoundingEvent {
 	address private _tokenETHLP; // create2 and hardcode too?
 	uint private _totalTokenAmount;
 	bool private _lgeOngoing;
-	uint private _lock;// -1 store write for reentrancy at the expense of transaction throughput
 	address private _optimismBridge;
 	address private _etcBridge;
 ///////variables for testing purposes
@@ -50,7 +49,7 @@ contract FoundingEvent {
 		_lgeOngoing = true;
 	}
 
-	struct Founder {uint ethContributed;uint claimed;uint tokenAmount;uint lockUpTo;address newAddress;}
+	struct Founder {uint ethContributed;uint128 claimed;uint128 lock; uint tokenAmount;uint lockUpTo;address newAddress;}
 
 	mapping(address => Founder) private _founders;
 	mapping (address => address) private _linkedAddresses;
@@ -59,7 +58,7 @@ contract FoundingEvent {
 	event AddressLinked(address indexed address1, address indexed address2);
 	event BridgesDefined(address indexed optimism,address indexed etc);
 
-	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && block.number > _lock);_lock = block.number;_;}
+	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && block.number > _founders[msg.sender].lock);_founders[msg.sender].lock = uint128(block.number+1);_;}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
 		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true && _isContract(msg.sender) == false);
@@ -92,7 +91,7 @@ contract FoundingEvent {
 		require(toClaim > claimed);
 		toClaim -= claimed;
 		require(ITreasury(_treasury).getFounderRewards(msg.sender, toClaim) == true);
-		_founders[msg.sender].claimed += toClaim;
+		_founders[msg.sender].claimed += uint128(toClaim);
 	}
 
 	function migrate(address contr) public onlyFounder {
