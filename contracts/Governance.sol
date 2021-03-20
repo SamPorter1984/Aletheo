@@ -8,7 +8,7 @@ import "./ITreasury.sol";
 import "./IFoundingEvent.sol";
 import "./IERC20.sol";
 
-contract Governance {
+contract Governance is IGovernance {
 	event ProposalCreated(uint id, address proposer, address destination, bytes data, uint endBlock);
 	event ExecuteProposal(uint id,address dstntn,bytes dt);
 	
@@ -35,10 +35,10 @@ contract Governance {
 	mapping(uint => Proposal) public proposals;
 	bool private _l;
 
-	constructor(){_initializer = msg.sender;} // anybody can deploy logic to propose it as an upgrade, except it depends on particular case, it could be initializer has to be proxyAdmin
+	constructor(){_initializer = msg.sender;} // a way for anybody to deploy logic, propose it as an upgrade, except it depends on particular case, sometimes initializer has to be proxyAdmin
 	function init() public {require(msg.sender == _initializer); delete _initializer;}
 
-	function propose(address dstntn,bytes memory dt) public {
+	function propose(address dstntn,bytes memory dt) public {// probably propose will only be oracles job in the future of this governance
 		uint vote;
 		if(block.number < _lastPrivelegeCheck[msg.sender] + 172800) {vote = _totalVotingPower[msg.sender];} else {vote = _votingPower[msg.sender];}
 		require(vote > 10000e18 && dstntn != address(0) && dt.length > 0 && _lock[msg.sender] - 1036800 >= block.number);
@@ -63,7 +63,7 @@ contract Governance {
 	}
 
 	function lockFor3years(uint amount, bool ok) external {
-		require(ok == true && IERC20(_token).balanceOf(msg.sender) >= amount);
+		require(ok == true && IERC20(_token).balanceOf(msg.sender) >= amount && _isContract(msg.sender) == false);
 		IERC20(_token).transferFrom(msg.sender,address(this),amount);
 		_votingPower[msg.sender] += amount;
 		_lock[msg.sender] += 6307200;
@@ -99,8 +99,6 @@ contract Governance {
 		_totalVotingPower[msg.sender] = totalVotingPower;
 	}
 
-	function getLastVoted(address account) external view returns(uint lstVtd) {return _lastVoted[account];}
-
 	function changeAddress(address oldAccount,address newAccount) external {
 		_lastVoted[newAccount] = block.number;
 		_votingPower[newAccount] = _votingPower[oldAccount];
@@ -110,10 +108,7 @@ contract Governance {
 		delete _lastVoted[oldAccount];
 	}
 
-	function _execute(uint id) internal{
-		address dstntn = proposals[id].destination;
-		bytes memory dt = proposals[id].data;
-		dstntn.call(dt);
-		emit ExecuteProposal(id,dstntn,dt);
-	}
+	function getLastVoted(address account) external view returns(uint lstVtd) {return _lastVoted[account];}
+	function _execute(uint id) internal{address dstntn = proposals[id].destination;bytes memory dt = proposals[id].data;dstntn.call(dt);emit ExecuteProposal(id,dstntn,dt);}
+	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 }
