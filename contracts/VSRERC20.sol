@@ -28,7 +28,6 @@ contract VSRERC20 is Context, IERC20 {
 	uint private _withdrawn;
 	uint private _governanceSet;
 	uint private _nextBulkBlock;
-	bool private _lock;
 	address private _governance;
 
 //// variables for testing purposes. live it should all be hardcoded addresses
@@ -101,9 +100,9 @@ contract VSRERC20 is Context, IERC20 {
 		if (from == _treasury) { // so the treasury will contain all the funds, it will be one contract instead of several
 			require(block.number > _genesisBlock && block.number > _holders[msg.sender].lock);
 			_holders[msg.sender].lock = uint128(block.number+600); // this is not a bug, it's a feature, i call it "soft ceiling". we are unlikely to hit the limit anyway
-			uint allowed = (block.number - _genesisBlock)*42e19 - _withdrawn;
-			require(amount <= allowed && amount <= balanceOf(_treasury));
-			_withdrawn += amount;
+			uint withd =  999e27 - _holders[_treasury].balance;
+			uint allowed = (block.number - _genesisBlock)*42e19 - withd;
+			require(amount <= allowed && amount <= _holders[_treasury].balance);
 		}
 	}
 
