@@ -34,7 +34,7 @@ contract Governance {
 	mapping(uint => Proposal) public proposals;
 	bool private _l;
 
-	constructor(){_initializer = msg.sender;} // anybody can deploy logic to propose it as an upgrade
+	constructor(){_initializer = msg.sender;} // anybody can deploy logic to propose it as an upgrade, except it depends on particular case, it could be initializer has to be proxyAdmin
 	function init() public {require(msg.sender == _initializer); delete _initializer;}
 
 	function propose(address dstntn,bytes memory dt) public {
