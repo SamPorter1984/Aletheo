@@ -59,7 +59,7 @@ contract FoundingEvent {
 	event AddressLinked(address indexed address1, address indexed address2);
 	event BridgesDefined(address indexed optimism,address indexed etc);
 
-	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && block.number > _lock);_lock = block.number+1;_;}
+	modifier onlyFounder() {require(_founders[msg.sender].ethContributed > 0 && block.number > _lock);_lock = block.number;_;}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
 		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true && _isContract(msg.sender) == false);
