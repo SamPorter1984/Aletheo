@@ -35,8 +35,8 @@ contract FoundingEvent {
 ///////variables for testing purposes
 	address private constant _WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;// testing
 	address private _uniswapFactory = 0x7FDc955b5E2547CC67759eDba3fd5d7027b9Bd66;
-	uint private _rewardsGenesis; // = hardcoded block.number
-	address private _token; // = hardcoded address
+	uint private _rewardsGenesis; // hardcoded block.number
+	address private _token; // hardcoded address
 	address private _treasury; // hardcoded
 	address private _governance; // hardcoded
 	address payable private _deployer; // hardcoded
@@ -83,13 +83,16 @@ contract FoundingEvent {
 
 	function getRewards() public onlyFounder {
 		uint rewardsGenesis = _rewardsGenesis;
-		require(block.number > rewardsGenesis);
+		require(_lgeOngoing == false);
 		uint tokenAmount = _founders[msg.sender].tokenAmount;
 		uint claimed = _founders[msg.sender].claimed;
 		uint halver = block.number/10000000;uint rewardsRate = 21e18;if (halver>1) {for (uint i=1;i<halver;i++) {rewardsRate=rewardsRate*5/6;}}
 		if(tokenAmount == 0){_founders[msg.sender].tokenAmount=_founders[msg.sender].ethContributed*1e27/_totalETHDeposited;}
 		uint toClaim = (block.number - rewardsGenesis)*rewardsRate*tokenAmount/_totalTokenAmount;
-		if (toClaim > claimed) {toClaim -= claimed; _founders[msg.sender].claimed += toClaim; ITreasury(_treasury).getFounderRewards(address(msg.sender), toClaim);}
+		require(toClaim > claimed);
+		toClaim -= claimed;
+		require(ITreasury(_treasury).getFounderRewards(msg.sender, toClaim) == true);
+		_founders[msg.sender].claimed += toClaim;
 	}
 
 	function migrate(address contr) public onlyFounder {
