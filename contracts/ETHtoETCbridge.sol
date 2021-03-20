@@ -3,7 +3,7 @@ pragma solidity >=0.7.0 <=0.9.0;
 // Author: SamPorter1984
 // I am building it for any token, but I guess people will mostly use highest liquidity tokens even for small transfers.
 // I didn't test it yet, it's just a draft
-// This bridge is mainly needed to relay logic through callAcross(), all other functionality can be taken by chainBridge, if they will move their asses. 
+// This bridge is mainly needed to relay logic through callAcross(), all other functionality can be taken by chainBridge. 
 // Then again, a trust minimized bridge, not chainbridge is actually required.
 
 // oracles will probably create standard erc-20 with a prefix "c" lowercase, as a reference to classic i guess.
@@ -18,7 +18,7 @@ pragma solidity >=0.7.0 <=0.9.0;
 // in such a way, when game theory will deem attempts of lies completely not worth it, regardless of transaction value.
 // At the time of writing, ETH has 50x more hashrate than ETC. The oracles have to monitor ETC network activity to foresee any attempts of reorg.
 // It's possible to develop a system that shut downs automatically just in case, even if the operator is asleep or away.
-
+// With MESS, ETC is habitable.
 import "./IERC20.sol";
 
 contract ETHtoETCbridge { 
