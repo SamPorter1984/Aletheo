@@ -4,7 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "./Context.sol";
 import "./IERC20.sol";
-// A modification of OpenZeppelin ERC20 by Sam Porter
+// A modification of OpenZeppelin ERC20
 // Original can be found here: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol
 
 // Very slow erc20 implementation. Limits release of the funds with emission rate in _beforeTokenTransfer().
@@ -98,14 +98,16 @@ contract VSRERC20 is Context, IERC20 {
 	function _beforeTokenTransfer(address from, uint amount) internal { // hardcoded address
 		if (from == _treasury) { // so the treasury will contain all the funds, it will be one contract instead of several
 			require(block.number > _genesisBlock && block.number > _holders[msg.sender].lock);
-			_holders[msg.sender].lock = uint128(block.number+600); // it's a feature, i call it "soft ceiling". it's for investors' confidence but we are unlikely to hit the limit anyway
-			uint withd =  999e27 - _holders[_treasury].balance;
+			_holders[msg.sender].lock = uint128(block.number+600);// it's a feature, i call it "soft ceiling". it's for investors' confidence but we are unlikely to hit the limit anyway
+			uint treasury = _holders[_treasury].balance;
+			uint withd =  999e27 - treasury;
 			uint allowed = (block.number - _genesisBlock)*42e19 - withd;
-			require(amount <= allowed && amount <= _holders[_treasury].balance);
+			require(amount <= allowed && amount <= treasury);
 		}
 	}
 
 	function setNameSymbol(string memory name_, string memory symbol_) public onlyGovernance {_name = name_;_symbol = symbol_;}
 	function setGovernance(address address_) public onlyGovernance {require(_governanceSet < 3);_governanceSet += 1;_governance = address_;}
-	function allowanceToContract(address contract_) public onlyGovernance {_allowedContracts[contract_] = true;}// not to forget to add uniswap contract. an address with no bytecode can be added, but it's ok
+	function allowanceToContract(address contract_) public onlyGovernance {require(_isContract[contract_] == true);_allowedContracts[contract_] = true;}// not to forget to add uniswap contract.
+	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 }
