@@ -25,7 +25,6 @@ contract VSRERC20 is Context, IERC20 {
 
 	string private _name;
 	string private _symbol;
-	uint private _withdrawn;
 	uint private _governanceSet;
 	uint private _nextBulkBlock;
 	address private _governance;
@@ -43,7 +42,7 @@ contract VSRERC20 is Context, IERC20 {
 	}
 
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
-	function withdrawn() public view returns(uint wthdrwn) {return _withdrawn;}
+	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e27 - _holders[_treasury].balance; return withd;}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view override returns (uint) {uint supply = (block.number - _genesisBlock)*42e19+1e27;if (supply > 1e30) {supply = 1e30;}return supply;}
@@ -99,7 +98,7 @@ contract VSRERC20 is Context, IERC20 {
 	function _beforeTokenTransfer(address from, uint amount) internal { // hardcoded address
 		if (from == _treasury) { // so the treasury will contain all the funds, it will be one contract instead of several
 			require(block.number > _genesisBlock && block.number > _holders[msg.sender].lock);
-			_holders[msg.sender].lock = uint128(block.number+600); // this is not a bug, it's a feature, i call it "soft ceiling". we are unlikely to hit the limit anyway
+			_holders[msg.sender].lock = uint128(block.number+600); // it's a feature, i call it "soft ceiling". it's for investors' confidence but we are unlikely to hit the limit anyway
 			uint withd =  999e27 - _holders[_treasury].balance;
 			uint allowed = (block.number - _genesisBlock)*42e19 - withd;
 			require(amount <= allowed && amount <= _holders[_treasury].balance);
