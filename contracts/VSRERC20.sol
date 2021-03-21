@@ -25,14 +25,13 @@ contract VSRERC20 is Context, IERC20 {
 
 	string private _name;
 	string private _symbol;
-	uint private _governanceSet;
-	uint private _nextBulkBlock;
 	address private _governance;
-	address private _inaccurateContract;// a non-upgradeable transfer contract
-
+	uint88 private _nextBulkBlock;
+	uint8 private _governanceSet;
 //// variables for testing purposes. live it should all be hardcoded addresses
 	address private _treasury;
 	uint private _genesisBlock;
+	address private _bulkTransferContract;// a non-upgradeable transfer contract
 
 	constructor (string memory name_, string memory symbol_) {
 		_name = name_;
@@ -72,7 +71,7 @@ contract VSRERC20 is Context, IERC20 {
 	function bulkTransfer(address[] memory recipients, uint128[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
 		require(recipients.length == amounts.length && amounts.length < 100,"human error");
 		require(block.number >= _nextBulkBlock);
-		_nextBulkBlock = block.number + 20; // maybe should be more, because of potential network congestion transfers like this could create. especially if more projects use it.
+		_nextBulkBlock = uint88(block.number + 20); // maybe should be more, because of potential network congestion transfers like this could create. especially if more projects use it.
 		uint128 senderBalance = _holders[msg.sender].balance;
 		uint128 total;
 		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];_holders[recipients[i]].balance += amounts[i];}else{revert();}}
@@ -85,8 +84,8 @@ contract VSRERC20 is Context, IERC20 {
 
 	function bulkTransferFrom(address[] memory senders, address recipient, uint128[] memory amounts) public returns (bool) {
 		require(senders.length == amounts.length && amounts.length < 100,"human error");
-		require(block.number >= _nextBulkBlock && msg.sender == _inaccurateContract);
-		_nextBulkBlock = block.number + 20;
+		require(block.number >= _nextBulkBlock && msg.sender == _bulkTransferContract);
+		_nextBulkBlock = uint88(block.number + 20);
 		uint128 total;
 		for (uint i = 0;i<amounts.length;i++) {
 			if (amounts[i] > 0 && _holders[senders[i]].balance >= amounts[i]){total+= amounts[i];_holders[senders[i]].balance-=amounts[i];} else {revert();}
