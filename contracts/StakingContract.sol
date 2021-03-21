@@ -43,8 +43,8 @@ contract StakingContract {
 		delete _notInit;
 	}
 
-	struct Provider {uint128 lock;uint128 lpShare;uint128 tokenAmount;uint lastClaim;uint lockedAmount;uint lockUpTo;bool founder;}
-	struct Locker {uint128 amount;uint128 lockUpTo;uint128 lock;}
+	struct Provider {uint128 lock;uint128 lastClaim; bool founder; uint128 lpShare;uint128 tokenAmount;uint128 lockedAmount;uint128 lockUpTo;}
+	struct Locker {uint128 amount;uint128 lockUpTo;}
 
 	mapping(address => Provider) private _ps;
 	mapping(address => Locker) private _ls;
@@ -56,12 +56,9 @@ contract StakingContract {
 	event AddressLinked(address indexed address1, address indexed address2);
 	event BridgesDefined(address indexed optimism,address indexed etc);
 
-	modifier onlyProvider() {
-		require(_ps[msg.sender].lpShare>0);require(block.number>_ps[msg.sender].lock);_ps[msg.sender].lock =uint128(block.number+1);_;
-	}
-	modifier lock() {require(block.number>_locks[msg.sender]);_locks[msg.sender] = block.number + 10;_;}
+	modifier lock() {require(block.number>_locks[msg.sender]);_locks[msg.sender] = block.number + 1;_;}
 
-	function claimFounderStatus() public lock {
+	function claimFounderStatus() public {
 		require(_notInit == false);
 		uint ethContributed = IFoundingEvent(_founding).contributions(msg.sender);
 		require(ethContributed > 0);
@@ -73,7 +70,7 @@ contract StakingContract {
 		_ps[msg.sender].founder = true;
 	}
 
-	function unstakeLp(bool ok,uint amount) public onlyProvider {
+	function unstakeLp(bool ok,uint amount) public lock {
 		uint lpShare = _ps[msg.sender].lpShare;
 		uint lockedAmount = _ps[msg.sender].lockedAmount;
 		uint percent = amount*100;
@@ -81,13 +78,15 @@ contract StakingContract {
 		_ps[msg.sender].lpShare = uint128(lpShare - amount);
 		percent = percent/lpShare;
 		uint tknAmount = _ps[msg.sender].tokenAmount;
-		uint toSubtract = tknAmount*percent/100;
+		uint toSubtract = tknAmount*percent/100; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
 		_ps[msg.sender].tokenAmount -= uint128(toSubtract);
 		if (_ps[msg.sender].founder == true) {_foundingTokenAmount -= toSubtract;}else{_genTotTokenAmount -= toSubtract;}
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
 
-	function getRewards() public onlyProvider {
+	function getRewards() public {
+		require(block.number>_ps[msg.sender].lock);
+		_ps[msg.sender].lock =uint128(block.number+1);
 		uint halver = block.number/10000000;
 		uint lastClaim = _ps[msg.sender].lastClaim;
 		uint rate = 21e18;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/6;}}
@@ -95,7 +94,7 @@ contract StakingContract {
 		if (_ps[msg.sender].founder == true) {toClaim = toClaim/_foundingTokenAmount;} else {rate = rate*2/3;toClaim = toClaim/_genTotTokenAmount;}
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
 		require(success == true);
-		_ps[msg.sender].lastClaim = block.number;
+		_ps[msg.sender].lastClaim = uint128(block.number);
 	}
 
 // this function has to be expensive as an alert of something fishy just in case
@@ -118,13 +117,13 @@ contract StakingContract {
 	function lockFor3Years(bool ok, address tkn, uint amount) public {
 		require(ok==true && amount>0);
 		if(tkn ==_tokenETHLP) {
-			require(_ps[msg.sender].lpShare-_ps[msg.sender].lockedAmount >= amount);_ps[msg.sender].lockUpTo = block.number + 6307200;_ps[msg.sender].lockedAmount += amount;	
+			require(_ps[msg.sender].lpShare-_ps[msg.sender].lockedAmount>=amount);_ps[msg.sender].lockUpTo=uint128(block.number + 6307200);_ps[msg.sender].lockedAmount+=uint128(amount);	
 		}
 		if(tkn == _token) {
-			require(IERC20(_token).balanceOf(msg.sender)>=amount);
-			_ls[msg.sender].lockUpTo = uint128(block.number + 6307200);
-			_ls[msg.sender].amount += uint128(amount);
-			IERC20(_token).transferFrom(msg.sender,address(this),amount);
+			require(IERC20(tkn).balanceOf(msg.sender)>=amount);
+			_ls[msg.sender].lockUpTo=uint128(block.number+6307200);
+			_ls[msg.sender].amount+=uint128(amount);
+			IERC20(tkn).transferFrom(msg.sender,address(this),amount);
 		}	
 	}
 
@@ -145,7 +144,7 @@ contract StakingContract {
 		IERC20(_tokenETHLP).transferFrom(msg.sender,address(this),amount);
 	}
  
-	function migrate(address contr,address tkn,uint amount) public onlyProvider {
+	function migrate(address contr,address tkn,uint amount) public lock {
 		require(contr == _optimismBridge || contr == _etcBridge);
 		if (tkn == _tokenETHLP) {
 			uint lpShare = _ps[msg.sender].lpShare;
