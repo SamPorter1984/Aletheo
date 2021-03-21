@@ -13,11 +13,12 @@ import "./IGovernance.sol";
 import "./IBridge.sol";
 
 contract StakingContract {
-	uint private _foundingETHDeposited;
-	uint private _foundingLPtokensMinted;
+	uint128 private _foundingETHDeposited;
+	uint128 private _foundingLPtokensMinted;
 	uint private _foundingTokenAmount;
 	uint private _genTotTokenAmount;
 	address private _tokenETHLP; // create2 and hardcode too?
+	bool private _notInit;
 	address private _optimismBridge;
 	address private _etcBridge;
 ///////variables for testing purposes
@@ -26,7 +27,7 @@ contract StakingContract {
 	address private _treasury; // hardcoded
 	address private _governance; // hardcoded
 	address private _founding;
-	bool private _notInit;
+
 //////
 	constructor() {
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
@@ -37,10 +38,10 @@ contract StakingContract {
 
 	function init(uint foundingETH, address tkn) public {
 		require(msg.sender == _founding && _notInit == true);
-		_foundingETHDeposited = foundingETH;
-		_tokenETHLP = tkn;
-		_foundingLPtokensMinted = IERC20(tkn).balanceOf(address(this));
 		delete _notInit;
+		_foundingETHDeposited = uint128(foundingETH);
+		_foundingLPtokensMinted = uint128(IERC20(tkn).balanceOf(address(this)));
+		_tokenETHLP = tkn;
 	}
 
 	struct Provider {uint128 lock;uint128 lastClaim; bool founder; uint128 lpShare;uint128 tokenAmount;uint128 lockedAmount;uint128 lockUpTo;}
@@ -162,8 +163,10 @@ contract StakingContract {
 			IBridge(contr).provider(msg.sender,amount,_ps[msg.sender].lastClaim,toSubtract,status);
 		}
 		if (tkn == _token) {
-			require(_ls[msg.sender].amount >= amount);
+			uint lockedAmount = _ls[msg.sender].amount;
+			require(lockedAmount >= amount);
 			if (contr == _optimismBridge) {IERC20(tkn).transfer(_optimismBridge, amount);} if (contr == _etcBridge) {IERC20(tkn).transfer(_etcBridge,amount);}
+			_ls[msg.sender].amount = lockedAmount-amount;
 			IBridge(contr).locker(msg.sender,amount,_ls[msg.sender].lockUpTo);
 		}
 	}
