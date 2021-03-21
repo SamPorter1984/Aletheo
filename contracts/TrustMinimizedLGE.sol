@@ -17,13 +17,11 @@ import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Pair.sol";
 import "./IWETH.sol";
 import "./IERC20.sol";
+import "./IStaking.sol";
 
 contract FoundingEvent {
 	// I believe this is required for the safety of investors and other developers joining the project
 	string public AgreementTerms = "I understand that this contract is provided with no warranty of any kind. \n I agree to not hold the contract creator, RAID team members or anyone associated with this event liable for any damage monetary and otherwise I might onccur. \n I understand that any smart contract interaction carries an inherent risk.";
-	uint public foundingETHDeposited;
-	uint public foundingLPtokensMinted;
-	address public tokenETHLP; // create2 and hardcode too?
 	mapping(address => uint) public contributions;
 	bool private _lgeOngoing;
 	address private _staking;
@@ -58,9 +56,7 @@ contract FoundingEvent {
 		IERC20(token).transfer(tknETHLP, 1e27);
 		IERC20(WETH).transfer(tknETHLP, ETHDeposited);
 		IUniswapV2Pair(tknETHLP).mint(_staking);
-		foundingLPtokensMinted = IERC20(tknETHLP).balanceOf(address(this));
-		foundingETHDeposited = ETHDeposited;
-		tokenETHLP = tknETHLP;
+		IStaking(_staking).init(ETHDeposited, tknETHLP);
 	}
 
 	function setStakingContract(address contr) public {require(msg.sender == _deployer && _stkngNtSt == true); _staking = contr; delete _stkngNtSt;}
