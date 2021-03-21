@@ -16,7 +16,7 @@ pragma solidity >=0.7.0 <0.9.0;
 // 6. constructor does not require arguments
 
 // It fixes "upgradeability bug" I believe. Also I sincerely believe that upgradeability is not about fixing bugs, but about upgradeability,
-// so yeah, proposed logic has to clean.
+// so yeah, proposed logic has to be clean.
 // In my heart it exists as eip-1984 but it's too late for that number. https://ethereum-magicians.org/t/trust-minimized-proxy/5742/2
 
 contract TrustMinimizedProxy {
