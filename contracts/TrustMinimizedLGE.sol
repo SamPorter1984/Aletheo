@@ -26,21 +26,17 @@ contract FoundingEvent {
 	address public tokenETHLP; // create2 and hardcode too?
 	mapping(address => uint) public contributions;
 	bool private _lgeOngoing;
-	bool private _stakingNotSet;
-///////variables for testing purposes
-	address private constant _WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;// testing
-	address private _uniswapFactory = 0x7FDc955b5E2547CC67759eDba3fd5d7027b9Bd66;
-	uint private _rewardsGenesis; // hardcoded block.number
-	address private _token; // hardcoded address
-	address payable private _deployer; // hardcoded
 	address private _staking;
+	bool private _stkngNtSt;
+///////variables for testing purposes
+	uint private _rewardsGenesis; // hardcoded block.number
+	address payable private _deployer; // hardcoded
 
 	constructor() {
 		_deployer = msg.sender;
-		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
 		_rewardsGenesis = block.number + 5;
 		_lgeOngoing = true;
-		_stakingNotSet = true;
+		_stkngNtSt = true;
 	}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
@@ -54,8 +50,9 @@ contract FoundingEvent {
 
 	function _createLiquidity() internal {
 		delete _lgeOngoing;
-		address token = _token;
-		address WETH = _WETH;
+		address token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
+		address WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;
+		address uniFactory = 0x7FDc955b5E2547CC67759eDba3fd5d7027b9Bd66;
 		uint ETHDeposited = address(this).balance;
 		IWETH(WETH).deposit{value: ETHDeposited}();
 		address tknETHLP = IUniswapV2Factory(_uniswapFactory).createPair(token, WETH);
@@ -66,6 +63,7 @@ contract FoundingEvent {
 		foundingETHDeposited = ETHDeposited;
 		tokenETHLP = tknETHLP;
 	}
-	function setStakingContract(address contr) public {require(msg.sender == _deployer && _stakingNotSet == true); _staking = contr; delete _stakingNotSet;}
-	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
+
+	function setStakingContract(address contr) public {require(msg.sender == _deployer && _stkngNtSt == true); _staking = contr; delete _stkngNtSt;}
+	function _isContract(address a) internal view returns(bool) {uint s;assembly {s := extcodesize(a)}return s > 0;}
 }
