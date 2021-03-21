@@ -21,10 +21,12 @@ import "./IERC20.sol";
 contract FoundingEvent {
 	// I believe this is required for the safety of investors and other developers joining the project
 	string public AgreementTerms = "I understand that this contract is provided with no warranty of any kind. \n I agree to not hold the contract creator, RAID team members or anyone associated with this event liable for any damage monetary and otherwise I might onccur. \n I understand that any smart contract interaction carries an inherent risk.";
-	uint private _totalETHDeposited;
-	uint private _totalLGELPtokensMinted;
-	address private _tokenETHLP; // create2 and hardcode too?
+	uint public foundingETHDeposited;
+	uint public foundingLPtokensMinted;
+	address public tokenETHLP; // create2 and hardcode too?
+	mapping(address => uint) public contributions;
 	bool private _lgeOngoing;
+	bool private _stakingNotSet;
 ///////variables for testing purposes
 	address private constant _WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;// testing
 	address private _uniswapFactory = 0x7FDc955b5E2547CC67759eDba3fd5d7027b9Bd66;
@@ -32,15 +34,14 @@ contract FoundingEvent {
 	address private _token; // hardcoded address
 	address payable private _deployer; // hardcoded
 	address private _staking;
-//////
+
 	constructor() {
 		_deployer = msg.sender;
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
 		_rewardsGenesis = block.number + 5;
 		_lgeOngoing = true;
+		_stakingNotSet = true;
 	}
-
-	mapping(address => uint) public contributions;
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
 		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true && _isContract(msg.sender) == false);
@@ -57,16 +58,14 @@ contract FoundingEvent {
 		address WETH = _WETH;
 		uint ETHDeposited = address(this).balance;
 		IWETH(WETH).deposit{value: ETHDeposited}();
-		address tokenETHLP = IUniswapV2Factory(_uniswapFactory).createPair(token, WETH);
-		IERC20(token).transfer(tokenETHLP, 1e27);
-		IERC20(WETH).transfer(tokenETHLP, ETHDeposited);
-		IUniswapV2Pair(tokenETHLP).mint(_staking);
-		_totalLGELPtokensMinted = IERC20(tokenETHLP).balanceOf(address(this));
-		_totalETHDeposited = ETHDeposited;
-		_tokenETHLP = tokenETHLP;
+		address tknETHLP = IUniswapV2Factory(_uniswapFactory).createPair(token, WETH);
+		IERC20(token).transfer(tknETHLP, 1e27);
+		IERC20(WETH).transfer(tknETHLP, ETHDeposited);
+		IUniswapV2Pair(tknETHLP).mint(_staking);
+		foundingLPtokensMinted = IERC20(tknETHLP).balanceOf(address(this));
+		foundingETHDeposited = ETHDeposited;
+		tokenETHLP = tknETHLP;
 	}
-
+	function setStakingContract(address contr) public {require(msg.sender == _deployer && _stakingNotSet == true); _staking = contr; delete _stakingNotSet;}
 	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
-	function getFounder(address account) external view returns (uint ethContributed) {return contributions[account];}
-	function getLgeInfo() external view returns (uint rewGenesis,uint totEthDepos, uint totLGELPMinted) {return (_rewardsGenesis,_totalETHDeposited,_totalLGELPtokensMinted);}
 }
