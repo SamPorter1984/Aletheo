@@ -6,8 +6,7 @@ pragma solidity >=0.7.0;
 // freely check their privelege regularly, instead of maintaining expensive accurate computation.
 // This version is not fundamentally pure yet. Also I didn't yet thought very well about minimum quorum, in here it's crazy, but the contract is upgradeable before deadline, so.
 // The contract might never be published on mainnet, maybe we need to finalize governance model first
-import "./ITreasury.sol";
-import "./IFoundingEvent.sol";
+import "./IStaking.sol";
 import "./IERC20.sol";
 
 contract Governance {
@@ -26,17 +25,10 @@ contract Governance {
 
 	uint private _proposalCount;
 	address private _initializer;
-	address private _token;
-	address private _founding;
-	address private _treasury;
+	address private _staking;
 
 	struct Voter {uint128 votingPower;uint128 lock;uint128 totalVotingPower;uint128 lastPrivelegeCheck;uint lastVoted;}
 	mapping(address => Voter) private _voters;
-	mapping(address => uint) private _votingPower;
-	mapping(address => uint) private _totalVotingPower;
-	mapping(address => uint) private _lock;
-	mapping(address => uint) private _lastPrivelegeCheck;
-	mapping(address => uint) private _lastVoted;
 	mapping(uint => Proposal) public proposals;
 
 	constructor(){_initializer = msg.sender;} // a way for anybody to deploy logic, propose it as an upgrade, except it depends on particular case, sometimes initializer has to be proxyAdmin
@@ -66,17 +58,6 @@ contract Governance {
 		proposals[id].votes[msg.sender] = true;
 	}
 
-	function lockFor3years(uint128 amount, bool ok) external {
-		require(ok == true && IERC20(_token).balanceOf(msg.sender) >= amount && _isContract(msg.sender) == false);
-		IERC20(_token).transferFrom(msg.sender,address(this),amount);
-		_voters[msg.sender].votingPower += amount;
-		_voters[msg.sender].lock = uint128(block.number + 6307200);
-	}
-
-	function withdraw(uint128 amount) external {
-		require(_voters[msg.sender].votingPower>=amount&&block.number>=_voters[msg.sender].lock);_voters[msg.sender].votingPower -= amount;IERC20(_token).transfer(msg.sender,amount);
-	}
-
 	function resolveVoting(uint id) external {
 		uint forVotes = proposals[id].forVotes;
 		require(forVotes>=500e24 && block.number>=proposals[id].endBlock && proposals[id].executed == false);//500 mil, not sure about this number
@@ -86,19 +67,17 @@ contract Governance {
 		if(percent > 60) {_execute(id);}
 	}
 
-	function checkPrivelege() external { // i still think it's suboptimal
+	function checkPrivelege() external { // i still think it's suboptimal. could instead use earliestLock variable or something, also make everybody stake in one separate contract
 		require(_voters[msg.sender].lastPrivelegeCheck+100000 < block.number);
 		_voters[msg.sender].lastPrivelegeCheck = uint128(block.number);
-		uint totalVotingPower = _voters[msg.sender].votingPower;
-		(uint amount,uint lock) = IFoundingEvent(_founding).getFounderTknAmntLckPt(msg.sender);
+		uint votingPower = _voters[msg.sender].votingPower;
+		(uint amount,uint lock) = IStaking(_staking).getTknAmntLckPt(msg.sender);
 		if (lock == 0 || lock - 1036800 < block.number) {amount = 0;}
-		totalVotingPower += amount;
-		(amount,lock) = ITreasury(_treasury).getTknAmntLckPt(msg.sender);
-		if (lock == 0 || lock - 1036800 < block.number) {amount = 0;}
-		_voters[msg.sender].totalVotingPower = uint128(totalVotingPower + amount);
+		_voters[msg.sender].totalVotingPower = uint128(votingPower + amount);
 	}
 
 	function changeAddress(address oldAccount,address newAccount) external {//can change address only if didn't vote for a month. that's cheaper than creating iteration through all proposals
+		require(msg.sender == _staking);
 		_voters[newAccount].lastVoted = block.number;
 		uint128 votingPower = _voters[oldAccount].votingPower;
 		uint128 lock = _voters[oldAccount].lock;
@@ -106,7 +85,7 @@ contract Governance {
 		if (votingPower != 0) {_voters[newAccount].votingPower = votingPower;_voters[newAccount].lock = lock;}
 	}
 
-	function getLastVoted(address account) external view returns(uint lstVtd) {return _lastVoted[account];}
+	function getLastVoted(address account) external view returns(uint lstVtd) {return _voters[account].lastVoted;}
 	function _execute(uint id) internal{address dstntn = proposals[id].destination;bytes memory dt = proposals[id].data;dstntn.call(dt);emit ExecuteProposal(id,dstntn,dt);}
 	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
 }
