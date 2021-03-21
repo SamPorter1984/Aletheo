@@ -60,6 +60,7 @@ contract StakingContract {
 
 	function claimFounderStatus() public {
 		require(_notInit == false && _ps[msg.sender].founder == false);
+		_ps[msg.sender].founder = true;
 		uint ethContributed = IFoundingEvent(_founding).contributions(msg.sender);
 		require(ethContributed > 0);
 		uint foundingETH = _foundingETHDeposited;
@@ -67,7 +68,6 @@ contract StakingContract {
 		uint tokenAmount = ethContributed*1e27/foundingETH;
 		_ps[msg.sender].lpShare = uint128(lpShare);
 		_ps[msg.sender].tokenAmount = uint128(tokenAmount);
-		_ps[msg.sender].founder = true;
 	}
 
 	function unstakeLp(bool ok,uint amount) public lock {
