@@ -23,8 +23,8 @@ contract FoundingEvent {
 	// I believe this is required for the safety of investors and other developers joining the project
 	string public AgreementTerms = "I understand that this contract is provided with no warranty of any kind. \n I agree to not hold the contract creator, RAID team members or anyone associated with this event liable for any damage monetary and otherwise I might onccur. \n I understand that any smart contract interaction carries an inherent risk.";
 	mapping(address => uint) public contributions;
-	bool private _lgeOngoing;
 	address private _staking;
+	bool private _lgeOngoing;
 	bool private _stkngNtSt;
 ///////variables for testing purposes
 	uint private _rewardsGenesis; // hardcoded block.number
