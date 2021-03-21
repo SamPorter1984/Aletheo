@@ -30,12 +30,7 @@ contract FoundingEvent {
 	uint private _rewardsGenesis; // hardcoded block.number
 	address payable private _deployer; // hardcoded
 
-	constructor() {
-		_deployer = msg.sender;
-		_rewardsGenesis = block.number + 5;
-		_lgeOngoing = true;
-		_stkngNtSt = true;
-	}
+	constructor() {_deployer = msg.sender;_rewardsGenesis = block.number + 5;_lgeOngoing = true;_stkngNtSt = true;}
 
 	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
 		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true && _isContract(msg.sender) == false);
