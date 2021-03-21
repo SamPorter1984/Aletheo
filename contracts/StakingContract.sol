@@ -1,7 +1,7 @@
 pragma solidity >=0.7.0 <=0.8.0;
 // this contract is such a mess, if we want founders and liquidity providers have different rewards rate
 // i wrote full functionality first, but the code was looking too ugly
-// i almost want to change the entire system only to make the code look more or less beautiful
+// i almost want to change the entire system only to make the code look more or less nice
 // did change it a small bit: founders are unable to stake generic liquidity on top of their share
 // for that they will have to use another address
 // the code still looks ugly, not sure what can i do, but i will try
