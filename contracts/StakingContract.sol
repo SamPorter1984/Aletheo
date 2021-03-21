@@ -59,7 +59,7 @@ contract StakingContract {
 	modifier lock() {require(block.number>_locks[msg.sender]);_locks[msg.sender] = block.number + 1;_;}
 
 	function claimFounderStatus() public {
-		require(_notInit == false);
+		require(_notInit == false && _ps[msg.sender].founder == false);
 		uint ethContributed = IFoundingEvent(_founding).contributions(msg.sender);
 		require(ethContributed > 0);
 		uint foundingETH = _foundingETHDeposited;
@@ -94,7 +94,7 @@ contract StakingContract {
 		if (_ps[msg.sender].founder == true) {toClaim = toClaim/_foundingTokenAmount;} else {rate = rate*2/3;toClaim = toClaim/_genTotTokenAmount;}
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
 		require(success == true);
-		_ps[msg.sender].lastClaim = uint128(block.number);
+		_ps[msg.sender].lastClaim = block.number;
 	}
 
 // this function has to be expensive as an alert of something fishy just in case
@@ -134,14 +134,15 @@ contract StakingContract {
 	}
 
 	function stake(uint amount) public {
-		require(_ps[msg.sender].founder==false && IERC20(_tokenETHLP).balanceOf(msg.sender)>=amount);
+		address tkn = _tokenETHLP;
+		require(_ps[msg.sender].founder==false && IERC20(tkn).balanceOf(msg.sender)>=amount);
 		_genTotTokenAmount += amount;
-		(uint res0,uint res1,)=IUniswapV2Pair(_tokenETHLP).getReserves();
-		uint total = IERC20(_tokenETHLP).totalSupply();
+		(uint res0,uint res1,)=IUniswapV2Pair(tkn).getReserves();
+		uint total = IERC20(tkn).totalSupply();
 		uint share;
 		if (res0 > res1) {share = res0*amount/total;} else {share = res1*amount/total;}
 		_ps[msg.sender].tokenAmount += uint128(share);
-		IERC20(_tokenETHLP).transferFrom(msg.sender,address(this),amount);
+		IERC20(tkn).transferFrom(msg.sender,address(this),amount);
 	}
  
 	function migrate(address contr,address tkn,uint amount) public lock {
