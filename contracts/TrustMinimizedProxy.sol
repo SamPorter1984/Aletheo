@@ -22,9 +22,9 @@ pragma solidity >=0.7.0 <0.9.0;
 contract TrustMinimizedProxy {
 	event Upgraded(address indexed toLogic);
 	event AdminChanged(address indexed previousAdmin, address indexed newAdmin);
-	event NextLogicDefined(address indexed nextLogic);
-	event ProposalsRestrictedUntil(uint block);
-	event Canceled(address indexed toLogic);
+	event NextLogicDefined(address indexed nextLogic, uint timeOfArrivalBlock);
+	event UpgradesRestrictedUntil(uint block);
+	event NextLogicCanceled(address indexed toLogic);
 
 	bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 	bytes32 internal constant LOGIC_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
@@ -41,6 +41,7 @@ contract TrustMinimizedProxy {
 		uint deadline = block.number + 4204800; // ~2 years as default
 		assembly {sstore(DEADLINE_SLOT,deadline)}
 	}
+
 	modifier ifAdmin() {if (msg.sender == _admin()) {_;} else {_fallback();}}
 
 	function getSettings() external ifAdmin returns(address logic, uint pgrdBlck, uint ddln) {return (_logic(), _proposeBlock(), _deadline());}
@@ -48,12 +49,20 @@ contract TrustMinimizedProxy {
 	function _proposeBlock() internal view returns (uint bl) {assembly { bl := sload(PROPOSE_BLOCK_SLOT) }}
 	function _nextLogicBlock() internal view returns (uint bl) {assembly { bl := sload(NEXT_LOGIC_BLOCK_SLOT) }}
 	function _deadline() internal view returns (uint bl) {assembly { bl := sload(DEADLINE_SLOT) }}
+	function _admin() internal view returns (address adm) {assembly { adm := sload(ADMIN_SLOT) }}
+	function _isContract(address account) internal view returns (bool b) {uint256 size;assembly { size := extcodesize(account) }return size > 0;}
+	function _setAdmin(address newAdm) internal {assembly {sstore(ADMIN_SLOT, newAdm)}}
 	function changeAdmin(address newAdm) external ifAdmin {emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
 	function proposeTo(address newLogic) external ifAdmin {if (_logic() == address(0)) {assembly {sstore(LOGIC_SLOT,newLogic)}} else{_setNextLogic(newLogic);}}
-	function prolongLock(uint block_) external ifAdmin {uint pb; assembly {pb := sload(PROPOSE_BLOCK_SLOT) pb := add(pb,block_) sstore(PROPOSE_BLOCK_SLOT,pb)}emit ProposalsRestrictedUntil(pb);}
+	function prolongLock(uint block_) external ifAdmin {uint pb; assembly {pb := sload(PROPOSE_BLOCK_SLOT) pb := add(pb,block_) sstore(PROPOSE_BLOCK_SLOT,pb)}emit UpgradesRestrictedUntil(pb);}
+	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock());address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT,logic)}emit Upgraded(logic);}
+	function cancelUpgrade() external ifAdmin {address logic;assembly {logic := sstore(NEXT_LOGIC_SLOT, logic)}emit NextLogicCanceled(logic);}
+	fallback () external payable {_fallback();}
+	receive () external payable {_fallback();}
+	function _fallback() internal {require(msg.sender != _admin());_delegate(_logic());}
 
 	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {
-		if (_logic() == address(0)) {assembly {sstore(LOGIC_SLOT,newLogic)}}else{_setNextLogic(newLogic);}(bool success,) = newLogic.delegatecall(data);require(success);
+		if (_logic() == address(0)) {assembly {sstore(LOGIC_SLOT,newLogic)}}else{_setNextLogic(newLogic);} (bool success,) = newLogic.delegatecall(data);require(success);
 	}
 
 	function _setNextLogic(address nextLogic) internal {
@@ -62,20 +71,8 @@ contract TrustMinimizedProxy {
 		uint proposeBlock = block.number + 172800;
 		uint nextLogicBlock = block.number + 172800;
 		assembly { sstore(NEXT_LOGIC_SLOT, nextLogic) sstore(NEXT_LOGIC_BLOCK_SLOT, nextLogicBlock) sstore(PROPOSE_BLOCK_SLOT, proposeBlock) }
-		emit NextLogicDefined(nextLogic);
+		emit NextLogicDefined(nextLogic,block.number + 172800);
 	}
-
-	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock());address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT,logic)}emit Upgraded(logic);}
-
-	function cancelUpgrade() external ifAdmin {address logic;assembly {logic := sload(LOGIC_SLOT)sstore(NEXT_LOGIC_SLOT, logic)}emit Canceled(logic);}
-
-	function _isContract(address account) internal view returns (bool b) {uint256 size;assembly { size := extcodesize(account) }return size > 0;}
-	function _admin() internal view returns (address adm) {assembly { adm := sload(ADMIN_SLOT) }}
-	function _setAdmin(address newAdm) internal {assembly {sstore(ADMIN_SLOT, newAdm)}}
-
-	fallback () external payable {_fallback();}
-	receive () external payable {_fallback();}
-	function _fallback() internal {require(msg.sender != _admin());_delegate(_logic());}
 
 	function _delegate(address logic_) internal {
 		assembly {
