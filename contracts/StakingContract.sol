@@ -97,7 +97,10 @@ contract StakingContract {
 
 // this function has to be expensive as an alert of something fishy just in case
 // metamask has to somehow provide more info about a transaction
-	function newAddress(address a) public {require(_isContract(a) == false);for (uint i = 0;i<10;i++) {delete newAddresses[msg.sender];newAddresses[msg.sender] = a;}}
+	function newAddress(address a) public {
+		if(_ps[msg.sender].lockedAmount>0||_ls[msg.sender].amount>0){require(_isContract(msg.sender) == false);}
+		for (uint i = 0;i<10;i++) {delete newAddresses[msg.sender];newAddresses[msg.sender] = a;}
+	}
 // nobody should trust dapp interface. maybe a function like this should not be provided through dapp at all
 	function changeAddress(address ad) public lock { // while user can confirm newAddress by public method, still has to enter the same address second time
 		address S = msg.sender;
@@ -112,7 +115,7 @@ contract StakingContract {
 	}
 
 	function lockFor3Years(bool ok, address tkn, uint amount) public {
-		require(ok==true && amount>0);
+		require(ok==true && amount>0 && _isContract(msg.sender) == false);
 		if(tkn ==_tokenETHLP) {
 			require(_ps[msg.sender].lpShare-_ps[msg.sender].lockedAmount>=amount); _ps[msg.sender].lockUpTo=uint128(block.number+6307200);_ps[msg.sender].lockedAmount+=uint128(amount);	
 		}
@@ -121,7 +124,7 @@ contract StakingContract {
 			_ls[msg.sender].lockUpTo=uint128(block.number+6307200);
 			_ls[msg.sender].amount+=uint128(amount);
 			IERC20(tkn).transferFrom(msg.sender,address(this),amount);
-		}	
+		}
 	}
 
 	function unlock() public lock {
