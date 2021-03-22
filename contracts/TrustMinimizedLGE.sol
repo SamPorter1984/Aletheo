@@ -31,7 +31,7 @@ contract FoundingEvent {
 	constructor() {_deployer = msg.sender;_rewardsGenesis = block.number + 5;_lgeOngoing = true;_stkngNtSt = true;}
 
 	function depositEth() external payable {
-		require(_lgeOngoing == true && _isContract(msg.sender) == false);
+		require(_lgeOngoing == true);
 		uint deployerShare = msg.value / 200;
 		uint amount = msg.value - deployerShare;
 		_deployer.transfer(deployerShare);
@@ -53,5 +53,4 @@ contract FoundingEvent {
 	}
 
 	function setStakingContract(address contr) public {require(msg.sender == _deployer && _stkngNtSt == true); _staking = contr; delete _stkngNtSt;}
-	function _isContract(address a) internal view returns(bool) {uint s;assembly {s := extcodesize(a)}return s > 0;}
 }
