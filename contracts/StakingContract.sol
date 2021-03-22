@@ -21,8 +21,6 @@ contract StakingContract {
 	uint private _genTotTokenAmount;
 	address private _tokenETHLP; // create2 and hardcode too?
 	bool private _notInit;
-	address private _optimismBridge;
-	address private _etcBridge;
 ///////variables for testing purposes
 	address private _token; // hardcoded address
 	address private _treasury; // hardcoded
@@ -55,7 +53,6 @@ contract StakingContract {
 	mapping(address => bool) private _taken;
 
 	event AddressLinked(address indexed address1, address indexed address2);
-	event BridgesDefined(address indexed optimism,address indexed etc);
 
 	modifier lock() {require(block.number>_locks[msg.sender]);_locks[msg.sender] = block.number + 1;_;}
 
@@ -101,7 +98,6 @@ contract StakingContract {
 // this function has to be expensive as an alert of something fishy just in case
 // metamask has to somehow provide more info about a transaction
 	function newAddress(address account) public {require(_isContract(account) == false);for (uint i = 0;i<10;i++) {delete _newAddresses[msg.sender];_newAddresses[msg.sender] = account;}}
-	function setBridges(address optimism, address etc) external {require(msg.sender==_governance);_optimismBridge = optimism;_etcBridge = etc;emit BridgesDefined(optimism,etc);}
 
 	function changeAddress() public lock { // nobody should trust dapp interface. maybe a function like this should not be provided through dapp at all
 		address S = msg.sender;
@@ -137,18 +133,17 @@ contract StakingContract {
 	function stake(uint amount) public {
 		address tkn = _tokenETHLP;
 		require(_ps[msg.sender].founder==false && IERC20(tkn).balanceOf(msg.sender)>=amount);
+		if (_ps[msg.sender].lastClaim == 0) {_ps[msg.sender].lastClaim = uint96(block.number);} else{require(block.number < _ps[msg.sender].lastClaim+100);}
 		_genTotTokenAmount += amount;
 		(uint res0,uint res1,)=IUniswapV2Pair(tkn).getReserves();
 		uint total = IERC20(tkn).totalSupply();
 		uint share;
 		if (res0 > res1) {share = res0*amount/total;} else {share = res1*amount/total;}
 		_ps[msg.sender].tokenAmount += uint128(share);
-		if (_ps[msg.sender].lastClaim == 0) {_ps[msg.sender].lastClaim = uint96(block.number);} else{require(block.number < _ps[msg.sender].lastClaim+100);}
 		IERC20(tkn).transferFrom(msg.sender,address(this),amount);
 	}
  
-	function migrate(address contr,address tkn,uint amount) public lock {
-		require(contr == _optimismBridge || contr == _etcBridge);
+	function migrate(address contr,address tkn,uint amount) public lock {//can support any amount of bridges
 		if (tkn == _tokenETHLP) {
 			uint lpShare = _ps[msg.sender].lpShare;
 			uint lockedAmount = _ps[msg.sender].lockedAmount;
@@ -160,13 +155,13 @@ contract StakingContract {
 			_ps[msg.sender].tokenAmount = tknA - uint128(toSubtract);
 			bool status = _ps[msg.sender].founder;
 			if (status == true){_foundingTokenAmount -= toSubtract;} else{_genTotTokenAmount -= toSubtract;}
-			if (contr == _optimismBridge) {IERC20(tkn).transfer(_optimismBridge, amount);} if (contr == _etcBridge) {IERC20(tkn).transfer(_etcBridge,amount);}
+			IERC20(tkn).transfer(contr, amount);
 			IBridge(contr).provider(msg.sender,amount,_ps[msg.sender].lastClaim,toSubtract,status);
 		}
 		if (tkn == _token) {
 			uint lockedAmount = _ls[msg.sender].amount;
 			require(lockedAmount >= amount);
-			if (contr == _optimismBridge) {IERC20(tkn).transfer(_optimismBridge, amount);} if (contr == _etcBridge) {IERC20(tkn).transfer(_etcBridge,amount);}
+			IERC20(tkn).transfer(contr, amount);
 			_ls[msg.sender].amount = lockedAmount-amount;
 			IBridge(contr).locker(msg.sender,amount,_ls[msg.sender].lockUpTo);
 		}
