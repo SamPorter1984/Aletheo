@@ -2,7 +2,7 @@ pragma solidity >=0.7.0  <=0.9.0;
 
 /// @title Multisignature wallet - Allows multiple parties to agree on Trxns before execution.
 /// @author Stefan George - <stefan.george@consensys.net>
-// modified by Sam Porter. Had to pack it up to more readable format, removed some functions and variables.
+// modified by Sam Porter. Had to pack it up to more readable format, removed a few functions and variables.
 contract MinimalMultiSig {
 	event Submitted(uint indexed trxnId);
 	event Executed(uint indexed trxnId);
@@ -36,7 +36,7 @@ contract MinimalMultiSig {
 
 	function executeTrxn(uint trxnId) public onlyOwner {
 		require(!trxns[trxnId].executed);
-		if (trxns[trxnId].confirms == _ownersCount) {
+		if (trxns[trxnId].confirms == _ownersCount/2+1) {
 			Trxn storage txn = trxns[trxnId];
 			txn.executed = true;
 			if (_external_call(txn.dest, txn.value, txn.data.length, txn.data)){emit Executed(trxnId);}
