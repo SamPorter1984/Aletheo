@@ -24,7 +24,6 @@ contract StakingContract {
 	address private _optimismBridge;
 	address private _etcBridge;
 ///////variables for testing purposes
-	uint private _rewardsGenesis; // hardcoded block.number
 	address private _token; // hardcoded address
 	address private _treasury; // hardcoded
 	address private _governance; // hardcoded
@@ -33,7 +32,6 @@ contract StakingContract {
 //////
 	constructor() {
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
-		_rewardsGenesis = block.number + 5;
 		_foundingTokenAmount = 1e27;
 		_notInit = true;
 	}
@@ -71,6 +69,7 @@ contract StakingContract {
 		uint tokenAmount = ethContributed*1e27/foundingETH;
 		_ps[msg.sender].lpShare = uint128(lpShare);
 		_ps[msg.sender].tokenAmount = uint128(tokenAmount);
+		_ps[msg.sender].lastClaim = uint96(/*hardcoded block*/);
 	}
 
 	function unstakeLp(bool ok,uint amount) public lock {
@@ -144,6 +143,7 @@ contract StakingContract {
 		uint share;
 		if (res0 > res1) {share = res0*amount/total;} else {share = res1*amount/total;}
 		_ps[msg.sender].tokenAmount += uint128(share);
+		if (_ps[msg.sender].lastClaim == 0) {_ps[msg.sender].lastClaim = uint96(block.number);} else{require(block.number < _ps[msg.sender].lastClaim+100);}
 		IERC20(tkn).transferFrom(msg.sender,address(this),amount);
 	}
  
