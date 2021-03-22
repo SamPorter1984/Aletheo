@@ -1,8 +1,10 @@
 pragma solidity >=0.7.0 <=0.8.0;
-// this contract is such a mess, if we want founders and liquidity providers have different rewards rate
+// this contract is such a mess, if we want founders and liquidity providers have different rewards rate, while having different variables for tokenAmount
+// can't just add a bonus modifier for founders, because that's how founders will compound that bonus, and liquidity mining will become way more
+// centralized than we can afford
 // i wrote full functionality first, but the code was looking too ugly
 // i almost want to change the entire system only to make the code look more or less nice
-// did change it a small bit: founders are unable to stake generic liquidity on top of their share
+// did change it a small bit: founders are unable to stake generic liquidity on top of their share, or it will be too expensive to sload
 // for that they will have to use another address
 // the code still looks ugly, not sure what can i do, but i will try
 
@@ -44,7 +46,7 @@ contract StakingContract {
 		_tokenETHLP = tkn;
 	}
 
-	struct Provider {uint128 lock;uint128 lastClaim; bool founder; uint128 lpShare;uint128 tokenAmount;uint128 lockedAmount;uint128 lockUpTo;}
+	struct Provider {uint96 lastClaim; uint128 tokenAmount; bool founder; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
 	struct Locker {uint128 amount;uint128 lockUpTo;}
 
 	mapping(address => Provider) private _ps;
@@ -60,10 +62,10 @@ contract StakingContract {
 	modifier lock() {require(block.number>_locks[msg.sender]);_locks[msg.sender] = block.number + 1;_;}
 
 	function claimFounderStatus() public {
-		require(_notInit == false && _ps[msg.sender].founder == false);
-		_ps[msg.sender].founder = true;
 		uint ethContributed = IFoundingEvent(_founding).contributions(msg.sender);
 		require(ethContributed > 0);
+		require(_notInit == false && _ps[msg.sender].founder == false);
+		_ps[msg.sender].founder = true;
 		uint foundingETH = _foundingETHDeposited;
 		uint lpShare = _foundingLPtokensMinted*ethContributed/foundingETH;
 		uint tokenAmount = ethContributed*1e27/foundingETH;
@@ -86,16 +88,15 @@ contract StakingContract {
 	}
 
 	function getRewards() public {
-		require(block.number>_ps[msg.sender].lock);
-		_ps[msg.sender].lock =uint128(block.number+1);
-		uint halver = block.number/10000000;
 		uint lastClaim = _ps[msg.sender].lastClaim;
+		require(block.number>lastClaim*10);
+		_ps[msg.sender].lastClaim = uint96(block.number/10);
+		uint halver = block.number/10000000;
 		uint rate = 21e18;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/6;}}
 		uint toClaim =(block.number - lastClaim)*_ps[msg.sender].tokenAmount;
 		if (_ps[msg.sender].founder == true) {toClaim = toClaim*rate/_foundingTokenAmount;} else {rate = rate*2/3;toClaim = toClaim*rate/_genTotTokenAmount;}
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
 		require(success == true);
-		_ps[msg.sender].lastClaim = block.number;
 	}
 
 // this function has to be expensive as an alert of something fishy just in case
