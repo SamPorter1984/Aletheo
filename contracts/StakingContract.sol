@@ -98,11 +98,11 @@ contract StakingContract {
 // this function has to be expensive as an alert of something fishy just in case
 // metamask has to somehow provide more info about a transaction
 	function newAddress(address a) public {require(_isContract(a) == false);for (uint i = 0;i<10;i++) {delete newAddresses[msg.sender];newAddresses[msg.sender] = a;}}
-
-	function changeAddress() public lock { // nobody should trust dapp interface. maybe a function like this should not be provided through dapp at all
+// nobody should trust dapp interface. maybe a function like this should not be provided through dapp at all
+	function changeAddress(address ad) public lock { // while user can confirm newAddress by public method, still has to enter the same address second time
 		address S = msg.sender;
 		address a = newAddresses[S];
-		require(a != address(0) && block.number + 172800 > IGovernance(_governance).getLastVoted(S));
+		require(a != address(0) && a == ad && block.number + 172800 > IGovernance(_governance).getLastVoted(S));
 		if (_ps[S].lpShare >0) {
 			_ps[a].lpShare = _ps[S].lpShare;_ps[a].tokenAmount = _ps[S].tokenAmount;_ps[a].lastClaim = _ps[S].lastClaim;_ps[a].lockUpTo = _ps[S].lockUpTo;
 			_ps[a].lockedAmount = _ps[S].lockedAmount;_ps[a].founder = _ps[S].founder;delete _ps[S];
@@ -173,6 +173,6 @@ contract StakingContract {
 // VIEW FUNCTIONS ==================================================
 	function getProvider(address a) external view returns (uint lpShare, uint lastClaim, address linked) {return (_ps[a].lpShare,_ps[a].lastClaim,_linked[a]);}
 	function getTknAmntLckPt(address a) external view returns (uint tknAmount,uint lockUpTo) {return (_ps[a].tokenAmount,_ps[a].lockUpTo);}
-	function _isFounder(address a) internal returns(bool) {if (IFoundingEvent(_founding).contributions(a) > 0) {return true;} else {return false;}}
+	function _isFounder(address a) internal view returns(bool) {if (IFoundingEvent(_founding).contributions(a) > 0) {return true;} else {return false;}}
 	function _isContract(address a) internal view returns(bool) {uint256 size;assembly {size := extcodesize(a)}return size > 0;}
 }
