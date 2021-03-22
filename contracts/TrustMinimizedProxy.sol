@@ -10,7 +10,7 @@ pragma solidity >=0.7.0 <0.9.0;
 // 2. PROPOSE_BLOCK defines how often the contract can be upgraded. Defined in _setNextLogic() function and the interval here is set
 // to 172800 blocks ~1 month.
 // 3. Admin rights are burnable. Rather not do that without deadline
-// 4. prolongLock() allows to add to UPGRADE_BLOCK. Basically allows to prolong lock. Could prolong to maximum solidity number so the deadline might not be needed 
+// 4. prolongLock() allows to add to PROPOSE_BLOCK. Basically allows to prolong lock. Could prolong to maximum solidity number so the deadline might not be needed 
 // 5. logic contract is not being set suddenly. it's being stored in NEXT_LOGIC_SLOT for a month and only after that it can be set as LOGIC_SLOT.
 // Users have time to decide on if the deployer or the governance is malicious and exit safely.
 // 6. constructor does not require arguments
