@@ -20,8 +20,6 @@ import "./IERC20.sol";
 import "./IStaking.sol";
 
 contract FoundingEvent {
-	// I believe this is required for the safety of investors and other developers joining the project
-	string public AgreementTerms = "I understand that this contract is provided with no warranty of any kind. \n I agree to not hold the contract creator, RAID team members or anyone associated with this event liable for any damage monetary and otherwise I might onccur. \n I understand that any smart contract interaction carries an inherent risk.";
 	mapping(address => uint) public contributions;
 	address private _staking;
 	bool private _lgeOngoing;
@@ -32,8 +30,8 @@ contract FoundingEvent {
 
 	constructor() {_deployer = msg.sender;_rewardsGenesis = block.number + 5;_lgeOngoing = true;_stkngNtSt = true;}
 
-	function depositEth(bool iAgreeToPublicStringAgreementTerms) external payable {
-		require(_lgeOngoing == true && iAgreeToPublicStringAgreementTerms == true && _isContract(msg.sender) == false);
+	function depositEth() external payable {
+		require(_lgeOngoing == true && _isContract(msg.sender) == false);
 		uint deployerShare = msg.value / 200;
 		uint amount = msg.value - deployerShare;
 		_deployer.transfer(deployerShare);
