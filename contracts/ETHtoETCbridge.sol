@@ -9,16 +9,14 @@ pragma solidity >=0.7.0 <=0.9.0;
 // oracles will probably create standard erc-20 with a prefix "c" lowercase, as a reference to classic i guess.
 // minimum store writes, so it does not track token balances for both bridges, so it will work only for tokens which were created on ETH,
 // i am skeptical that anybody who wants to create anything interesting will start on ETC instead of ETH, so it's probably a win-win decision.
-// However if such a situation, that genuinely good high liquidity will be created on ETC, then we can make this bridge upgradeable
-// An equivalent of this bridge also could used for matic, even if matic and trust minimized do not fit in one sentence its still important.
+// However if such a situation, that genuinely good high liquidity project will be created on ETC, then we can make this bridge upgradeable
+// An equivalent of this bridge also could be used for matic, even if matic and trust minimized do not fit in one sentence very well its still important.
 // PS. I seriously believe that the code is the most auditable when it fits in one screen. I hate infinite scrolling :(
 
 // It will be like stated in the paper, but better, since both ETH and ETC(with Mess) are very reliable sources, then accuracy of all Chainlink nodes will always
 // approach 100%. Therefore the punishment for lies in this particular case can be very-very significant. So it's possible to adjust the system
 // in such a way, when game theory will deem attempts of lies completely not worth it, regardless of transaction value.
-// At the time of writing, ETH has 50x more hashrate than ETC. The oracles have to monitor ETC network activity to foresee any attempts of reorg.
-// It's possible to develop a system that shut downs automatically just in case, even if the operator is asleep or away.
-// All it needs is to decide on what finality is safe. Could wait a day.
+// At the time of writing, ETH has 50x more hashrate than ETC. All it needs is to decide on what finality is safe. Could wait a day.
 import "./IERC20.sol";
 
 contract ETHtoETCbridge { 
