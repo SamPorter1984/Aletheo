@@ -91,8 +91,8 @@ contract StakingContract {
 		uint halver = block.number/10000000;
 		uint lastClaim = _ps[msg.sender].lastClaim;
 		uint rate = 21e18;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/6;}}
-		uint toClaim =(block.number - lastClaim)*rate*_ps[msg.sender].tokenAmount;
-		if (_ps[msg.sender].founder == true) {toClaim = toClaim/_foundingTokenAmount;} else {rate = rate*2/3;toClaim = toClaim/_genTotTokenAmount;}
+		uint toClaim =(block.number - lastClaim)*_ps[msg.sender].tokenAmount;
+		if (_ps[msg.sender].founder == true) {toClaim = toClaim*rate/_foundingTokenAmount;} else {rate = rate*2/3;toClaim = toClaim*rate/_genTotTokenAmount;}
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
 		require(success == true);
 		_ps[msg.sender].lastClaim = block.number;
@@ -118,7 +118,7 @@ contract StakingContract {
 	function lockFor3Years(bool ok, address tkn, uint amount) public {
 		require(ok==true && amount>0);
 		if(tkn ==_tokenETHLP) {
-			require(_ps[msg.sender].lpShare-_ps[msg.sender].lockedAmount>=amount);_ps[msg.sender].lockUpTo=uint128(block.number + 6307200);_ps[msg.sender].lockedAmount+=uint128(amount);	
+			require(_ps[msg.sender].lpShare-_ps[msg.sender].lockedAmount>=amount); _ps[msg.sender].lockUpTo=uint128(block.number+6307200);_ps[msg.sender].lockedAmount+=uint128(amount);	
 		}
 		if(tkn == _token) {
 			require(IERC20(tkn).balanceOf(msg.sender)>=amount);
