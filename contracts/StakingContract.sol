@@ -1,6 +1,6 @@
 pragma solidity >=0.7.0 <=0.8.0;
 // this contract is such a mess, if we want founders and liquidity providers have different rewards rate, while having different variables for tokenAmount
-// can't just add a bonus modifier for founders, because that's how founders will compound that bonus, and liquidity mining will become way more
+// can't just add a bonus modifier for founders, because that's how founders can compound that bonus, and liquidity mining can become way more
 // centralized than we can afford
 // i wrote full functionality first, but the code was looking too ugly
 // i almost want to change the entire system only to make the code look more or less nice
@@ -25,7 +25,7 @@ contract StakingContract {
 	address private _token; // hardcoded address
 	address private _treasury; // hardcoded
 	address private _governance; // hardcoded
-	address private _founding;
+	address private _founding;// hardcoded
 
 //////
 	constructor() {
@@ -48,7 +48,7 @@ contract StakingContract {
 	mapping(address => Provider) private _ps;
 	mapping(address => Locker) private _ls;
 	mapping(address => uint) private _locks;
-	mapping(address => address) private _newAddresses;
+	mapping(address => address) public newAddresses;
 	mapping(address => address) private _linked;
 	mapping(address => bool) private _taken;
 
@@ -66,7 +66,7 @@ contract StakingContract {
 		uint tokenAmount = ethContributed*1e27/foundingETH;
 		_ps[msg.sender].lpShare = uint128(lpShare);
 		_ps[msg.sender].tokenAmount = uint128(tokenAmount);
-		_ps[msg.sender].lastClaim = uint96(/*hardcoded block*/);
+		_ps[msg.sender].lastClaim = uint96(block.number);//hardcoded genesis block
 	}
 
 	function unstakeLp(bool ok,uint amount) public lock {
@@ -97,11 +97,11 @@ contract StakingContract {
 
 // this function has to be expensive as an alert of something fishy just in case
 // metamask has to somehow provide more info about a transaction
-	function newAddress(address account) public {require(_isContract(account) == false);for (uint i = 0;i<10;i++) {delete _newAddresses[msg.sender];_newAddresses[msg.sender] = account;}}
+	function newAddress(address a) public {require(_isContract(a) == false);for (uint i = 0;i<10;i++) {delete newAddresses[msg.sender];newAddresses[msg.sender] = a;}}
 
 	function changeAddress() public lock { // nobody should trust dapp interface. maybe a function like this should not be provided through dapp at all
 		address S = msg.sender;
-		address a = _newAddresses[S];
+		address a = newAddresses[S];
 		require(a != address(0) && block.number + 172800 > IGovernance(_governance).getLastVoted(S));
 		if (_ps[S].lpShare >0) {
 			_ps[a].lpShare = _ps[S].lpShare;_ps[a].tokenAmount = _ps[S].tokenAmount;_ps[a].lastClaim = _ps[S].lastClaim;_ps[a].lockUpTo = _ps[S].lockUpTo;
@@ -162,21 +162,17 @@ contract StakingContract {
 			uint lockedAmount = _ls[msg.sender].amount;
 			require(lockedAmount >= amount);
 			IERC20(tkn).transfer(contr, amount);
-			_ls[msg.sender].amount = lockedAmount-amount;
+			_ls[msg.sender].amount = uint128(lockedAmount-amount);
 			IBridge(contr).locker(msg.sender,amount,_ls[msg.sender].lockUpTo);
 		}
 	}
 
-	function linkAddress(address account) external { // can be used to limit the amount of testers to only approved addresses
-		require(_linked[msg.sender] != account && _taken[account] == false && _isProvider(account) == false && _ls[msg.sender].amount == 0);
-		_linked[msg.sender] = account;
-		_linked[account] = msg.sender;
-		_taken[account] = true;
-		emit AddressLinked(msg.sender,account);
+	function linkAddress(address a) external { // can be used to limit the amount of testers to only approved addresses
+		require(_linked[msg.sender] != a && _taken[a] == false && _isFounder(a) == false);_linked[msg.sender] = a;_linked[a] = msg.sender;_taken[a] = true;emit AddressLinked(msg.sender,a);
 	}
 // VIEW FUNCTIONS ==================================================
-	function getProvider(address account) external view returns (uint lpShare, uint lastClaim, address linked) {return (_ps[account].lpShare,_ps[account].lastClaim,_linked[account]);}
-	function getTknAmntLckPt(address account) external view returns (uint tknAmount,uint lockUpTo) {return (_ps[account].tokenAmount,_ps[account].lockUpTo);}
-	function _isProvider(address account) internal view returns(bool) {if (_ps[account].lpShare > 0) {return true;} else {return false;}}
-	function _isContract(address account) internal view returns(bool) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
+	function getProvider(address a) external view returns (uint lpShare, uint lastClaim, address linked) {return (_ps[a].lpShare,_ps[a].lastClaim,_linked[a]);}
+	function getTknAmntLckPt(address a) external view returns (uint tknAmount,uint lockUpTo) {return (_ps[a].tokenAmount,_ps[a].lockUpTo);}
+	function _isFounder(address a) internal returns(bool) {if (IFoundingEvent(_founding).contributions(a) > 0) {return true;} else {return false;}}
+	function _isContract(address a) internal view returns(bool) {uint256 size;assembly {size := extcodesize(a)}return size > 0;}
 }
