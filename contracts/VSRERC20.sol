@@ -60,9 +60,7 @@ contract VSRERC20 is Context, IERC20 {
 	function approve(address spender, uint amount) public override returns (bool) {if (allowedContracts[spender] == true) {return true;} else {return false;}}//kept it just in case for complience to erc20
 
 	function transferFrom(address sender, address recipient, uint amount) public override returns (bool) {
-		require(allowedContracts[_msgSender()] == true);
-		_transfer(sender, recipient, amount);
-		return true;
+		require(allowedContracts[_msgSender()] == true);_transfer(sender, recipient, amount);return true;
 	}
 
 	function _transfer(address sender, address recipient, uint amount) internal {
