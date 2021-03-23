@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.7.0 <0.9.0;
+pragma solidity >=0.7.0 <0.8.0;
 
 import "./Context.sol";
 import "./IERC20.sol";
@@ -113,7 +113,7 @@ contract VSRERC20 is Context, IERC20 {
 
 	function setFounding(address c) public onlyGovernance {require(_fNotSet == true);delete _fNotSet;_founding = c;}
 	function init(address c) public {require(msg.sender == _founding); allowedContracts[c] = true;} // allowance to non-upgradeable staking contract
-	function allowContract(address c) public onlyGovernance {require(_isContract[c]==true); if(pendingContracts[c]==0){pendingContracts[c]=block.number+172800;}else{pendingContracts[c]=0;}} // this is more convenient
+	function allowContract(address c) public onlyGovernance {require(_isContract(c)==true); if(pendingContracts[c]==0){pendingContracts[c]=block.number+172800;}else{pendingContracts[c]=0;}} // this is more convenient
 	function approveContract(address c) public onlyGovernance {require(pendingContracts[c] != 0 && block.number>=pendingContracts[c]);allowedContracts[c] = true;}
 	function setNameSymbol(string memory n, string memory sy) public onlyGovernance {_name = n;_symbol = sy;}
 	function setGovernance(address a) public onlyGovernance {require(_governanceSet < 3);_governanceSet += 1;_governance = a;}
