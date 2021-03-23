@@ -43,13 +43,16 @@ contract FoundingEvent {
 		delete _lgeOngoing;
 		address token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
 		address WETH = 0x2E9d30761DB97706C536A112B9466433032b28e3;
+		address staking = _staking;
 		uint ETHDeposited = address(this).balance;
 		IWETH(WETH).deposit{value: ETHDeposited}();
-		address tknETHLP = IUniswapV2Factory(0x7FDc955b5E2547CC67759eDba3fd5d7027b9Bd66).createPair(token, WETH);
+		address tknETHLP = getPair[token][WETH];
+		if (tknETHLP == address(0)) {IUniswapV2Factory(0x7FDc955b5E2547CC67759eDba3fd5d7027b9Bd66).createPair(token, WETH);}
 		IERC20(token).transfer(tknETHLP, 1e27);
 		IERC20(WETH).transfer(tknETHLP, ETHDeposited);
-		IUniswapV2Pair(tknETHLP).mint(_staking);
-		IStaking(_staking).init(ETHDeposited, tknETHLP);
+		IUniswapV2Pair(tknETHLP).mint(staking);
+		IStaking(staking).init(ETHDeposited, tknETHLP);
+		IERC20(token).init(staking);
 	}
 
 	function setStakingContract(address contr) public {require(msg.sender == _deployer && _stkngNtSt == true); _staking = contr; delete _stkngNtSt;}
