@@ -41,7 +41,7 @@ contract VSRERC20 is Context, IERC20 {
 		_genesisBlock = block.number + 345600; // remove
 		_governance = msg.sender; // for now
 		_holders[msg.sender].balance = 1e30;
-		_allowedContracts[/*uniswap transfer helper*/] = true;
+		_allowedContracts[0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D] = true; // mainnet uniswapv2 router 02, transfer helper library
 		_fNotSet = true;
 	}
 
@@ -109,7 +109,7 @@ contract VSRERC20 is Context, IERC20 {
 			require(amount <= allowed && amount <= treasury);
 		}
 	}
-	
+
 	function setFounding(address c) public onlyGovernance {require(_fNotSet == true);delete _fNotSet;_founding = c;}
 	function init(address c) public {require(msg.sender == _founding); _allowedContracts[c] = true;} // allowance to non-upgradeable staking contract
 	function allowContract(address c) public onlyGovernance {require(_isContract[c]==true); if(pendingContracts[c]==0){pendingContracts[c]=block.number+172800;}else{pendingContracts[c]=0;}} // this is more convenient
