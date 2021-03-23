@@ -10,7 +10,7 @@ import "./IERC20.sol";
 // Very slow erc20 implementation. Limits release of the funds with emission rate in _beforeTokenTransfer().
 // Even if there will be a vulnerability in upgradeable contracts defined in _beforeTokenTransfer(), it won't be devastating.
 // Developers can't simply rug.
-// Allowances are possible only for approved by the governance contracts. In fact, _allowances are completely wiped, only _allowedContracts check exists.
+// Allowances are possible only for approved by the governance contracts. In fact, _allowances are completely wiped, only allowedContracts check exists.
 // _mint() and _burn() functions are removed.
 // Token name and symbol can be changed.
 // Bulk transfer allows to transact in bulk cheaper by making up to three times less store writes in comparison to regular erc-20 transfers
@@ -21,7 +21,8 @@ contract VSRERC20 is Context, IERC20 {
 
 	struct Holder {uint128 balance;uint128 lock;}
 	mapping (address => Holder) private _holders;
-	mapping (address => bool) private _allowedContracts;
+	mapping (address => bool) public allowedContracts;
+	mapping (address => uint) public pendingContracts;
 
 	string private _name;
 	string private _symbol;
@@ -41,7 +42,7 @@ contract VSRERC20 is Context, IERC20 {
 		_genesisBlock = block.number + 345600; // remove
 		_governance = msg.sender; // for now
 		_holders[msg.sender].balance = 1e30;
-		_allowedContracts[0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D] = true; // mainnet uniswapv2 router 02, transfer helper library
+		allowedContracts[0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D] = true; // mainnet uniswapv2 router 02, transfer helper library
 		_fNotSet = true;
 	}
 
@@ -51,13 +52,13 @@ contract VSRERC20 is Context, IERC20 {
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view override returns (uint) {uint supply = (block.number - _genesisBlock)*42e19+1e27;if (supply > 1e30) {supply = 1e30;}return supply;}
 	function decimals() public pure returns (uint) {return 18;}
-	function allowance(address owner, address spender) public view override returns (uint) {if (_allowedContracts[spender] == true) {return 2**256 - 1;} else {return 0;}}
+	function allowance(address owner, address spender) public view override returns (uint) {if (allowedContracts[spender] == true) {return 2**256 - 1;} else {return 0;}}
 	function balanceOf(address a) public view override returns (uint) {return _holders[a].balance;}
 	function transfer(address recipient, uint amount) public override returns (bool) {_transfer(_msgSender(), recipient, amount);return true;}
-	function approve(address spender, uint amount) public override returns (bool) {if (_allowedContracts[spender] == true) {return true;} else {return false;}}//kept it just in case for complience to erc20
+	function approve(address spender, uint amount) public override returns (bool) {if (allowedContracts[spender] == true) {return true;} else {return false;}}//kept it just in case for complience to erc20
 
 	function transferFrom(address sender, address recipient, uint amount) public override returns (bool) {
-		require(_allowedContracts[_msgSender()] == true);
+		require(allowedContracts[_msgSender()] == true);
 		_transfer(sender, recipient, amount);
 		return true;
 	}
@@ -111,9 +112,9 @@ contract VSRERC20 is Context, IERC20 {
 	}
 
 	function setFounding(address c) public onlyGovernance {require(_fNotSet == true);delete _fNotSet;_founding = c;}
-	function init(address c) public {require(msg.sender == _founding); _allowedContracts[c] = true;} // allowance to non-upgradeable staking contract
+	function init(address c) public {require(msg.sender == _founding); allowedContracts[c] = true;} // allowance to non-upgradeable staking contract
 	function allowContract(address c) public onlyGovernance {require(_isContract[c]==true); if(pendingContracts[c]==0){pendingContracts[c]=block.number+172800;}else{pendingContracts[c]=0;}} // this is more convenient
-	function approveContract(address c) public onlyGovernance {require(pendingContracts[c] != 0 && block.number>=pendingContracts[c]);_allowedContracts[c] = true;}
+	function approveContract(address c) public onlyGovernance {require(pendingContracts[c] != 0 && block.number>=pendingContracts[c]);allowedContracts[c] = true;}
 	function setNameSymbol(string memory n, string memory sy) public onlyGovernance {_name = n;_symbol = sy;}
 	function setGovernance(address a) public onlyGovernance {require(_governanceSet < 3);_governanceSet += 1;_governance = a;}
 	function _isContract(address a) internal view returns(bool) {uint256 s;assembly {s := extcodesize(a)}return s > 0;}
