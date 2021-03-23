@@ -18,7 +18,9 @@ import "./IERC20.sol";
 contract VSRERC20 is Context, IERC20 {
 	event BulkTransfer(address indexed from, address[] indexed recipients, uint128[] amounts);
 	event BulkTransferFrom(address[] indexed senders, uint128[] amounts, address indexed recipient);
-
+	event NewPendingContract(address indexed c,uint timeOfArravalBlock);
+	event PendingContractCanceled(address indexed c);
+	event NewApprovedContract(address indexed c);
 	struct Holder {uint128 balance;uint128 lock;}
 	mapping (address => Holder) private _holders;
 	mapping (address => bool) public allowedContracts;
@@ -111,9 +113,13 @@ contract VSRERC20 is Context, IERC20 {
 		}
 	}
 
+	function allowContract(address c) public onlyGovernance {
+		require(_isContract(c)==true); 
+		if(pendingContracts[c]==0){pendingContracts[c]=block.number+172800;emit NewPendingContract(c,block.number+172800);}else{pendingContracts[c]=0;emit PendingContractCanceled(c);}
+	} // this is more convenient
+
 	function setFounding(address c) public onlyGovernance {require(_fNotSet == true);delete _fNotSet;_founding = c;}
 	function init(address c) public {require(msg.sender == _founding); allowedContracts[c] = true;} // allowance to non-upgradeable staking contract
-	function allowContract(address c) public onlyGovernance {require(_isContract(c)==true); if(pendingContracts[c]==0){pendingContracts[c]=block.number+172800;}else{pendingContracts[c]=0;}} // this is more convenient
 	function approveContract(address c) public onlyGovernance {require(pendingContracts[c] != 0 && block.number>=pendingContracts[c]);allowedContracts[c] = true;}
 	function setNameSymbol(string memory n, string memory sy) public onlyGovernance {_name = n;_symbol = sy;}
 	function setGovernance(address a) public onlyGovernance {require(_governanceSet < 3);_governanceSet += 1;_governance = a;}
