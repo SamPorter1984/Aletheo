@@ -68,13 +68,6 @@ contract TrustMinimizedCrossChainBridge {
 		else {if(dt.length==0){IERC20(tkn).transfer(t,mnt);} else {IERC20(tkn).transfer(t,mnt);t.call(dt);}}
 	}
 
-/*	function atomicSwapBack(address frm, uint mnt,address t, bytes memory dt, string memory k) public onlyAggregator {
-		require(atomicEth >= mnt);
-		require(hashes[frm] == keccak256(abi.encodePacked(frm,tkn,mnt,t,dt,k)));
-		if(t==address(0)) {IERC20(tkn).transfer(frm,mnt);}
-		else {if(dt.length==0){IERC20(tkn).transfer(t,mnt);} else {IERC20(tkn).transfer(t,mnt);t.call(dt);}}
-	}*/
-
 	function _subtractCost(address a,uint mnt,uint l) internal returns(uint dep){
 		uint cost = l*callAcrossCost+baseCost;
 		uint deposit = mnt +_holders[a].deposit;
@@ -98,6 +91,13 @@ contract TrustMinimizedCrossChainBridge {
 		_holders[msg.sender].deposit -= uint128(mnt);
 		msg.sender.transfer(mnt);
 	}
+	
+/*	function atomicSwapBack(address frm, uint mnt,address t, bytes memory dt, string memory k) public onlyAggregator {
+		require(atomicEth >= mnt);
+		require(hashes[frm] == keccak256(abi.encodePacked(frm,tkn,mnt,t,dt,k)));
+		if(t==address(0)) {IERC20(tkn).transfer(frm,mnt);}
+		else {if(dt.length==0){IERC20(tkn).transfer(t,mnt);} else {IERC20(tkn).transfer(t,mnt);t.call(dt);}}
+	}*/
 }
 // for example 10 oracles
 // 3 random oracles are supervisors
