@@ -23,8 +23,7 @@ pragma solidity >=0.7.0 <=0.9.0;
 import "./IERC20.sol";
 
 contract TrustMinimizedCrossChainBridge { 
-	event Cross(address indexed ccnt,address indexed tkn,uint mnt,string key);
-	event CrossTo(address indexed ccnt,address indexed tkn,uint mnt,address indexed t,string key);
+	event Cross(address indexed ccnt,address indexed tkn,uint mnt,address indexed t,string key);
 	event CallAcross(address indexed ccnt,address indexed t,bytes dt,string key);
 	event BridgeRequested(address indexed tkn);
 	event HashAnnounced(address indexed ccnt,bytes32 indexed hash);
@@ -37,28 +36,25 @@ contract TrustMinimizedCrossChainBridge {
 	uint public ethBalance;
 	address payable private _aggregator;
 	address private _governance;
-	constructor() {baseCost = 1e16;callAcrossCost = 1e15;_governance = msg.sender;} // and then probably a governance of some sort if not Nameless Protocol governance
 
-	modifier onlyAggregator(){require(msg.sender==_aggregator);_;}
-	modifier onlyGovernance(){require(msg.sender ==_governance);_;}
+	constructor() {baseCost = 1e16;callAcrossCost = 1e15;_governance = msg.sender;} // and then probably a governance of some sort if not Nameless Protocol governance
+	modifier onlyAggregator(){require(msg.sender==_aggregator);_;} modifier onlyGovernance(){require(msg.sender ==_governance);_;}
 
 	function announceHash(bytes32 hash) payable public {_subtractCost(msg.sender,msg.value,0);emit HashAnnounced(msg.sender,hash);}
 	function callAcross(address t,bytes memory dt,string memory key) payable public {_subtractCost(msg.sender,msg.value,dt.length);emit CallAcross(msg.sender,t,dt,key);}
-	function relayHash(address[] memory a,bytes32[] memory hash) public onlyAggregator {require(a.length==hash.length&&a.length<100); for (uint i=0;i<a.length;i++) {hashes[a[i]] = hash[i];}}
 	function depositEth() public payable{_holders[msg.sender].deposit+=uint128(msg.value);ethBalance+=msg.value;}
-	function _cross(address sndr,address tkn, uint mnt, address t,string memory k) internal {if (t == address(0)) {emit Cross(sndr,tkn,mnt,k);} else {emit CrossTo(sndr,tkn,mnt,t,k);}}
 	function requestBridge(address tkn) public {emit BridgeRequested(tkn);}
 	function setCost(uint bs, uint cll) public onlyGovernance {baseCost=bs;callAcrossCost=cll;}
 	function setAggregator(address payable ggrgtr) public onlyGovernance {_aggregator = ggrgtr;}
 	function setGovernance(address gvrnnc) public onlyGovernance {_governance = gvrnnc;}
-	function getBridge(address tkn) public view returns(address tknTC){return bridges[tkn];}
 	function getRewards() public onlyAggregator {uint rewards = address(this).balance - ethBalance;_aggregator.transfer(rewards);}
+	function relayHash(address[] memory a,bytes32[] memory hash) public onlyAggregator {require(a.length==hash.length&&a.length<100); for (uint i=0;i<a.length;i++) {hashes[a[i]] = hash[i];}}
 //	function atomicSwap(address frm,uint mnt,address t, string memory k) public {_subtractCost(msg.sender,msg.value,0);emit atomicSwap(msg.sender,mnt,t,k);}//native eth to native etc
 
 	function cross(address tkn, uint mnt, address t, string memory key)payable public{
 		uint deposit = _subtractCost(msg.sender,msg.value,0);
-		if(tkn==address(0)){require(deposit>=mnt);deposit-=mnt;_cross(msg.sender,address(0),mnt,t,key);}
-		else {require(bridges[tkn] != address(0) && IERC20(tkn).balanceOf(msg.sender) >= mnt && mnt>0);IERC20(tkn).transferFrom(msg.sender,address(this),mnt);_cross(msg.sender,tkn,mnt,t,key);}
+		if(tkn==address(0)){require(deposit>=mnt);_holders[msg.sender].deposit-=mnt;emit Cross(msg.sender,tkn,mnt,t,key);}
+		else {require(bridges[tkn] != address(0) && IERC20(tkn).balanceOf(msg.sender) >= mnt && mnt>0);IERC20(tkn).transferFrom(msg.sender,address(this),mnt);emit Cross(msg.sender,tkn,mnt,t,key);}
 	}
 
 	function crossBack(address frm, address tkn, uint mnt, address t, bytes memory dt,string memory k) public onlyAggregator {
@@ -91,7 +87,7 @@ contract TrustMinimizedCrossChainBridge {
 		_holders[msg.sender].deposit -= uint128(mnt);
 		msg.sender.transfer(mnt);
 	}
-	
+
 /*	function atomicSwapBack(address frm, uint mnt,address t, bytes memory dt, string memory k) public onlyAggregator {
 		require(atomicEth >= mnt);
 		require(hashes[frm] == keccak256(abi.encodePacked(frm,tkn,mnt,t,dt,k)));
