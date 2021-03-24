@@ -54,7 +54,6 @@ contract FoundingEvent {
 		IERC20(WETH).transfer(tknETHLP, ETHDeposited);
 		IUniswapV2Pair(tknETHLP).mint(staking);
 		IStaking(staking).init(ETHDeposited, tknETHLP);
-		IERC20(token).init(staking);
 	}
 
 	function init(address c, address c1) public {require(msg.sender == _deployer && _notInit == true);delete _notInit; _token = c; _staking = c1;}
