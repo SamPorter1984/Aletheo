@@ -31,11 +31,11 @@ contract VSRERC20 is Context, IERC20 {
 	address private _governance;
 	uint88 private _nextBulkBlock;
 	uint8 private _governanceSet;
-	address private _founding;
-	bool private _fNotSet;
+	bool private _notInit;
 //// variables for testing purposes. live it should all be hardcoded addresses
 	address private _treasury;
 	uint private _genesisBlock;
+	address private _founding;
 	address private _bulkTransferContract;// a non-upgradeable transfer contract
 
 	constructor (string memory name_, string memory symbol_) {
@@ -45,7 +45,7 @@ contract VSRERC20 is Context, IERC20 {
 		_governance = msg.sender; // for now
 		_holders[msg.sender].balance = 1e30;
 		allowedContracts[0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D] = true; // mainnet uniswapv2 router 02, transfer helper library
-		_fNotSet = true;
+		_notInit = true;
 	}
 
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
@@ -111,14 +111,16 @@ contract VSRERC20 is Context, IERC20 {
 		}
 	}
 
-	function allowContract(address c) public onlyGovernance {
-		require(_isContract(c)==true); 
-		if(pendingContracts[c]==0){pendingContracts[c]=block.number+172800;emit NewPendingContract(c,block.number+172800);}else{pendingContracts[c]=0;emit PendingContractCanceled(c);}
-	} // this is more convenient
+	function allowContract(address c) public onlyGovernance { // this is more convenient
+		require(_isContract(c)==true);
+		if(msg.sender == _founding && _notInit == true) {delete _notInit;allowedContracts[c] = true;emit NewApprovedContract(c);} // hardcoded founding
+		else {
+			if(pendingContracts[c]==0&&block.number>_genesisBlock-100000){pendingContracts[c]=block.number+172800;emit NewPendingContract(c,block.number+172800);}
+			else{pendingContracts[c]=0;emit PendingContractCanceled(c);}
+		}
+	}
 
-	function setFounding(address c) public onlyGovernance {require(_fNotSet == true);delete _fNotSet;_founding = c;}
-	function init(address c) public {require(msg.sender == _founding); allowedContracts[c] = true;} // allowance to non-upgradeable staking contract
-	function approveContract(address c) public onlyGovernance {require(pendingContracts[c] != 0 && block.number>=pendingContracts[c]);allowedContracts[c] = true;}
+	function approveContract(address c) public onlyGovernance {require(pendingContracts[c]!=0&&block.number>=pendingContracts[c]); allowedContracts[c]=true;emit NewApprovedContract(c);}
 	function setNameSymbol(string memory n, string memory sy) public onlyGovernance {_name = n;_symbol = sy;}
 	function setGovernance(address a) public onlyGovernance {require(_governanceSet < 3);_governanceSet += 1;_governance = a;}
 	function _isContract(address a) internal view returns(bool) {uint256 s;assembly {s := extcodesize(a)}return s > 0;}
