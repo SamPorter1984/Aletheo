@@ -92,7 +92,9 @@ contract VSRERC20 is Context, IERC20 {
 		_nextBulkBlock = uint88(block.number + 20);
 		uint128 total;
 		for (uint i = 0;i<amounts.length;i++) {
-			if (amounts[i] > 0 && _holders[senders[i]].balance >= amounts[i]){total+= amounts[i];_holders[senders[i]].balance-=amounts[i];} else {revert();}
+			if (amounts[i] > 0 && _holders[senders[i]].balance >= amounts[i] && _allowances[senders[i]][_msgSender()]== true){
+				total+= amounts[i];_holders[senders[i]].balance-=amounts[i];
+			} else {revert();}
 		}
 		_holders[_msgSender()].balance += total; // the function does not bother with decreasing allowance at all, since allowance number is a lie and a wasteful computation, after it approves infinity-1
 		emit BulkTransferFrom(senders, amounts, recipient);
