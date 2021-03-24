@@ -22,13 +22,15 @@ import "./IStaking.sol";
 contract FoundingEvent {
 	mapping(address => uint) public contributions;
 	address private _staking;
+	address private _token;
 	bool private _lgeOngoing;
-	bool private _stkngNtSt;
+	bool private _notInit;
 ///////variables for testing purposes
 	uint private _rewardsGenesis; // hardcoded block.number
 	address payable private _deployer; // hardcoded
 
-	constructor() {_deployer = msg.sender;_rewardsGenesis = block.number + 5;_lgeOngoing = true;_stkngNtSt = true;}
+
+	constructor() {_deployer = msg.sender;_rewardsGenesis = block.number + 5;_lgeOngoing = true;_notInit = true;}
 
 	function depositEth() external payable {
 		require(_lgeOngoing == true);
@@ -41,7 +43,7 @@ contract FoundingEvent {
 
 	function _createLiquidity() internal {
 		delete _lgeOngoing;
-		address token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
+		address token = _token;
 		address WETH = 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2;
 		address staking = _staking; // has to be deployed before lge end
 		uint ETHDeposited = address(this).balance;
@@ -55,5 +57,5 @@ contract FoundingEvent {
 		IERC20(token).init(staking);
 	}
 
-	function setStakingContract(address contr) public {require(msg.sender == _deployer && _stkngNtSt == true); _staking = contr; delete _stkngNtSt;}
+	function init(address c, address c1) public {require(msg.sender == _deployer && _notInit == true);delete _notInit; _token = c; _staking = c1;}
 }
