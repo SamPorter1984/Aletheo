@@ -45,11 +45,18 @@ contract VSRERC20 is Context, IERC20 {
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view override returns (uint) {uint supply = (block.number - _genesisBlock)*42e19+1e27;if (supply > 1e30) {supply = 1e30;}return supply;}
 	function decimals() public pure returns (uint) {return 18;}
-	function allowance(address owner, address spender) public view override returns (uint) {if (_allowances[owner][spender] == true) {return 2**256 - 1;} else {return 0;}}
 	function balanceOf(address a) public view override returns (uint) {return _holders[a].balance;}
 	function transfer(address recipient, uint amount) public override returns (bool) {_transfer(_msgSender(), recipient, amount);return true;}
-	function approve(address spender, uint256 amount) public virtual override returns (bool) {_allowances[owner][spender] = true;emit Approval(owner, spender, 2**256 - 1);return true;}
-	function disallow(address spender, uint256 subtractedValue) public virtual returns (bool) {_allowances[owner][spender] = false;emit Approval(owner, spender, 0);return true;}
+	function disallow(address spender) public virtual returns (bool) {_allowances[owner][spender] = false;emit Approval(owner, spender, 0);return true;}
+
+	function approve(address spender, uint256 amount) public virtual override returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
+		if (spender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D) {emit Approval(owner, spender, 2**256 - 1);return true;}
+		else {_allowances[owner][spender] = true;emit Approval(owner, spender, 2**256 - 1);return true;}
+	}
+
+	function allowance(address owner, address spender) public view override returns (uint) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
+		if (spender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D||_allowances[owner][spender] == true) {return 2**256 - 1;} else {return 0;}
+	}
 
 	function transferFrom(address sender, address recipient, uint amount) public override returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
 		require(_msgSender() == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D||_allowances[sender][_msgSender()] == true);_transfer(sender, recipient, amount);return true;
