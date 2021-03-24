@@ -18,25 +18,18 @@ import "./IERC20.sol";
 contract VSRERC20 is Context, IERC20 {
 	event BulkTransfer(address indexed from, address[] indexed recipients, uint128[] amounts);
 	event BulkTransferFrom(address[] indexed senders, uint128[] amounts, address indexed recipient);
-	event NewPendingContract(address indexed c,uint timeOfArravalBlock);
-	event PendingContractCanceled(address indexed c);
-	event NewApprovedContract(address indexed c);
 	struct Holder {uint128 balance;uint128 lock;}
+	mapping (address => mapping (address => bool)) private _allowances;
 	mapping (address => Holder) private _holders;
-	mapping (address => bool) public allowedContracts;
-	mapping (address => uint) public pendingContracts;
 
 	string private _name;
 	string private _symbol;
 	address private _governance;
 	uint88 private _nextBulkBlock;
 	uint8 private _governanceSet;
-	bool private _notInit;
 //// variables for testing purposes. live it should all be hardcoded addresses
 	address private _treasury;
 	uint private _genesisBlock;
-	address private _founding;
-	address private _bulkTransferContract;// a non-upgradeable transfer contract
 
 	constructor (string memory name_, string memory symbol_) {
 		_name = name_;
@@ -44,7 +37,6 @@ contract VSRERC20 is Context, IERC20 {
 		_genesisBlock = block.number + 345600; // remove
 		_governance = msg.sender; // for now
 		_holders[msg.sender].balance = 1e30;
-		_notInit = true;
 	}
 
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
@@ -53,13 +45,14 @@ contract VSRERC20 is Context, IERC20 {
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view override returns (uint) {uint supply = (block.number - _genesisBlock)*42e19+1e27;if (supply > 1e30) {supply = 1e30;}return supply;}
 	function decimals() public pure returns (uint) {return 18;}
-	function allowance(address owner, address spender) public view override returns (uint) {if (allowedContracts[spender] == true) {return 2**256 - 1;} else {return 0;}}
+	function allowance(address owner, address spender) public view override returns (uint) {if (_allowances[owner][spender] == true) {return 2**256 - 1;} else {return 0;}}
 	function balanceOf(address a) public view override returns (uint) {return _holders[a].balance;}
 	function transfer(address recipient, uint amount) public override returns (bool) {_transfer(_msgSender(), recipient, amount);return true;}
-	function approve(address spender, uint amount) public override returns (bool) {if (allowedContracts[spender] == true) {return true;} else {return false;}}//kept it just in case for complience to erc20
+	function approve(address spender, uint256 amount) public virtual override returns (bool) {_allowances[owner][spender] = true;emit Approval(owner, spender, 2**256 - 1);return true;}
+	function disallow(address spender, uint256 subtractedValue) public virtual returns (bool) {_allowances[owner][spender] = false;emit Approval(owner, spender, 0);return true;}
 
 	function transferFrom(address sender, address recipient, uint amount) public override returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
-		require(_msgSender() == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D||allowedContracts[_msgSender()] == true);_transfer(sender, recipient, amount);return true;
+		require(_msgSender() == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D||_allowances[sender][_msgSender()] == true);_transfer(sender, recipient, amount);return true;
 	}
 
 	function _transfer(address sender, address recipient, uint amount) internal {
@@ -88,7 +81,7 @@ contract VSRERC20 is Context, IERC20 {
 
 	function bulkTransferFrom(address[] memory senders, address recipient, uint128[] memory amounts) public returns (bool) {
 		require(senders.length == amounts.length && amounts.length < 100,"human error");
-		require(block.number >= _nextBulkBlock && msg.sender == _bulkTransferContract);
+		require(block.number >= _nextBulkBlock);
 		_nextBulkBlock = uint88(block.number + 20);
 		uint128 total;
 		for (uint i = 0;i<amounts.length;i++) {
@@ -110,16 +103,6 @@ contract VSRERC20 is Context, IERC20 {
 		}
 	}
 
-	function allowContract(address c) public onlyGovernance { // this is more convenient
-		require(_isContract(c)==true);
-		if(msg.sender == _founding && _notInit == true) {delete _notInit;allowedContracts[c] = true;emit NewApprovedContract(c);} // hardcoded founding sets staking contract
-		else {
-			if(pendingContracts[c]==0&&block.number>_genesisBlock-100000){pendingContracts[c]=block.number+172800;emit NewPendingContract(c,block.number+172800);}
-			else{pendingContracts[c]=0;emit PendingContractCanceled(c);}
-		}
-	}
-
-	function approveContract(address c) public onlyGovernance {require(pendingContracts[c]!=0&&block.number>=pendingContracts[c]); allowedContracts[c]=true;emit NewApprovedContract(c);}
 	function setNameSymbol(string memory n, string memory sy) public onlyGovernance {_name = n;_symbol = sy;}
 	function setGovernance(address a) public onlyGovernance {require(_governanceSet < 3);_governanceSet += 1;_governance = a;}
 	function _isContract(address a) internal view returns(bool) {uint256 s;assembly {s := extcodesize(a)}return s > 0;}
