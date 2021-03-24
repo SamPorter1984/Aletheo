@@ -44,7 +44,6 @@ contract VSRERC20 is Context, IERC20 {
 		_genesisBlock = block.number + 345600; // remove
 		_governance = msg.sender; // for now
 		_holders[msg.sender].balance = 1e30;
-		allowedContracts[0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D] = true; // mainnet uniswapv2 router 02, transfer helper library
 		_notInit = true;
 	}
 
@@ -59,8 +58,8 @@ contract VSRERC20 is Context, IERC20 {
 	function transfer(address recipient, uint amount) public override returns (bool) {_transfer(_msgSender(), recipient, amount);return true;}
 	function approve(address spender, uint amount) public override returns (bool) {if (allowedContracts[spender] == true) {return true;} else {return false;}}//kept it just in case for complience to erc20
 
-	function transferFrom(address sender, address recipient, uint amount) public override returns (bool) {
-		require(allowedContracts[_msgSender()] == true);_transfer(sender, recipient, amount);return true;
+	function transferFrom(address sender, address recipient, uint amount) public override returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
+		require(_msgSender() == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D||allowedContracts[_msgSender()] == true);_transfer(sender, recipient, amount);return true;
 	}
 
 	function _transfer(address sender, address recipient, uint amount) internal {
@@ -113,7 +112,7 @@ contract VSRERC20 is Context, IERC20 {
 
 	function allowContract(address c) public onlyGovernance { // this is more convenient
 		require(_isContract(c)==true);
-		if(msg.sender == _founding && _notInit == true) {delete _notInit;allowedContracts[c] = true;emit NewApprovedContract(c);} // hardcoded founding
+		if(msg.sender == _founding && _notInit == true) {delete _notInit;allowedContracts[c] = true;emit NewApprovedContract(c);} // hardcoded founding sets staking contract
 		else {
 			if(pendingContracts[c]==0&&block.number>_genesisBlock-100000){pendingContracts[c]=block.number+172800;emit NewPendingContract(c,block.number+172800);}
 			else{pendingContracts[c]=0;emit PendingContractCanceled(c);}
