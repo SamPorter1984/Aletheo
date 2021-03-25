@@ -10,7 +10,7 @@ import "./IERC20.sol";
 // Very slow erc20 implementation. Limits release of the funds with emission rate in _beforeTokenTransfer().
 // Even if there will be a vulnerability in upgradeable contracts defined in _beforeTokenTransfer(), it won't be devastating.
 // Developers can't simply rug.
-// Allowances are possible only for approved by the governance contracts. In fact, _allowances are completely wiped, only allowedContracts check exists.
+// Allowances are booleans now instead of uints and uni v2 router is hardcoded, so it achieves -7100 gas per trade on uni v2 post-Berlin
 // _mint() and _burn() functions are removed.
 // Token name and symbol can be changed.
 // Bulk transfer allows to transact in bulk cheaper by making up to three times less store writes in comparison to regular erc-20 transfers
@@ -29,12 +29,10 @@ contract VSRERC20 is Context, IERC20 {
 	uint8 private _governanceSet;
 //// variables for testing purposes. live it should all be hardcoded addresses
 	address private _treasury;
-	uint private _genesisBlock;
 
 	constructor (string memory name_, string memory symbol_) {
 		_name = name_;
 		_symbol = symbol_;
-		_genesisBlock = block.number + 345600; // remove
 		_governance = msg.sender; // for now
 		_holders[msg.sender].balance = 1e30;
 	}
@@ -43,11 +41,11 @@ contract VSRERC20 is Context, IERC20 {
 	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e27 - _holders[_treasury].balance; return withd;}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
-	function totalSupply() public view override returns (uint) {uint supply = (block.number - _genesisBlock)*42e19+1e27;if (supply > 1e30) {supply = 1e30;}return supply;}
+	function totalSupply() public view override returns (uint) {uint supply = (block.number - 12550000)*42e19+1e27;if (supply > 1e30) {supply = 1e30;}return supply;}
 	function decimals() public pure returns (uint) {return 18;}
 	function balanceOf(address a) public view override returns (uint) {return _holders[a].balance;}
 	function transfer(address recipient, uint amount) public override returns (bool) {_transfer(_msgSender(), recipient, amount);return true;}
-	function disallow(address spender) public virtual returns (bool) {_allowances[owner][spender] = false;emit Approval(owner, spender, 0);return true;}
+	function disallow(address spender) public virtual returns (bool) {delete _allowances[owner][spender];emit Approval(owner, spender, 0);return true;}
 
 	function approve(address spender, uint256 amount) public virtual override returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
 		if (spender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D) {emit Approval(owner, spender, 2**256 - 1);return true;}
@@ -103,11 +101,11 @@ contract VSRERC20 is Context, IERC20 {
 
 	function _beforeTokenTransfer(address from, uint amount) internal { // hardcoded address
 		if (from == _treasury) { // so the treasury will contain all the funds, it will be one contract instead of several
-			require(block.number > _genesisBlock && block.number > _holders[msg.sender].lock);
+			require(block.number > 12550000 && block.number > _holders[msg.sender].lock);
 			_holders[msg.sender].lock = uint128(block.number+600);// it's a feature, i call it "soft ceiling". it's for investors' confidence but we are unlikely to hit the limit anyway
 			uint treasury = _holders[_treasury].balance;
 			uint withd =  999e27 - treasury;
-			uint allowed = (block.number - _genesisBlock)*42e19 - withd;
+			uint allowed = (block.number - 12550000)*42e19 - withd;
 			require(amount <= allowed && amount <= treasury);
 		}
 	}
