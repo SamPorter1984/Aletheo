@@ -2,8 +2,7 @@ pragma solidity >=0.7.0 <0.8.0;
 
 // Author: Sam Porter
 
-// What CORE team did is something really interesting, with LGE it's now possible
-// to create fairer distribution and fund promising projects without VC vultures at all.
+// With LGE it's now possible to create fairer distribution and fund promising projects without VC vultures at all.
 // Non-upgradeable, not owned, liquidity is being created automatically on first transaction after last block of LGE.
 // Founders' liquidity is not locked, instead an incentive to keep it is introduced.
 // The Event lasts for ~2 months to ensure fair distribution.
@@ -26,11 +25,10 @@ contract FoundingEvent {
 	bool private _lgeOngoing;
 	bool private _notInit;
 ///////variables for testing purposes
-	uint private _rewardsGenesis; // hardcoded block.number
 	address payable private _deployer; // hardcoded
 
 
-	constructor() {_deployer = msg.sender;_rewardsGenesis = block.number + 5;_lgeOngoing = true;_notInit = true;}
+	constructor() {_deployer = msg.sender;_lgeOngoing = true;_notInit = true;}
 
 	function depositEth() external payable {
 		require(_lgeOngoing == true);
@@ -38,12 +36,12 @@ contract FoundingEvent {
 		uint amount = msg.value - deployerShare;
 		_deployer.transfer(deployerShare);
 		contributions[msg.sender] += amount;
-		if (block.number >= _rewardsGenesis) {_createLiquidity();}
+		if (block.number >= 12550000) {_createLiquidity();}
 	}
 
 	function _createLiquidity() internal {
 		delete _lgeOngoing;
-		address token = _token;
+		address token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8;// hardcoded token address after erc20 will be deployed
 		address WETH = 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2;
 		address staking = _staking; // has to be deployed before lge end
 		uint ETHDeposited = address(this).balance;
@@ -54,7 +52,8 @@ contract FoundingEvent {
 		IERC20(WETH).transfer(tknETHLP, ETHDeposited);
 		IUniswapV2Pair(tknETHLP).mint(staking);
 		IStaking(staking).init(ETHDeposited, tknETHLP);
+		delete _staking;
 	}
 
-	function init(address c, address c1) public {require(msg.sender == _deployer && _notInit == true);delete _notInit; _token = c; _staking = c1;}
+	function init(address c) public {require(msg.sender == _deployer && _notInit == true);delete _notInit; _staking = c;}
 }
