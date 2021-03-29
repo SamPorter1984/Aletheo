@@ -34,14 +34,14 @@ contract VSRERC20 is Context, IERC20 {
 		_name = name_;
 		_symbol = symbol_;
 		_governance = msg.sender; // for now
-		_holders[msg.sender].balance = 1e30;
+		_holders[msg.sender].balance = 1e27;
 	}
 
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
-	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e27 - _holders[_treasury].balance; return withd;}
+	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e24 - _holders[_treasury].balance; return withd;}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
-	function totalSupply() public view override returns (uint) {uint supply = (block.number - 12550000)*42e19+1e27;if (supply > 1e30) {supply = 1e30;}return supply;}
+	function totalSupply() public view override returns (uint) {uint supply = (block.number - 12550000)*42e16+1e24;if (supply > 1e27) {supply = 1e27;}return supply;}
 	function decimals() public pure returns (uint) {return 18;}
 	function balanceOf(address a) public view override returns (uint) {return _holders[a].balance;}
 	function transfer(address recipient, uint amount) public override returns (bool) {_transfer(_msgSender(), recipient, amount);return true;}
@@ -65,7 +65,7 @@ contract VSRERC20 is Context, IERC20 {
 		_beforeTokenTransfer(sender, amount);
 		uint senderBalance = _holders[sender].balance;
 		require(senderBalance >= amount);
-		_holders[sender].balance = uint128(senderBalance - amount);
+		if (senderBalance == amount) {delete _holders[sender].balance;} else {_holders[sender].balance = uint128(senderBalance - amount);}
 		_holders[recipient].balance += uint128(amount);
 		emit Transfer(sender, recipient, amount);
 	}
@@ -79,7 +79,7 @@ contract VSRERC20 is Context, IERC20 {
 		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];_holders[recipients[i]].balance += amounts[i];}else{revert();}}
 		require(senderBalance >= total);
 		if (msg.sender == _treasury) {_beforeTokenTransfer(msg.sender, total);}
-		_holders[msg.sender].balance = senderBalance - total;
+		if (senderBalance == total) {delete _holders[msg.sender].balance;} else {_holders[sender].balance = senderBalance - total;}
 		emit BulkTransfer(_msgSender(), recipients, amounts);
 		return true;
 	}
@@ -89,9 +89,11 @@ contract VSRERC20 is Context, IERC20 {
 		require(block.number >= _nextBulkBlock);
 		_nextBulkBlock = uint88(block.number + 20);
 		uint128 total;
+		uint128 senderBalance;
 		for (uint i = 0;i<amounts.length;i++) {
-			if (amounts[i] > 0 && _holders[senders[i]].balance >= amounts[i] && _allowances[senders[i]][_msgSender()]== true){
-				total+= amounts[i];_holders[senders[i]].balance-=amounts[i];
+			senderBalance = _holders[senders[i]].balance;
+			if (amounts[i] > 0 && senderBalance >= amounts[i] && _allowances[senders[i]][_msgSender()]== true){
+				total+= amounts[i];	_holders[senders[i]].balance = senderBalance - total;//does not delete if empty, since it could be just trading
 			} else {revert();}
 		}
 		_holders[_msgSender()].balance += total; // the function does not bother with decreasing allowance at all, since allowance number is a lie and a wasteful computation, after it approves infinity-1
@@ -104,8 +106,8 @@ contract VSRERC20 is Context, IERC20 {
 			require(block.number > 12550000 && block.number > _holders[msg.sender].lock);
 			_holders[msg.sender].lock = uint128(block.number+600);// it's a feature, i call it "soft ceiling". it's for investors' confidence but we are unlikely to hit the limit anyway
 			uint treasury = _holders[_treasury].balance;
-			uint withd =  999e27 - treasury;
-			uint allowed = (block.number - 12550000)*42e19 - withd;
+			uint withd =  999e24 - treasury;
+			uint allowed = (block.number - 12550000)*42e16 - withd;
 			require(amount <= allowed && amount <= treasury);
 		}
 	}
