@@ -30,7 +30,7 @@ contract StakingContract {
 //////
 	constructor() {
 		_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; // testing
-		_foundingTokenAmount = 1e27;
+		_foundingTokenAmount = 1e24;
 		_notInit = true;
 	}
 
@@ -52,7 +52,7 @@ contract StakingContract {
 	mapping(address => address) private _linked;
 	mapping(address => bool) private _taken;
 
-	event AddressLinked(address indexed address1, address indexed address2);
+	event AddressLinked(address indexed a1, address indexed a2);
 
 	modifier lock() {require(block.number>_locks[msg.sender]);_locks[msg.sender] = block.number + 1;_;}
 
@@ -63,10 +63,10 @@ contract StakingContract {
 		_ps[msg.sender].founder = true;
 		uint foundingETH = _foundingETHDeposited;
 		uint lpShare = _foundingLPtokensMinted*ethContributed/foundingETH;
-		uint tokenAmount = ethContributed*1e27/foundingETH;
+		uint tokenAmount = ethContributed*1e24/foundingETH;
 		_ps[msg.sender].lpShare = uint128(lpShare);
 		_ps[msg.sender].tokenAmount = uint128(tokenAmount);
-		_ps[msg.sender].lastClaim = uint96(block.number);//hardcoded genesis block
+		_ps[msg.sender].lastClaim = 12550000;
 	}
 
 	function unstakeLp(bool ok,uint amount) public lock {
@@ -78,18 +78,20 @@ contract StakingContract {
 		percent = percent/lpShare;
 		uint tknAmount = _ps[msg.sender].tokenAmount;
 		uint toSubtract = tknAmount*percent/100; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
-		_ps[msg.sender].tokenAmount -= uint128(toSubtract);
+		_ps[msg.sender].tokenAmount = uint128(tknAmount - toSubtract);
 		if (_ps[msg.sender].founder == true) {_foundingTokenAmount -= toSubtract;}else{_genTotTokenAmount -= toSubtract;}
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
-
+// if a provider or a founder unstakes, then remaining providers or founders get the share of his rewards. it's fine, unless a provider or a founder does not claim for several years
 	function getRewards() public {
 		uint lastClaim = _ps[msg.sender].lastClaim;
 		require(block.number>lastClaim*10);
 		_ps[msg.sender].lastClaim = uint96(block.number/10);
 		uint halver = block.number/10000000;
-		uint rate = 21e18;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/6;}}
-		uint toClaim =(block.number - lastClaim)*_ps[msg.sender].tokenAmount;
+		uint rate = 21e15;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/6;}}
+		uint toClaim =(block.number - lastClaim);
+		if (lastClaim - block.number > 2102400) {toClaim=2102400;}// a provider or a founder has to claim at least once per year, or he loses older rewards. acceptable inaccuracy
+		toClaim = toClaim*_ps[msg.sender].tokenAmount;
 		if (_ps[msg.sender].founder == true) {toClaim = toClaim*rate/_foundingTokenAmount;} else {rate = rate*2/3;toClaim = toClaim*rate/_genTotTokenAmount;}
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
 		require(success == true);
@@ -99,7 +101,7 @@ contract StakingContract {
 // metamask has to somehow provide more info about a transaction
 	function newAddress(address a) public {
 		if(_ps[msg.sender].lockedAmount>0||_ls[msg.sender].amount>0){require(_isContract(msg.sender) == false);}
-		for (uint i = 0;i<10;i++) {delete newAddresses[msg.sender];newAddresses[msg.sender] = a;}
+		for (uint i = 0;i<10;i++) {newAddresses[msg.sender] = msg.sender;newAddresses[msg.sender] = a;}
 	}
 // nobody should trust dapp interface. maybe a function like this should not be provided through dapp at all
 	function changeAddress(address ad) public lock { // while user can confirm newAddress by public method, still has to enter the same address second time
