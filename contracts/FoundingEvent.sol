@@ -48,7 +48,7 @@ contract FoundingEvent {
 		IWETH(WETH).deposit{value: ETHDeposited}();
 		address tknETHLP = getPair[token][WETH];
 		if (tknETHLP == address(0)) {IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).createPair(token, WETH);}
-		IERC20(token).transfer(tknETHLP, 1e27);
+		IERC20(token).transfer(tknETHLP, 1e24);
 		IERC20(WETH).transfer(tknETHLP, ETHDeposited);
 		IUniswapV2Pair(tknETHLP).mint(staking);
 		IStaking(staking).init(ETHDeposited, tknETHLP);
