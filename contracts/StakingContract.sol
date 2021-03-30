@@ -122,11 +122,11 @@ contract StakingContract {
 			uint128 futureBlock;
 			for (uint i = epochToClaim; i<_epochs.length;i++) {
 				bytes16[2] memory b = [bytes16(0), 0];
-        		assembly {mstore(b, _epochs[i])mstore(add(b, 16), _epochs[i])}
-        		epochBlock = uint128(b[0]);
-        		epochAmount = uint128(b[1]);
-        		assembly {mstore(b, _epochs[i+1])mstore(add(b, 16), _epochs[i+1])};// this will revert
-        		futureBlock = uint128(b[0]);
+				assembly {mstore(b, _epochs[i])mstore(add(b, 16), _epochs[i])}
+				epochBlock = uint128(b[0]);
+				epochAmount = uint128(b[1]);
+				assembly {mstore(b, _epochs[i+1])mstore(add(b, 16), _epochs[i+1])};// this will revert
+				futureBlock = uint128(b[0]);
 				if (futureBlock > 0) {blocks = futureBlock - epochBlock;} else {blocks = block.number - epochBlock;}
 				if (founder) {toClaim += blocks*tokenAmount*rate/epochAmount;} else {rate = rate*2/3;toClaim += blocks*tokenAmount*rate/epochAmount;}
 			}
