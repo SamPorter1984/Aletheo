@@ -92,8 +92,8 @@ contract StakingContract {
 			if (block.number - 40320 > futureBlock) {
 				bytes16 n = bytes16(uint128(block.number)); 
 				bytes16 a = bytes16(uint128(foundingTokenAmount));
-	    		bytes memory b = abi.encodePacked(n, a);
-	    		_founderEpochs.push(b);	
+				bytes memory b = abi.encodePacked(n, a);
+				_founderEpochs.push(b);	
 			}
 		}else{
 			_genTotTokenAmount -= toSubtract;
