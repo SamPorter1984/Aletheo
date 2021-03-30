@@ -82,7 +82,12 @@ contract StakingContract {
 		if (_ps[msg.sender].founder == true) {_foundingTokenAmount -= toSubtract;}else{_genTotTokenAmount -= toSubtract;}
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
-// if a provider or a founder unstakes, then remaining providers or founders get the share of his rewards. it's fine, unless a provider or a founder does not claim for several years
+// if a provider or a founder unstakes, then remaining providers or founders get the share of his rewards. it's fine, unless a provider or a founder does not
+// claim for several years. so a provider or a founder here can claim rewards only for last 3 months. acceptable inaccuracy, another way could be treasury
+// distributing rewards automatically, since if we add the computation here, the function becomes expensive, it could require an array of founder/provider
+// exits or maybe monthly/weekly epochs. you could even consider it a vulnerability, since a founder can have two wallets, claim from one and exit, and then
+// claim from another one, having a very small bonus on top of his rewards in comparison if he had only one wallet. however the system attempts to create an
+// incentive to never unstake
 	function getRewards() public {
 		uint lastClaim = _ps[msg.sender].lastClaim;
 		require(block.number>lastClaim*10);
@@ -90,7 +95,7 @@ contract StakingContract {
 		uint halver = block.number/10000000;
 		uint rate = 21e15;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/6;}}
 		uint toClaim =(block.number - lastClaim);
-		if (lastClaim - block.number > 2102400) {toClaim=2102400;}// a provider or a founder has to claim at least once per year, or he loses older rewards. acceptable inaccuracy
+		if (lastClaim - block.number > 525600) {toClaim=525600;}// has to claim at least once every 3 months
 		toClaim = toClaim*_ps[msg.sender].tokenAmount;
 		if (_ps[msg.sender].founder == true) {toClaim = toClaim*rate/_foundingTokenAmount;} else {rate = rate*2/3;toClaim = toClaim*rate/_genTotTokenAmount;}
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
