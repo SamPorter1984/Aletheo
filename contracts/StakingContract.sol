@@ -42,8 +42,10 @@ contract StakingContract {
 		_tokenETHLP = tkn;
 	}
 
-	struct Provider {uint96 lastClaim; uint128 tokenAmount; bool founder; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
+	struct Provider {uint32 lastClaim; uint128 tokenAmount; bool founder; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;uint16 lastEpoch;}
 	struct Locker {uint128 amount;uint128 lockUpTo;}
+
+	bytes32[] private _epochs;
 
 	mapping(address => Provider) private _ps;
 	mapping(address => Locker) private _ls;
@@ -86,18 +88,54 @@ contract StakingContract {
 // claim for several years. so a provider or a founder here can claim rewards only for last 3 months. acceptable inaccuracy, another way could be treasury
 // distributing rewards automatically, since if we add the computation here, the function becomes expensive, it could require an array of founder/provider
 // exits or maybe monthly/weekly epochs. you could even consider it a vulnerability, since a founder can have two wallets, claim from one and exit, and then
-// claim from another one, having a very small bonus on top of his rewards in comparison if he had only one wallet. however the system attempts to create an
-// incentive to never unstake
+// claim from another one and exit, having a very small bonus on top of his rewards in comparison if he had only one wallet to claim and exit. however the
+// system attempts to create an incentive to never unstake
 	function getRewards() public {
 		uint lastClaim = _ps[msg.sender].lastClaim;
 		require(block.number>lastClaim*10);
-		_ps[msg.sender].lastClaim = uint96(block.number/10);
+		_ps[msg.sender].lastClaim = uint32(block.number/10);
 		uint halver = block.number/10000000;
 		uint rate = 21e15;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/6;}}
-		uint toClaim =(block.number - lastClaim);
+		uint toClaim = block.number - lastClaim;
 		if (lastClaim - block.number > 525600) {toClaim=525600;}// has to claim at least once every 3 months
 		toClaim = toClaim*_ps[msg.sender].tokenAmount;
 		if (_ps[msg.sender].founder == true) {toClaim = toClaim*rate/_foundingTokenAmount;} else {rate = rate*2/3;toClaim = toClaim*rate/_genTotTokenAmount;}
+		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
+		require(success == true);
+	}
+
+// a hypothetical version with epochs looks ugly and it's more expensive for the users, and you still may want to claim at least once every 3 months
+	function getRewards() public {
+		uint lastClaim = _ps[msg.sender].lastClaim;
+		require(block.number>lastClaim);
+		_ps[msg.sender].lastClaim = uint32(block.number);
+		uint epochToClaim = _ps[msg.sender].lastEpoch;
+		bool founder = _ps[msg.sender].founder;
+		uint tokenAmount = _ps[msg.sender].tokenAmount;
+		uint toClaim;
+		uint halver = block.number/10000000;
+		uint rate = 21e15;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;}}
+		if (epochToClaim != _epochs.length-1) {
+			uint blocks;
+			uint128 epochBlock;
+			uint128 epochAmount;
+			uint128 futureBlock;
+			for (uint i = epochToClaim; i<_epochs.length;i++) {
+				bytes16[2] memory b = [bytes16(0), 0];
+        		assembly {mstore(b, _epochs[i])mstore(add(b, 16), _epochs[i])}
+        		epochBlock = uint128(b[0]);
+        		epochAmount = uint128(b[1]);
+        		assembly {mstore(b, _epochs[i+1])mstore(add(b, 16), _epochs[i+1])};// this will revert
+        		futureBlock = uint128(b[0]);
+				if (futureBlock > 0) {blocks = futureBlock - epochBlock;} else {blocks = block.number - epochBlock;}
+				if (founder) {toClaim += blocks*tokenAmount*rate/epochAmount;} else {rate = rate*2/3;toClaim += blocks*tokenAmount*rate/epochAmount;}
+			}
+		} else {
+			toClaim = block.number - lastClaim;
+			toClaim = toClaim*_ps[msg.sender].tokenAmount;
+			if (founder) {toClaim = toClaim*rate/_foundingTokenAmount;} else {rate = rate*2/3;toClaim = toClaim*rate/_genTotTokenAmount;}
+		}
+		_ps[msg.sender].lastEpoch = _epochs.length-1;
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
 		require(success == true);
 	}
