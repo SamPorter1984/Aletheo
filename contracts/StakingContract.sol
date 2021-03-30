@@ -82,7 +82,22 @@ contract StakingContract {
 		uint tknAmount = _ps[msg.sender].tokenAmount;
 		uint toSubtract = tknAmount*percent/100; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
 		_ps[msg.sender].tokenAmount = uint128(tknAmount - toSubtract);
-		if (_ps[msg.sender].founder == true) {_foundingTokenAmount -= toSubtract;}else{_genTotTokenAmount -= toSubtract;}
+		if (_ps[msg.sender].founder == true) {
+			foundingTokenAmount = _foundingTokenAmount - toSubtract;
+			_foundingTokenAmount = foundingTokenAmount;
+			bytes32 epoch = _founderEpochs[_founderEpochs.length-1];
+			bytes16[2] memory b = [bytes16(0), 0];
+			assembly {mstore(b, epoch)};
+			uint128 futureBlock = uint128(b[0]);
+			if (block.number - 40320 > futureBlock) {
+				bytes16 n = bytes16(uint128(block.number)); 
+				bytes16 a = bytes16(uint128(foundingTokenAmount));
+	    		bytes memory b = abi.encodePacked(n, a);
+	    		_founderEpochs.push(b);	
+			}
+		}else{
+			_genTotTokenAmount -= toSubtract;
+		}
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
 // if a provider or a founder unstakes, then remaining providers or founders get the share of his rewards. it's fine, unless a provider or a founder does not
@@ -119,21 +134,33 @@ contract StakingContract {
 		uint128 epochBlock;
 		uint128 epochAmount;
 		uint128 futureBlock;
-		if (epochToClaim < _epochs.length-1) {
-			uint blocks;
-			for (uint i = epochToClaim; i<_epochs.length;i++) {
-				bytes16[2] memory b = [bytes16(0), 0];
-				assembly {mstore(b, _epochs[i])mstore(add(b, 16), _epochs[i])}
-				epochBlock = uint128(b[0]);
-				epochAmount = uint128(b[1]);
-				if(i == _epochs.length-1){futureBlock = block.number;} else {assembly {mstore(b, _epochs[i+1])};futureBlock = uint128(b[0]);}
-				blocks = futureBlock - epochBlock;
-				if (founder) {toClaim += blocks*tokenAmount*rate/epochAmount;} else {rate = rate*2/3;toClaim += blocks*tokenAmount*rate/epochAmount;}	
-			}
+		if (founder) {
+			if (epochToClaim < _founderEpochs.length-1) {
+				uint blocks;
+				for (uint i = epochToClaim; i<_founderEpochs.length;i++) {
+					bytes16[2] memory b = [bytes16(0), 0];
+					assembly {mstore(b, _founderEpochs[i])mstore(add(b, 16), _founderEpochs[i])}
+					epochBlock = uint128(b[0]);
+					epochAmount = uint128(b[1]);
+					if(i == _founderEpochs.length-1){futureBlock = block.number;} else {assembly {mstore(b, _founderEpochs[i+1])};futureBlock = uint128(b[0]);}
+					blocks = futureBlock - epochBlock;
+					toClaim += blocks*tokenAmount*rate/epochAmount;	
+				}
+			} else {toClaim = (block.number - lastClaim)*_ps[msg.sender].tokenAmount*rate/_foundingTokenAmount;}
 		} else {
-			toClaim = block.number - lastClaim;
-			toClaim = toClaim*_ps[msg.sender].tokenAmount;
-			if (founder) {toClaim = toClaim*rate/_foundingTokenAmount;} else {rate = rate*2/3;toClaim = toClaim*rate/_genTotTokenAmount;}
+			rate = rate*2/3;
+			if (epochToClaim < _epochs.length-1) {
+				uint blocks;
+				for (uint i = epochToClaim; i<_epochs.length;i++) {
+					bytes16[2] memory b = [bytes16(0), 0];
+					assembly {mstore(b, _epochs[i])mstore(add(b, 16), _epochs[i])}
+					epochBlock = uint128(b[0]);
+					epochAmount = uint128(b[1]);
+					if(i == _epochs.length-1){futureBlock = block.number;} else {assembly {mstore(b, _epochs[i+1])};futureBlock = uint128(b[0]);}
+					blocks = futureBlock - epochBlock;
+					rate = rate*2/3;toClaim += blocks*tokenAmount*rate/epochAmount;	
+				}
+			} else {toClaim = (block.number - lastClaim)*_ps[msg.sender].tokenAmount*rate/_genTotTokenAmount;}
 		}
 		_ps[msg.sender].lastEpoch = _epochs.length-1;
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
