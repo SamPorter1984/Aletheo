@@ -46,6 +46,7 @@ contract StakingContract {
 	struct Locker {uint128 amount;uint128 lockUpTo;}
 
 	bytes32[] private _epochs;
+	bytes32[] private _founderEpochs;
 
 	mapping(address => Provider) private _ps;
 	mapping(address => Locker) private _ls;
@@ -105,7 +106,7 @@ contract StakingContract {
 	}
 
 // a hypothetical version with epochs looks ugly and it's more expensive for the users, and you still may want to claim at least once every 3 months
-	function getRewards() public {
+	function getRewards1() public {
 		uint lastClaim = _ps[msg.sender].lastClaim;
 		require(block.number>lastClaim);
 		_ps[msg.sender].lastClaim = uint32(block.number);
@@ -115,20 +116,19 @@ contract StakingContract {
 		uint toClaim;
 		uint halver = block.number/10000000;
 		uint rate = 21e15;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;}}
-		if (epochToClaim != _epochs.length-1) {
+		uint128 epochBlock;
+		uint128 epochAmount;
+		uint128 futureBlock;
+		if (epochToClaim < _epochs.length-1) {
 			uint blocks;
-			uint128 epochBlock;
-			uint128 epochAmount;
-			uint128 futureBlock;
 			for (uint i = epochToClaim; i<_epochs.length;i++) {
 				bytes16[2] memory b = [bytes16(0), 0];
 				assembly {mstore(b, _epochs[i])mstore(add(b, 16), _epochs[i])}
 				epochBlock = uint128(b[0]);
 				epochAmount = uint128(b[1]);
-				assembly {mstore(b, _epochs[i+1])mstore(add(b, 16), _epochs[i+1])};// this will revert
-				futureBlock = uint128(b[0]);
-				if (futureBlock > 0) {blocks = futureBlock - epochBlock;} else {blocks = block.number - epochBlock;}
-				if (founder) {toClaim += blocks*tokenAmount*rate/epochAmount;} else {rate = rate*2/3;toClaim += blocks*tokenAmount*rate/epochAmount;}
+				if(i == _epochs.length-1){futureBlock = block.number;} else {assembly {mstore(b, _epochs[i+1])};futureBlock = uint128(b[0]);}
+				blocks = futureBlock - epochBlock;
+				if (founder) {toClaim += blocks*tokenAmount*rate/epochAmount;} else {rate = rate*2/3;toClaim += blocks*tokenAmount*rate/epochAmount;}	
 			}
 		} else {
 			toClaim = block.number - lastClaim;
