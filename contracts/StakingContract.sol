@@ -164,9 +164,9 @@ contract StakingContract {
 					if(i == length-1){futureBlock = uint128(block.number);} else {epoch = _founderEpochs[i+1];assembly {mstore(b, epoch)} futureBlock = uint128(b[0]);}
 					blocks = futureBlock - epochBlock;
 					toClaim += blocks*tokenAmount*rate/epochAmount;
-					_ps[msg.sender].lastEpoch = uint16(length-1);
 				}
-			} else {toClaim = (block.number - lastClaim)*_ps[msg.sender].tokenAmount*rate/_founderTokenAmount;}
+				_ps[msg.sender].lastEpoch = uint16(length-1);
+			} else {toClaim = (block.number - lastClaim)*tokenAmount*rate/_founderTokenAmount;}
 		} else {
 			length = _epochs.length;
 			rate = rate*2/3;
@@ -180,9 +180,9 @@ contract StakingContract {
 					epochAmount = uint128(b[1]);
 					if(i == length-1){futureBlock = uint128(block.number);} else {epoch = _epochs[i+1];assembly {mstore(b, epoch)} futureBlock = uint128(b[0]);}
 					blocks = futureBlock - epochBlock;
-					rate = rate*2/3; toClaim += blocks*tokenAmount*rate/epochAmount;
-					_ps[msg.sender].lastEpoch = uint16(length-1);	
+					rate = rate*2/3; toClaim += blocks*tokenAmount*rate/epochAmount;	
 				}
+				_ps[msg.sender].lastEpoch = uint16(length-1);
 			} else {toClaim = (block.number - lastClaim)*_ps[msg.sender].tokenAmount*rate/_genTokenAmount;}
 		}
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
