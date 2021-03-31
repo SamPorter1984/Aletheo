@@ -82,11 +82,13 @@ contract StakingContract {
 		uint128 epochBlock;
 		bytes memory by;
 		bytes32 b32;
+		uint length;
 		_ps[msg.sender].tokenAmount = uint128(tknAmount - toSubtract);
 		if (_ps[msg.sender].founder == true) {
+			length = _founderEpochs.length;
 			uint founderTokenAmount = _founderTokenAmount - toSubtract;
 			_founderTokenAmount = founderTokenAmount;
-			epoch = _founderEpochs[_founderEpochs.length-1];
+			epoch = _founderEpochs[length-1];
 			assembly {mstore(b, epoch)}
 			epochBlock = uint128(b[0]);
 			if (block.number - 40320 > epochBlock) {
@@ -95,11 +97,12 @@ contract StakingContract {
 				by = abi.encodePacked(b[0], b[1]);
 				assembly {b32 := mload(add(by, 32))}
 				_founderEpochs.push(b32);
-			} else {by = abi.encodePacked(epochBlock,founderTokenAmount);assembly {b32 := mload(add(by, 32))}_founderEpochs[_founderEpochs.length-1] = b32;}
+			} else {by = abi.encodePacked(epochBlock,founderTokenAmount);assembly {b32 := mload(add(by, 32))}_founderEpochs[length-1] = b32;}
 		}else{
+			length = _epochs.length;
 			uint genTokenAmount = _genTokenAmount - toSubtract;
 			_genTokenAmount = genTokenAmount;
-			epoch = _epochs[_epochs.length-1];
+			epoch = _epochs[length-1];
 			assembly {mstore(b, epoch)}
 			epochBlock = uint128(b[0]);
 			if (block.number - 40320 > epochBlock) {
@@ -108,7 +111,7 @@ contract StakingContract {
 				by = abi.encodePacked(b[0], b[1]);
 				assembly {b32 := mload(add(by, 32))}
 				_epochs.push(b32);
-			} else {by = abi.encodePacked(epochBlock,genTokenAmount);assembly {b32 := mload(add(by, 32))}_epochs[_epochs.length-1] = b32;}
+			} else {by = abi.encodePacked(epochBlock,genTokenAmount);assembly {b32 := mload(add(by, 32))}_epochs[length-1] = b32;}
 		}
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
@@ -147,37 +150,41 @@ contract StakingContract {
 		uint128 epochAmount;
 		uint128 futureBlock;
 		bytes32 epoch;
+		uint length;
 		if (founder) {
-			if (epochToClaim < _founderEpochs.length-1) {
+			length = _founderEpochs.length;
+			if (epochToClaim < length-1) {
 				uint blocks;
-				for (uint i = epochToClaim; i<_founderEpochs.length;i++) {
+				for (uint i = epochToClaim; i<length;i++) {
 					bytes16[2] memory b = [bytes16(0), 0];
 					epoch = _founderEpochs[i];
 					assembly {mstore(b, epoch) mstore(add(b, 16), epoch)}
 					epochBlock = uint128(b[0]);
 					epochAmount = uint128(b[1]);
-					if(i == _founderEpochs.length-1){futureBlock = uint128(block.number);} else {epoch = _founderEpochs[i+1];assembly {mstore(b, epoch)} futureBlock = uint128(b[0]);}
+					if(i == length-1){futureBlock = uint128(block.number);} else {epoch = _founderEpochs[i+1];assembly {mstore(b, epoch)} futureBlock = uint128(b[0]);}
 					blocks = futureBlock - epochBlock;
-					toClaim += blocks*tokenAmount*rate/epochAmount;	
+					toClaim += blocks*tokenAmount*rate/epochAmount;
+					_ps[msg.sender].lastEpoch = uint16(length-1);
 				}
 			} else {toClaim = (block.number - lastClaim)*_ps[msg.sender].tokenAmount*rate/_founderTokenAmount;}
 		} else {
+			length = _epochs.length;
 			rate = rate*2/3;
-			if (epochToClaim < _epochs.length-1) {
+			if (epochToClaim < length-1) {
 				uint blocks;
-				for (uint i = epochToClaim; i<_epochs.length;i++) {
+				for (uint i = epochToClaim; i<length;i++) {
 					bytes16[2] memory b = [bytes16(0), 0];
 					epoch = _epochs[i];
 					assembly {mstore(b, epoch)mstore(add(b, 16), epoch)}
 					epochBlock = uint128(b[0]);
 					epochAmount = uint128(b[1]);
-					if(i == _epochs.length-1){futureBlock = uint128(block.number);} else {epoch = _epochs[i+1];assembly {mstore(b, epoch)} futureBlock = uint128(b[0]);}
+					if(i == length-1){futureBlock = uint128(block.number);} else {epoch = _epochs[i+1];assembly {mstore(b, epoch)} futureBlock = uint128(b[0]);}
 					blocks = futureBlock - epochBlock;
-					rate = rate*2/3;toClaim += blocks*tokenAmount*rate/epochAmount;	
+					rate = rate*2/3; toClaim += blocks*tokenAmount*rate/epochAmount;
+					_ps[msg.sender].lastEpoch = uint16(length-1);	
 				}
 			} else {toClaim = (block.number - lastClaim)*_ps[msg.sender].tokenAmount*rate/_genTokenAmount;}
 		}
-		_ps[msg.sender].lastEpoch = uint16(_epochs.length-1);
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
 		require(success == true);
 	}
@@ -226,7 +233,8 @@ contract StakingContract {
 		if (_ps[msg.sender].lastClaim == 0) {_ps[msg.sender].lastClaim = uint32(block.number);} else{require(block.number < _ps[msg.sender].lastClaim+100);}
 		uint genTokenAmount = _genTokenAmount + amount;
 		_genTokenAmount = genTokenAmount;
-		bytes32 epoch = _epochs[_epochs.length-1];
+		uint length = _epochs.length;
+		bytes32 epoch = _epochs[length-1];
 		bytes16[2] memory b = [bytes16(0), 0];
 		assembly {mstore(b, epoch)}
 		bytes32 b32;
@@ -238,7 +246,7 @@ contract StakingContract {
 			by = abi.encodePacked(b[0], b[1]);
 			assembly {b32 := mload(add(by, 32))}
 			_epochs.push(b32);
-		} else {by = abi.encodePacked(epochBlock,genTokenAmount);assembly {b32 := mload(add(by, 32))}_epochs[_epochs.length-1] = b32;}
+		} else {by = abi.encodePacked(epochBlock,genTokenAmount);assembly {b32 := mload(add(by, 32))}_epochs[length-1] = b32;}
 		(uint res0,uint res1,)=IUniswapV2Pair(tkn).getReserves();
 		uint total = IERC20(tkn).totalSupply();
 		uint share;
