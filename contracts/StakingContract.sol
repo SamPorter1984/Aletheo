@@ -41,8 +41,8 @@ contract StakingContract {
 	struct Provider {uint32 lastClaim; uint16 lastEpoch; bool founder; uint128 tokenAmount; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
 	struct Locker {uint128 amount;uint128 lockUpTo;}
 
-	bytes32[] private _epochs;
-	bytes32[] private _founderEpochs;
+	bytes30[] private _epochs;
+	bytes30[] private _founderEpochs;
 
 	mapping(address => Provider) private _ps;
 	mapping(address => Locker) private _ls;
@@ -77,41 +77,54 @@ contract StakingContract {
 		percent = percent/lpShare;
 		uint tknAmount = _ps[msg.sender].tokenAmount;
 		uint toSubtract = tknAmount*percent/100; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
-		bytes16[2] memory b = [bytes16(0), 0];
 		bytes32 epoch;
-		uint128 epochBlock;
 		bytes memory by;
-		bytes32 b32;
+		bytes30 b30;
 		uint length;
+		uint80 epochBlock;
+		uint80 epochAmount;
+		uint80 epochEnd;
 		_ps[msg.sender].tokenAmount = uint128(tknAmount - toSubtract);
 		if (_ps[msg.sender].founder == true) {
 			length = _founderEpochs.length;
 			uint founderTokenAmount = _founderTokenAmount - toSubtract;
 			_founderTokenAmount = founderTokenAmount;
 			epoch = _founderEpochs[length-1];
-			assembly {mstore(b, epoch)}
-			epochBlock = uint128(b[0]);
+			epochBlock = uint80(bytes10(epoch));
+			epochAmount = uint80(bytes10(epoch << 80));
+			epochEnd = uint80(bytes10(epoch << 160));
 			if (block.number - 40320 > epochBlock) {
-				b[0] = bytes16(uint128(block.number));
-				b[1] = bytes16(uint128(founderTokenAmount));
-				by = abi.encodePacked(b[0], b[1]);
-				assembly {b32 := mload(add(by, 32))}
-				_founderEpochs.push(b32);
-			} else {by = abi.encodePacked(epochBlock,founderTokenAmount);assembly {b32 := mload(add(by, 32))}_founderEpochs[length-1] = b32;}
+				epochEnd = uint80(block.number - 1);
+				by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
+				assembly {b30 := mload(add(by, 30))}
+				_founderEpochs[length-1] = b30;
+				epochBlock = uint80(block.number);
+				epochAmount = uint80(founderTokenAmount);
+				epochEnd = uint80(0);
+				by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
+				assembly {b30 := mload(add(by, 30))}
+				_founderEpochs.push(b30);
+			} else {by = abi.encodePacked(epochBlock,uint80(founderTokenAmount),uint80(0));assembly {b30 := mload(add(by, 30))}_founderEpochs[length-1] = b30;}
 		}else{
 			length = _epochs.length;
 			uint genTokenAmount = _genTokenAmount - toSubtract;
 			_genTokenAmount = genTokenAmount;
 			epoch = _epochs[length-1];
-			assembly {mstore(b, epoch)}
-			epochBlock = uint128(b[0]);
+			epochBlock = uint80(bytes10(epoch));
+			epochAmount = uint80(bytes10(epoch << 80));
+			epochEnd = uint80(bytes10(epoch << 160));
 			if (block.number - 40320 > epochBlock) {
-				b[0] = bytes16(uint128(block.number));
-				b[1] = bytes16(uint128(genTokenAmount));
-				by = abi.encodePacked(b[0], b[1]);
-				assembly {b32 := mload(add(by, 32))}
-				_epochs.push(b32);
-			} else {by = abi.encodePacked(epochBlock,genTokenAmount);assembly {b32 := mload(add(by, 32))}_epochs[length-1] = b32;}
+				epochEnd = uint80(block.number - 1);
+				by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
+				assembly {b30 := mload(add(by, 30))}
+				_epochs[length-1] = b30;
+				epochBlock = uint80(block.number);
+				epochAmount = uint80(genTokenAmount);
+				epochEnd = uint80(0);
+				by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
+				assembly {b30 := mload(add(by, 30))}
+				_epochs.push(b30);
+			} else {by = abi.encodePacked(epochBlock,genTokenAmount);assembly {b30 := mload(add(by, 30))}_epochs[length-1] = b30;}
 		}
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
@@ -148,24 +161,25 @@ contract StakingContract {
 		uint toClaim;
 		uint halver = block.number/10000000;
 		uint rate = 21e15;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;}}
-		uint128 epochBlock;
-		uint128 epochAmount;
-		uint128 futureBlock;
-		bytes32 epoch;
+		uint80 epochBlock;
+		uint80 epochAmount;
+		uint80 epochEnd;
+		bytes30 epoch;
 		uint length;
 		if (founder) {
 			length = _founderEpochs.length;
 			if (epochToClaim < length-1) {
 				uint blocks;
 				for (uint i = epochToClaim; i<length;i++) {
-					bytes16[2] memory b = [bytes16(0), 0];
 					epoch = _founderEpochs[i];
-					assembly {mstore(b, epoch) mstore(add(b, 16), epoch)}
-					epochBlock = uint128(b[0]);
-					epochAmount = uint128(b[1]);
-					if(i == length-1){futureBlock = uint128(block.number);} else {epoch = _founderEpochs[i+1];assembly {mstore(b, epoch)} futureBlock = uint128(b[0]);}
-					if(i == epochToClaim) {epochBlock = lastClaim;}
-					blocks = futureBlock - epochBlock;
+					epochBlock = uint80(bytes10(epoch));
+					epochAmount = uint80(bytes10(epoch << 80));
+					epochEnd = uint80(bytes10(epoch << 160));
+					if(i == length-1){epochEnd = uint80(block.number);}
+					if(i == epochToClaim) {epochBlock = uint80(lastClaim);}
+					halver = epochBlock/10000000;
+					if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;}}
+					blocks = epochEnd - epochBlock;
 					toClaim += blocks*tokenAmount*rate/epochAmount;
 				}
 				_ps[msg.sender].lastEpoch = uint16(length-1);
@@ -176,15 +190,17 @@ contract StakingContract {
 			if (epochToClaim < length-1) {
 				uint blocks;
 				for (uint i = epochToClaim; i<length;i++) {
-					bytes16[2] memory b = [bytes16(0), 0];
 					epoch = _epochs[i];
-					assembly {mstore(b, epoch)mstore(add(b, 16), epoch)}
-					epochBlock = uint128(b[0]);
-					epochAmount = uint128(b[1]);
-					if(i == length-1){futureBlock = uint128(block.number);} else {epoch = _epochs[i+1];assembly {mstore(b, epoch)} futureBlock = uint128(b[0]);}
-					if(i == epochToClaim) {epochBlock = lastClaim;}
-					blocks = futureBlock - epochBlock;
-					rate = rate*2/3; toClaim += blocks*tokenAmount*rate/epochAmount;	
+					epochBlock = uint80(bytes10(epoch));
+					epochAmount = uint80(bytes10(epoch << 80));
+					epochEnd = uint80(bytes10(epoch << 160));
+					if(i == length-1){epochEnd = uint80(block.number);}
+					if(i == epochToClaim) {epochBlock = uint80(lastClaim);}
+					halver = epochBlock/10000000;
+					if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;}}
+					blocks = epochEnd - epochBlock;
+					if (epochToClaim < 10) {rate = rate*2/30*epochToClaim;}
+					rate = rate*2/3; toClaim += blocks*tokenAmount*rate/epochAmount;
 				}
 				_ps[msg.sender].lastEpoch = uint16(length-1);
 			} else {toClaim = (block.number - lastClaim)*_ps[msg.sender].tokenAmount*rate/_genTokenAmount;}
@@ -238,25 +254,26 @@ contract StakingContract {
 		if(_ps[msg.sender].lastClaim==0){_ps[msg.sender].lastClaim = uint32(block.number);_ps[msg.sender].lastEpoch == length-1;}else{require(block.number < _ps[msg.sender].lastClaim+1000);}// this is still under question, could be considered even if it isn't
 		uint genTokenAmount = _genTokenAmount + amount;
 		_genTokenAmount = genTokenAmount;
-		uint length = _epochs.length;
 		bytes32 epoch = _epochs[length-1];
-		bytes16[2] memory b = [bytes16(0), 0];
-		assembly {mstore(b, epoch)}
-		bytes32 b32;
+		uint80 epochBlock = uint80(bytes10(epoch));
+		uint80 epochAmount = uint80(bytes10(epoch << 80));
+		bytes30 b30;
 		bytes memory by;
-		uint128 epochBlock = uint128(b[0]);
 		if (block.number - 40320 > epochBlock) {
-			b[0] = bytes16(uint128(block.number));
-			b[1] = bytes16(uint128(genTokenAmount));
-			by = abi.encodePacked(b[0], b[1]);
-			assembly {b32 := mload(add(by, 32))}
-			_epochs.push(b32);
-		} else {by = abi.encodePacked(epochBlock,genTokenAmount);assembly {b32 := mload(add(by, 32))}_epochs[length-1] = b32;}
+			uint80 epochEnd = uint80(block.number - 1);
+			by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
+			assembly {b30 := mload(add(by, 30))}
+			_epochs[length-1] = b30;
+			epochBlock = uint80(block.number);
+			epochAmount = uint80(genTokenAmount);
+			epochEnd = uint80(0);
+			by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
+			assembly {b30 := mload(add(by, 30))}
+			_epochs.push(b30);
+		} else {by = abi.encodePacked(epochBlock,genTokenAmount,uint80(0));assembly {b30 := mload(add(by, 30))}_epochs[length-1] = b30;}
 		(uint res0,uint res1,)=IUniswapV2Pair(tkn).getReserves();
 		uint total = IERC20(tkn).totalSupply();
-		uint share;
-		if (res0 > res1) {share = res0*amount/total;} else {share = res1*amount/total;}
-		_ps[msg.sender].tokenAmount += uint128(share);
+		if (res0 > res1) {_ps[msg.sender].tokenAmount += uint128(uint(res0*amount/total));} else {_ps[msg.sender].tokenAmount += uint128(uint(res1*amount/total));}
 		IERC20(tkn).transferFrom(msg.sender,address(this),amount);
 	}
  
