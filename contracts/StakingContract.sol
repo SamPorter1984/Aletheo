@@ -77,13 +77,11 @@ contract StakingContract {
 		percent = percent/lpShare;
 		uint tknAmount = _ps[msg.sender].tokenAmount;
 		uint toSubtract = tknAmount*percent/100; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
-		bytes32 epoch;
+		bytes30 epoch;
 		bytes memory by;
 		bytes30 b30;
 		uint length;
 		uint80 epochBlock;
-		uint80 epochAmount;
-		uint80 epochEnd;
 		_ps[msg.sender].tokenAmount = uint128(tknAmount - toSubtract);
 		if (_ps[msg.sender].founder == true) {
 			length = _founderEpochs.length;
@@ -91,43 +89,20 @@ contract StakingContract {
 			_founderTokenAmount = founderTokenAmount;
 			epoch = _founderEpochs[length-1];
 			epochBlock = uint80(bytes10(epoch));
-			epochAmount = uint80(bytes10(epoch << 80));
-			epochEnd = uint80(bytes10(epoch << 160));
-			if (block.number - 40320 > epochBlock) {
-				epochEnd = uint80(block.number - 1);
-				by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
-				assembly {b30 := mload(add(by, 30))}
-				_founderEpochs[length-1] = b30;
-				epochBlock = uint80(block.number);
-				epochAmount = uint80(founderTokenAmount);
-				epochEnd = uint80(0);
-				by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
-				assembly {b30 := mload(add(by, 30))}
-				_founderEpochs.push(b30);
-			} else {by = abi.encodePacked(epochBlock,uint80(founderTokenAmount),uint80(0));assembly {b30 := mload(add(by, 30))}_founderEpochs[length-1] = b30;}
+			if (block.number - 40320 > epochBlock) {_createEpoch(epoch,founderTokenAmount,true,length);}
+			else {by = abi.encodePacked(epochBlock,uint80(founderTokenAmount),uint80(0));assembly {b30 := mload(add(by, 30))}_founderEpochs[length-1] = b30;}
 		}else{
 			length = _epochs.length;
 			uint genTokenAmount = _genTokenAmount - toSubtract;
 			_genTokenAmount = genTokenAmount;
 			epoch = _epochs[length-1];
 			epochBlock = uint80(bytes10(epoch));
-			epochAmount = uint80(bytes10(epoch << 80));
-			epochEnd = uint80(bytes10(epoch << 160));
-			if (block.number - 40320 > epochBlock) {
-				epochEnd = uint80(block.number - 1);
-				by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
-				assembly {b30 := mload(add(by, 30))}
-				_epochs[length-1] = b30;
-				epochBlock = uint80(block.number);
-				epochAmount = uint80(genTokenAmount);
-				epochEnd = uint80(0);
-				by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
-				assembly {b30 := mload(add(by, 30))}
-				_epochs.push(b30);
-			} else {by = abi.encodePacked(epochBlock,genTokenAmount);assembly {b30 := mload(add(by, 30))}_epochs[length-1] = b30;}
+			if(block.number-40320>epochBlock){_createEpoch(epoch,genTokenAmount,false,length);}
+			else{by=abi.encodePacked(epochBlock,genTokenAmount);assembly{b30:=mload(add(by,30))}_epochs[length-1]=b30;}
 		}
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
+
 // if a provider or a founder unstakes, then remaining providers or founders get the share of his rewards. it's fine, unless a provider or a founder does not
 // claim for several years. so a provider or a founder here can claim rewards only for last 3 months. acceptable inaccuracy, another way could be treasury
 // distributing rewards automatically, since if we add the computation here, the function becomes expensive, it could require an array of founder/provider
@@ -254,27 +229,31 @@ contract StakingContract {
 		if(_ps[msg.sender].lastClaim==0){_ps[msg.sender].lastClaim = uint32(block.number);_ps[msg.sender].lastEpoch == length-1;}else{require(block.number < _ps[msg.sender].lastClaim+1000);}// this is still under question, could be considered even if it isn't
 		uint genTokenAmount = _genTokenAmount + amount;
 		_genTokenAmount = genTokenAmount;
-		bytes32 epoch = _epochs[length-1];
+		bytes30 epoch = _epochs[length-1];
 		uint80 epochBlock = uint80(bytes10(epoch));
-		uint80 epochAmount = uint80(bytes10(epoch << 80));
-		bytes30 b30;
-		bytes memory by;
-		if (block.number - 40320 > epochBlock) {
-			uint80 epochEnd = uint80(block.number - 1);
-			by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
-			assembly {b30 := mload(add(by, 30))}
-			_epochs[length-1] = b30;
-			epochBlock = uint80(block.number);
-			epochAmount = uint80(genTokenAmount);
-			epochEnd = uint80(0);
-			by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
-			assembly {b30 := mload(add(by, 30))}
-			_epochs.push(b30);
-		} else {by = abi.encodePacked(epochBlock,genTokenAmount,uint80(0));assembly {b30 := mload(add(by, 30))}_epochs[length-1] = b30;}
+		if(block.number-40320>epochBlock){_createEpoch(epoch,genTokenAmount,false,length);}
+		else{bytes30 b30;bytes memory by;by=abi.encodePacked(epochBlock,genTokenAmount,uint80(0));assembly{b30:=mload(add(by,30))}_epochs[length-1]=b30;}
 		(uint res0,uint res1,)=IUniswapV2Pair(tkn).getReserves();
 		uint total = IERC20(tkn).totalSupply();
 		if (res0 > res1) {_ps[msg.sender].tokenAmount += uint128(uint(res0*amount/total));} else {_ps[msg.sender].tokenAmount += uint128(uint(res1*amount/total));}
 		IERC20(tkn).transferFrom(msg.sender,address(this),amount);
+	}
+
+	function _createEpoch(bytes30 epoch, uint amount, bool founder,uint length) internal {
+		bytes30 b30;
+		bytes memory by;
+		uint80 epochBlock = uint80(bytes10(epoch));
+		uint80 epochAmount = uint80(bytes10(epoch << 80));
+		uint80 epochEnd = uint80(block.number - 1);
+		by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
+		assembly {b30 := mload(add(by, 30))}
+		if (founder == true){_founderEpochs[length-1] = b30;} else {_epochs[length-1] = b30;}
+		epochBlock = uint80(block.number);
+		epochAmount = uint80(amount);
+		epochEnd = uint80(0);
+		by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
+		assembly {b30 := mload(add(by, 30))}
+		if (founder == true){_founderEpochs.push(b30);} else {_epochs.push(b30);}
 	}
  
 	function migrate(address contr,address tkn,uint amount) public lock {//can support any amount of bridges
