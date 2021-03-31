@@ -38,7 +38,7 @@ contract StakingContract {
 		_tokenETHLP = tkn;
 	}
 
-	struct Provider {uint32 lastClaim; uint128 tokenAmount; bool founder; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;uint16 lastEpoch;}
+	struct Provider {uint32 lastClaim; uint16 lastEpoch; bool founder; uint128 tokenAmount; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
 	struct Locker {uint128 amount;uint128 lockUpTo;}
 
 	bytes32[] private _epochs;
@@ -106,7 +106,7 @@ contract StakingContract {
 			assembly {mstore(b, epoch)}
 			epochBlock = uint128(b[0]);
 			if (block.number - 40320 > epochBlock) {
-				b[0] = bytes16(uint128(block.number)); 
+				b[0] = bytes16(uint128(block.number));
 				b[1] = bytes16(uint128(genTokenAmount));
 				by = abi.encodePacked(b[0], b[1]);
 				assembly {b32 := mload(add(by, 32))}
@@ -121,28 +121,30 @@ contract StakingContract {
 // exits or maybe monthly/weekly epochs. you could even consider it a vulnerability, since a founder can have two wallets, claim from one and exit, and then
 // claim from another one and exit, having a very small bonus on top of his rewards in comparison if he had only one wallet to claim and exit. however the
 // system attempts to create an incentive to never unstake
-	function getRewards() public {
+	function getRewards() public {//9200
 		uint lastClaim = _ps[msg.sender].lastClaim;
+		bool founder = _ps[msg.sender].founder;
+		uint tokenAmount = _ps[msg.sender].tokenAmount;
 		require(block.number>lastClaim*10);
 		_ps[msg.sender].lastClaim = uint32(block.number/10);
 		uint halver = block.number/10000000;
 		uint rate = 21e15;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/6;}}
 		uint toClaim = block.number - lastClaim;
 		if (lastClaim - block.number > 525600) {toClaim=525600;}// has to claim at least once every 3 months
-		toClaim = toClaim*_ps[msg.sender].tokenAmount;
-		if (_ps[msg.sender].founder == true) {toClaim = toClaim*rate/_founderTokenAmount;} else {rate = rate*2/3;toClaim = toClaim*rate/_genTokenAmount;}
+		toClaim = toClaim*tokenAmount;
+		if (founder == true) {toClaim = toClaim*rate/_founderTokenAmount;} else {rate = rate*2/3;toClaim = toClaim*rate/_genTokenAmount;}
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
 		require(success == true);
 	}
 
 // a hypothetical version with epochs looks ugly and it's more expensive for the users, and you still may want to claim at least once every 3 months
-	function getRewards1() public {
+	function getRewards1() public {//11300
 		uint lastClaim = _ps[msg.sender].lastClaim;
-		require(block.number>lastClaim);
-		_ps[msg.sender].lastClaim = uint32(block.number);
 		uint epochToClaim = _ps[msg.sender].lastEpoch;
 		bool founder = _ps[msg.sender].founder;
 		uint tokenAmount = _ps[msg.sender].tokenAmount;
+		require(block.number>lastClaim);
+		_ps[msg.sender].lastClaim = uint32(block.number);
 		uint toClaim;
 		uint halver = block.number/10000000;
 		uint rate = 21e15;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;}}
@@ -162,6 +164,7 @@ contract StakingContract {
 					epochBlock = uint128(b[0]);
 					epochAmount = uint128(b[1]);
 					if(i == length-1){futureBlock = uint128(block.number);} else {epoch = _founderEpochs[i+1];assembly {mstore(b, epoch)} futureBlock = uint128(b[0]);}
+					if(i == epochToClaim) {epochBlock = lastClaim;}
 					blocks = futureBlock - epochBlock;
 					toClaim += blocks*tokenAmount*rate/epochAmount;
 				}
@@ -179,6 +182,7 @@ contract StakingContract {
 					epochBlock = uint128(b[0]);
 					epochAmount = uint128(b[1]);
 					if(i == length-1){futureBlock = uint128(block.number);} else {epoch = _epochs[i+1];assembly {mstore(b, epoch)} futureBlock = uint128(b[0]);}
+					if(i == epochToClaim) {epochBlock = lastClaim;}
 					blocks = futureBlock - epochBlock;
 					rate = rate*2/3; toClaim += blocks*tokenAmount*rate/epochAmount;	
 				}
@@ -229,8 +233,9 @@ contract StakingContract {
 
 	function stake(uint amount) public {
 		address tkn = _tokenETHLP;
+		uint length = _epochs.length;
 		require(_ps[msg.sender].founder==false && IERC20(tkn).balanceOf(msg.sender)>=amount);
-		if (_ps[msg.sender].lastClaim == 0) {_ps[msg.sender].lastClaim = uint32(block.number);} else{require(block.number < _ps[msg.sender].lastClaim+100);}
+		if(_ps[msg.sender].lastClaim==0){_ps[msg.sender].lastClaim = uint32(block.number);_ps[msg.sender].lastEpoch == length-1;}else{require(block.number < _ps[msg.sender].lastClaim+1000);}// this is still under question, could be considered even if it isn't
 		uint genTokenAmount = _genTokenAmount + amount;
 		_genTokenAmount = genTokenAmount;
 		uint length = _epochs.length;
