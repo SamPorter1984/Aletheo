@@ -41,8 +41,8 @@ contract StakingContract {
 	struct Provider {uint32 lastClaim; uint16 lastEpoch; bool founder; uint128 tokenAmount; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
 	struct Locker {uint128 amount;uint128 lockUpTo;}
 
-	bytes30[] private _epochs;
-	bytes30[] private _founderEpochs;
+	bytes32[] private _epochs;
+	bytes32[] private _founderEpochs;
 
 	mapping(address => Provider) private _ps;
 	mapping(address => Locker) private _ls;
@@ -77,9 +77,8 @@ contract StakingContract {
 		percent = percent/lpShare;
 		uint tknAmount = _ps[msg.sender].tokenAmount;
 		uint toSubtract = tknAmount*percent/100; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
-		bytes30 epoch;
+		bytes32 epoch;
 		bytes memory by;
-		bytes30 b30;
 		uint length;
 		uint80 epochBlock;
 		_ps[msg.sender].tokenAmount = uint128(tknAmount - toSubtract);
@@ -90,7 +89,7 @@ contract StakingContract {
 			epoch = _founderEpochs[length-1];
 			epochBlock = uint80(bytes10(epoch));
 			if (block.number - 40320 > epochBlock) {_createEpoch(epoch,founderTokenAmount,true,length);}
-			else {by = abi.encodePacked(epochBlock,uint80(founderTokenAmount),uint80(0));assembly {b30 := mload(add(by, 30))}_founderEpochs[length-1] = b30;}
+			else {by = abi.encodePacked(epochBlock,uint96(founderTokenAmount),uint80(0));assembly {epoch := mload(add(by, 32))}_founderEpochs[length-1] = epoch;}
 		}else{
 			length = _epochs.length;
 			uint genTokenAmount = _genTokenAmount - toSubtract;
@@ -98,7 +97,7 @@ contract StakingContract {
 			epoch = _epochs[length-1];
 			epochBlock = uint80(bytes10(epoch));
 			if(block.number-40320>epochBlock){_createEpoch(epoch,genTokenAmount,false,length);}
-			else{by=abi.encodePacked(epochBlock,genTokenAmount);assembly{b30:=mload(add(by,30))}_epochs[length-1]=b30;}
+			else{by=abi.encodePacked(epochBlock,uint96(genTokenAmount),uint80(0));assembly{epoch:=mload(add(by,32))}_epochs[length-1]=epoch;}
 		}
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
@@ -137,9 +136,9 @@ contract StakingContract {
 		uint halver = block.number/10000000;
 		uint rate = 21e15;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;}}
 		uint80 epochBlock;
-		uint80 epochAmount;
+		uint96 epochAmount;
 		uint80 epochEnd;
-		bytes30 epoch;
+		bytes32 epoch;
 		uint length;
 		if (founder) {
 			length = _founderEpochs.length;
@@ -148,8 +147,8 @@ contract StakingContract {
 				for (uint i = epochToClaim; i<length;i++) {
 					epoch = _founderEpochs[i];
 					epochBlock = uint80(bytes10(epoch));
-					epochAmount = uint80(bytes10(epoch << 80));
-					epochEnd = uint80(bytes10(epoch << 160));
+					epochAmount = uint96(bytes12(epoch << 80));
+					epochEnd = uint80(bytes10(epoch << 176));
 					if(i == length-1){epochEnd = uint80(block.number);}
 					if(i == epochToClaim) {epochBlock = uint80(lastClaim);}
 					halver = epochBlock/10000000;
@@ -167,8 +166,8 @@ contract StakingContract {
 				for (uint i = epochToClaim; i<length;i++) {
 					epoch = _epochs[i];
 					epochBlock = uint80(bytes10(epoch));
-					epochAmount = uint80(bytes10(epoch << 80));
-					epochEnd = uint80(bytes10(epoch << 160));
+					epochAmount = uint96(bytes12(epoch << 80));
+					epochEnd = uint80(bytes10(epoch << 176));
 					if(i == length-1){epochEnd = uint80(block.number);}
 					if(i == epochToClaim) {epochBlock = uint80(lastClaim);}
 					halver = epochBlock/10000000;
@@ -229,31 +228,31 @@ contract StakingContract {
 		if(_ps[msg.sender].lastClaim==0){_ps[msg.sender].lastClaim = uint32(block.number);_ps[msg.sender].lastEpoch == length-1;}else{require(block.number < _ps[msg.sender].lastClaim+1000);}// this is still under question, could be considered even if it isn't
 		uint genTokenAmount = _genTokenAmount + amount;
 		_genTokenAmount = genTokenAmount;
-		bytes30 epoch = _epochs[length-1];
+		bytes32 epoch = _epochs[length-1];
 		uint80 epochBlock = uint80(bytes10(epoch));
 		if(block.number-40320>epochBlock){_createEpoch(epoch,genTokenAmount,false,length);}
-		else{bytes30 b30;bytes memory by;by=abi.encodePacked(epochBlock,genTokenAmount,uint80(0));assembly{b30:=mload(add(by,30))}_epochs[length-1]=b30;}
+		else{bytes memory by;by=abi.encodePacked(epochBlock,uint96(genTokenAmount),uint80(0));assembly{epoch:=mload(add(by,32))}_epochs[length-1]=epoch;}
 		(uint res0,uint res1,)=IUniswapV2Pair(tkn).getReserves();
 		uint total = IERC20(tkn).totalSupply();
-		if (res0 > res1) {_ps[msg.sender].tokenAmount += uint128(uint(res0*amount/total));} else {_ps[msg.sender].tokenAmount += uint128(uint(res1*amount/total));}
+		if (res1 > res0) {res0 = res1;}
+		uint share = amount*res0/total;
+		_ps[msg.sender].tokenAmount += uint128(share);
 		IERC20(tkn).transferFrom(msg.sender,address(this),amount);
 	}
 
-	function _createEpoch(bytes30 epoch, uint amount, bool founder,uint length) internal {
-		bytes30 b30;
+	function _createEpoch(bytes32 epoch, uint amount, bool founder,uint length) internal {
 		bytes memory by;
 		uint80 epochBlock = uint80(bytes10(epoch));
-		uint80 epochAmount = uint80(bytes10(epoch << 80));
+		uint96 epochAmount = uint96(bytes12(epoch << 80));
 		uint80 epochEnd = uint80(block.number - 1);
 		by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
-		assembly {b30 := mload(add(by, 30))}
-		if (founder == true){_founderEpochs[length-1] = b30;} else {_epochs[length-1] = b30;}
+		assembly {epoch := mload(add(by, 32))}
+		if (founder == true){_founderEpochs[length-1] = epoch;} else {_epochs[length-1] = epoch;}
 		epochBlock = uint80(block.number);
-		epochAmount = uint80(amount);
-		epochEnd = uint80(0);
-		by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
-		assembly {b30 := mload(add(by, 30))}
-		if (founder == true){_founderEpochs.push(b30);} else {_epochs.push(b30);}
+		epochAmount = uint96(amount);
+		by = abi.encodePacked(epochBlock,epochAmount,uint80(0));
+		assembly {epoch := mload(add(by, 32))}
+		if (founder == true){_founderEpochs.push(epoch);} else {_epochs.push(epoch);}
 	}
  
 	function migrate(address contr,address tkn,uint amount) public lock {//can support any amount of bridges
