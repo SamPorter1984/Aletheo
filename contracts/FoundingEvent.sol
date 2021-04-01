@@ -21,14 +21,12 @@ import "./IStaking.sol";
 contract FoundingEvent {
 	mapping(address => uint) public contributions;
 	address private _staking;
-	address private _token;
 	bool private _lgeOngoing;
 	bool private _notInit;
-///////variables for testing purposes
-	address payable private _deployer; // hardcoded
+	address payable private _deployer;
 
-
-	constructor() {_deployer = msg.sender;_lgeOngoing = true;_notInit = true;}
+	constructor() {_deployer = msg.sender;_notInit = true;}
+	function init(address c) public {require(msg.sender == _deployer && _notInit == true);delete _notInit; _lgeOngoing = true; _staking = c;}
 
 	function depositEth() external payable {
 		require(_lgeOngoing == true);
@@ -43,7 +41,7 @@ contract FoundingEvent {
 		delete _lgeOngoing;
 		address token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8;// hardcoded token address after erc20 will be deployed
 		address WETH = 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2;
-		address staking = _staking; // has to be deployed before lge end
+		address staking = _staking; // has to be deployed before lge start
 		uint ETHDeposited = address(this).balance;
 		IWETH(WETH).deposit{value: ETHDeposited}();
 		address tknETHLP = getPair[token][WETH];
@@ -54,6 +52,4 @@ contract FoundingEvent {
 		IStaking(staking).init(ETHDeposited, tknETHLP);
 		delete _staking;
 	}
-
-	function init(address c) public {require(msg.sender == _deployer && _notInit == true);delete _notInit; _staking = c;}
 }
