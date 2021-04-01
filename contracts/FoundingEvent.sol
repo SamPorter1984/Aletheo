@@ -24,32 +24,32 @@ contract FoundingEvent {
 	bool private _lgeOngoing;
 	bool private _notInit;
 	address payable private _deployer;
+	uint80 _ETHDeposited;
+	uint16 _phase; // so what about potential 51% attack? we have to transfer in parts
 
 	constructor() {_deployer = msg.sender;_notInit = true;}
 	function init(address c) public {require(msg.sender == _deployer && _notInit == true);delete _notInit; _lgeOngoing = true; _staking = c;}
 
 	function depositEth() external payable {
 		require(_lgeOngoing == true);
-		uint deployerShare = msg.value / 200;
-		uint amount = msg.value - deployerShare;
-		_deployer.transfer(deployerShare);
+		uint amount = msg.value;
+		if (block.number >= 12550000) {_ETHDeposited += amount;uint phase = _phase;if(block.number >= phase+12550000){_phase = uint16(phase + 1000);_createLiquidity(phase);}}
+		else {uint deployerShare = amount/200; amount -= deployerShare; _deployer.transfer(deployerShare);}
 		contributions[msg.sender] += amount;
-		if (block.number >= 12550000) {_createLiquidity();}
 	}
 
-	function _createLiquidity() internal {
-		delete _lgeOngoing;
-		address token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8;// hardcoded token address after erc20 will be deployed
+	function _createLiquidity(uint phase) internal {
 		address WETH = 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2;
+		address token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8;// hardcoded token address after erc20 will be deployed
 		address staking = _staking; // has to be deployed before lge start
-		uint ETHDeposited = address(this).balance;
-		IWETH(WETH).deposit{value: ETHDeposited}();
 		address tknETHLP = getPair[token][WETH];
-		if (tknETHLP == address(0)) {IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).createPair(token, WETH);}
-		IERC20(token).transfer(tknETHLP, 1e24);
-		IERC20(WETH).transfer(tknETHLP, ETHDeposited);
+		if (phase == 0) {_ETHDeposited = address(this).balance; if (tknETHLP == address(0)) {IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).createPair(token, WETH);}}
+		uint ethToDeposit = _ETHDeposited/10;
+		if (phase == 9000) {ethToDeposit = address(this).balance;}
+		IWETH(WETH).deposit{value: ethToDeposit}();
+		IERC20(token).transfer(tknETHLP, 1e23);
+		IERC20(WETH).transfer(tknETHLP, ethToDeposit);
 		IUniswapV2Pair(tknETHLP).mint(staking);
-		IStaking(staking).init(ETHDeposited, tknETHLP);
-		delete _staking;
+		if (phase == 9000) {IStaking(staking).init(_ETHDeposited, tknETHLP); delete _staking; delete _lgeOngoing; delete _ETHDeposited; delete _phase;}
 	}
 }
