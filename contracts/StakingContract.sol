@@ -104,30 +104,7 @@ contract StakingContract {
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
 
-// if a provider or a founder unstakes, then remaining providers or founders get the share of his rewards. it's fine, unless a provider or a founder does not
-// claim for several years. so a provider or a founder here can claim rewards only for last 3 months. acceptable inaccuracy, another way could be treasury
-// distributing rewards automatically, since if we add the computation here, the function becomes expensive, it could require an array of founder/provider
-// exits or maybe monthly/weekly epochs. you could even consider it a vulnerability, since a founder can have two wallets, claim from one and exit, and then
-// claim from another one and exit, having a very small bonus on top of his rewards in comparison if he had only one wallet to claim and exit. however the
-// system attempts to create an incentive to never unstake
-	function getRewards() public {//9200
-		uint lastClaim = _ps[msg.sender].lastClaim;
-		bool founder = _ps[msg.sender].founder;
-		uint tokenAmount = _ps[msg.sender].tokenAmount;
-		require(block.number>lastClaim*10);
-		_ps[msg.sender].lastClaim = uint32(block.number/10);
-		uint halver = block.number/10000000;
-		uint rate = 21e15;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/6;}}
-		uint toClaim = block.number - lastClaim;
-		if (lastClaim - block.number > 525600) {toClaim=525600;}// has to claim at least once every 3 months
-		toClaim = toClaim*tokenAmount;
-		if (founder == true) {toClaim = toClaim*rate/_founderTokenAmount;} else {rate = rate*2/3;toClaim = toClaim*rate/_genTokenAmount;}
-		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
-		require(success == true);
-	}
-
-// a hypothetical version with epochs is more expensive for the users, and you still may want to claim at least once every 3 months
-	function getRewards1() public {//11300
+	function getRewards() public {//11300
 		uint lastClaim = _ps[msg.sender].lastClaim;
 		uint epochToClaim = _ps[msg.sender].lastEpoch;
 		bool founder = _ps[msg.sender].founder;
