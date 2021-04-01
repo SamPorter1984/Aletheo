@@ -18,6 +18,7 @@ import "./IERC20.sol";
 contract VSRERC20 is Context, IERC20 {
 	event BulkTransfer(address indexed from, address[] indexed recipients, uint128[] amounts);
 	event BulkTransferFrom(address[] indexed senders, uint128[] amounts, address indexed recipient);
+	event NameSymbolChangedTo(string name, string symbol);
 	struct Holder {uint128 balance;uint128 lock;}
 	mapping (address => mapping (address => bool)) private _allowances;
 	mapping (address => Holder) private _holders;
@@ -30,13 +31,7 @@ contract VSRERC20 is Context, IERC20 {
 //// variables for testing purposes. live it should all be hardcoded addresses
 	address private _treasury;
 
-	constructor (string memory name_, string memory symbol_) {
-		_name = name_;
-		_symbol = symbol_;
-		_governance = msg.sender; // for now
-		_holders[msg.sender].balance = 1e27;
-	}
-
+	constructor (string memory n_, string memory s_) {_name = n_;_symbol = s_;_governance = msg.sender;_holders[msg.sender].balance = 1e27;emit NameSymbolChangedTo(n_,s_);}
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
 	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e24 - _holders[_treasury].balance; return withd;}
 	function name() public view returns (string memory) {return _name;}
@@ -46,6 +41,9 @@ contract VSRERC20 is Context, IERC20 {
 	function balanceOf(address a) public view override returns (uint) {return _holders[a].balance;}
 	function transfer(address recipient, uint amount) public override returns (bool) {_transfer(_msgSender(), recipient, amount);return true;}
 	function disallow(address spender) public virtual returns (bool) {delete _allowances[owner][spender];emit Approval(owner, spender, 0);return true;}
+	function setNameSymbol(string memory n, string memory sy) public onlyGovernance {_name = n;_symbol = sy;emit NameSymbolChangedTo(n,sy);}
+	function setGovernance(address a) public onlyGovernance {require(_governanceSet < 3);_governanceSet += 1;_governance = a;}
+	function _isContract(address a) internal view returns(bool) {uint256 s;assembly {s := extcodesize(a)}return s > 0;}
 
 	function approve(address spender, uint256 amount) public virtual override returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
 		if (spender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D) {emit Approval(owner, spender, 2**256 - 1);return true;}
@@ -73,7 +71,7 @@ contract VSRERC20 is Context, IERC20 {
 	function bulkTransfer(address[] memory recipients, uint128[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
 		require(recipients.length == amounts.length && amounts.length < 100,"human error");
 		require(block.number >= _nextBulkBlock);
-		_nextBulkBlock = uint88(block.number + 20); // maybe should be more, because of potential network congestion transfers like this could create. especially if more projects use it.
+		_nextBulkBlock = uint88(block.number + 20);
 		uint128 senderBalance = _holders[msg.sender].balance;
 		uint128 total;
 		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];_holders[recipients[i]].balance += amounts[i];}else{revert();}}
@@ -96,23 +94,19 @@ contract VSRERC20 is Context, IERC20 {
 				total+= amounts[i];	_holders[senders[i]].balance = senderBalance - total;//does not delete if empty, since it could be just trading
 			} else {revert();}
 		}
-		_holders[_msgSender()].balance += total; // the function does not bother with decreasing allowance at all, since allowance number is a lie and a wasteful computation, after it approves infinity-1
+		_holders[_msgSender()].balance += total;
 		emit BulkTransferFrom(senders, amounts, recipient);
 		return true;
 	}
 
-	function _beforeTokenTransfer(address from, uint amount) internal { // hardcoded address
-		if (from == _treasury) { // so the treasury will contain all the funds, it will be one contract instead of several
+	function _beforeTokenTransfer(address from, uint amount) internal {
+		if (from == _treasury) {// hardcoded address
 			require(block.number > 12550000 && block.number > _holders[msg.sender].lock);
-			_holders[msg.sender].lock = uint128(block.number+600);// it's a feature, i call it "soft ceiling". it's for investors' confidence but we are unlikely to hit the limit anyway
+			_holders[msg.sender].lock = uint128(block.number+600);
 			uint treasury = _holders[_treasury].balance;
 			uint withd =  999e24 - treasury;
 			uint allowed = (block.number - 12550000)*42e16 - withd;
 			require(amount <= allowed && amount <= treasury);
 		}
 	}
-
-	function setNameSymbol(string memory n, string memory sy) public onlyGovernance {_name = n;_symbol = sy;}
-	function setGovernance(address a) public onlyGovernance {require(_governanceSet < 3);_governanceSet += 1;_governance = a;}
-	function _isContract(address a) internal view returns(bool) {uint256 s;assembly {s := extcodesize(a)}return s > 0;}
 }
