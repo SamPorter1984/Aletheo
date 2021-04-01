@@ -67,7 +67,7 @@ contract StakingContract {
 		uint tokenAmount = ethContributed*1e24/foundingETH;
 		_ps[msg.sender].lpShare = uint128(lpShare);
 		_ps[msg.sender].tokenAmount = uint128(tokenAmount);
-		_ps[msg.sender].lastClaim = 12550000;
+		_ps[msg.sender].lastClaim = 12559000;
 	}
 
 	function unstakeLp(bool ok,uint amount) public lock {
