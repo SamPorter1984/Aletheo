@@ -30,20 +30,23 @@ contract VSRERC20 is Context, IERC20 {
 	uint8 private _governanceSet;
 //// variables for testing purposes. live it should all be hardcoded addresses
 	address private _treasury;
-
-	constructor (string memory n_, string memory s_) {_name = n_;_symbol = s_;_governance = msg.sender;_holders[msg.sender].balance = 1e27;emit NameSymbolChangedTo(n_,s_);}
+	address private _founding;
+	bool private _notInit;
+	
+	constructor (string memory n_, string memory s_) {_name = n_;_symbol = s_;_governance = msg.sender;_notInit = true;_holders[msg.sender].balance = 1e27;emit NameSymbolChangedTo(n_,s_);}
+	function init(address c) public {require(msg.sender == _deployer && _notInit == true);delete _notInit; _founding = c;}
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
 	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e24 - _holders[_treasury].balance; return withd;}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
-	function totalSupply() public view override returns (uint) {uint supply = (block.number - 12550000)*42e16+1e24;if (supply > 1e27) {supply = 1e27;}return supply;}
+	function totalSupply() public view override returns (uint) {uint supply = (block.number - 12559000)*42e16+1e24;if (supply > 1e27) {supply = 1e27;}return supply;}
 	function decimals() public pure returns (uint) {return 18;}
 	function balanceOf(address a) public view override returns (uint) {return _holders[a].balance;}
 	function transfer(address recipient, uint amount) public override returns (bool) {_transfer(_msgSender(), recipient, amount);return true;}
 	function disallow(address spender) public virtual returns (bool) {delete _allowances[owner][spender];emit Approval(owner, spender, 0);return true;}
-	function setNameSymbol(string memory n, string memory sy) public onlyGovernance {_name = n;_symbol = sy;emit NameSymbolChangedTo(n,sy);}
+	function setNameSymbol(string memory n_, string memory s_) public onlyGovernance {_name = n_;_symbol = s_;emit NameSymbolChangedTo(n_,s_);}
 	function setGovernance(address a) public onlyGovernance {require(_governanceSet < 3);_governanceSet += 1;_governance = a;}
-	function _isContract(address a) internal view returns(bool) {uint256 s;assembly {s := extcodesize(a)}return s > 0;}
+	function _isContract(address a) internal view returns(bool) {uint256 s_;assembly {s_ := extcodesize(a)}return s_ > 0;}
 
 	function approve(address spender, uint256 amount) public virtual override returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
 		if (spender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D) {emit Approval(owner, spender, 2**256 - 1);return true;}
@@ -100,12 +103,13 @@ contract VSRERC20 is Context, IERC20 {
 	}
 
 	function _beforeTokenTransfer(address from, uint amount) internal {
+		if(block.number < 12559000) {require(msg.sender == _founding || msg.sender == _governance);}
 		if (from == _treasury) {// hardcoded address
-			require(block.number > 12550000 && block.number > _holders[msg.sender].lock);
+			require(block.number > 12559000 && block.number > _holders[msg.sender].lock);
 			_holders[msg.sender].lock = uint128(block.number+600);
 			uint treasury = _holders[_treasury].balance;
 			uint withd =  999e24 - treasury;
-			uint allowed = (block.number - 12550000)*42e16 - withd;
+			uint allowed = (block.number - 12559000)*42e16 - withd;
 			require(amount <= allowed && amount <= treasury);
 		}
 	}
