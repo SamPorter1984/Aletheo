@@ -43,7 +43,7 @@ contract FoundingEvent {
 		address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 		address token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8;// hardcoded token address after erc20 will be deployed
 		address staking = _staking; // has to be deployed before lge start
-		address tknETHLP = IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).getPair(token,WETH);
+		address tknETHLP = IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).getPair[token][WETH];
 		if (phase == 0) {_ETHDeposited = uint88(address(this).balance); if (tknETHLP == address(0)) {IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).createPair(token, WETH);}}
 		uint ethToDeposit = _ETHDeposited*3/5;
 		uint tokenToDeposit = 1e23;
