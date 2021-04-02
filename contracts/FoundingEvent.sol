@@ -37,7 +37,7 @@ contract FoundingEvent {
 		if (block.number >= 12550000) {
 			uint phase = _phase;
 			if (phase > 0) {_ETHDeposited += amount;}
-			if(block.number >= phase+12550000){_phase = uint16(phase + 10000);_createLiquidity(phase);}
+			if(block.number >= phase+12550000){_phase = uint88(phase + 10000);_createLiquidity(phase);}
 		}
 		else {uint deployerShare = amount/200; amount -= deployerShare; _deployer.transfer(deployerShare);}
 		contributions[msg.sender] += amount;
