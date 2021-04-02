@@ -126,7 +126,7 @@ contract StakingContract {
 			} else {epoch = _founderEpochs[length-1];eAmount = uint(bytes12(epoch << 80));toClaim = _computeRewards(lastClaim,eAmount,block.number,tknAmount,rate);}
 		} else {
 			length = _epochs.length;
-			rate = rate*2/3;
+			rate = rate*3/4;
 			if (length > 0 && epochToClaim < length-1) {
 				for (uint i = epochToClaim; i<length;i++) {
 					(eBlock,eAmount,eEnd) = _extractEpoch(_epochs[i]);
