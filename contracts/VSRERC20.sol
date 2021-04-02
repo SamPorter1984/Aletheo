@@ -40,7 +40,7 @@ contract VSRERC20 {
 	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e24 - _holders[_treasury].balance; return withd;}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
-	function totalSupply() public view returns (uint) {uint supply = (block.number - 12559000)*42e16+1e24;if (supply > 1e27) {supply = 1e27;}return supply;}
+	function totalSupply() public view returns (uint) {uint supply = (block.number - 12640000)*42e16+1e24;if (supply > 1e27) {supply = 1e27;}return supply;}
 	function decimals() public pure returns (uint) {return 18;}
 	function balanceOf(address a) public view returns (uint) {return _holders[a].balance;}
 	function transfer(address recipient, uint amount) public returns (bool) {_transfer(msg.sender, recipient, amount);return true;}
@@ -104,13 +104,13 @@ contract VSRERC20 {
 	}
 
 	function _beforeTokenTransfer(address from, uint amount) internal {
-		if(block.number < 12559000) {require(msg.sender == _founding || msg.sender == _governance);}
+		if(block.number < 12640000) {require(msg.sender == _founding || msg.sender == _governance);}
 		if (from == _treasury) {// hardcoded address
-			require(block.number > 12559000 && block.number > _holders[msg.sender].lock);
+			require(block.number > 12640000 && block.number > _holders[msg.sender].lock);
 			_holders[msg.sender].lock = uint128(block.number+600);
 			uint treasury = _holders[_treasury].balance;
 			uint withd =  999e24 - treasury;
-			uint allowed = (block.number - 12559000)*42e16 - withd;
+			uint allowed = (block.number - 12640000)*42e16 - withd;
 			require(amount <= allowed && amount <= treasury);
 		}
 	}
