@@ -17,8 +17,6 @@ import "./IBridge.sol";
 contract StakingContract {
 	uint128 private _foundingETHDeposited;
 	uint128 private _foundingLPtokensMinted;
-	uint private _founderTokenAmount;
-	uint private _genTokenAmount;
 	address private _tokenETHLP; // create2 and hardcode too?
 	bool private _notInit;
 ///////variables for testing purposes
@@ -28,7 +26,7 @@ contract StakingContract {
 	address private _founding;// hardcoded
 
 //////
-	constructor() {_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; /*testing*/	_founderTokenAmount = 1e24;_notInit = true;}
+	constructor() {_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; /*testing*/_notInit = true;}
 
 	function init(uint foundingETH, address tkn) public {
 		require(msg.sender == _founding && _notInit == true);
@@ -83,23 +81,22 @@ contract StakingContract {
 		bytes memory by;
 		uint length;
 		uint80 epochBlock;
+		uint96 epochAmount;
 		_ps[msg.sender].tokenAmount = uint128(tknAmount - toSubtract);
 		if (_ps[msg.sender].founder == true) {
 			length = _founderEpochs.length;
-			uint founderTokenAmount = _founderTokenAmount - toSubtract;
-			_founderTokenAmount = founderTokenAmount;
 			epoch = _founderEpochs[length-1];
-			epochBlock = uint80(bytes10(epoch));
-			if (block.number - 40320 > epochBlock) {_createEpoch(epoch,founderTokenAmount,true,length);}
-			else {by = abi.encodePacked(epochBlock,uint96(founderTokenAmount),uint80(0));assembly {epoch := mload(add(by, 32))}_founderEpochs[length-1] = epoch;}
+			(epochBlock,epochAmount,) = _extractEpoch(epoch);
+			epochAmount -= uint96(toSubtract);
+			if (block.number-80640>epochBlock) {_createEpoch(epoch,epochAmount,true,length);}
+			else {by = abi.encodePacked(epochBlock,epochAmount,uint80(0));assembly {epoch := mload(add(by, 32))}_founderEpochs[length-1] = epoch;}
 		}else{
 			length = _epochs.length;
-			uint genTokenAmount = _genTokenAmount - toSubtract;
-			_genTokenAmount = genTokenAmount;
 			epoch = _epochs[length-1];
-			epochBlock = uint80(bytes10(epoch));
-			if(block.number-40320>epochBlock){_createEpoch(epoch,genTokenAmount,false,length);}
-			else{by=abi.encodePacked(epochBlock,uint96(genTokenAmount),uint80(0));assembly{epoch:=mload(add(by,32))}_epochs[length-1]=epoch;}
+			(epochBlock,epochAmount,) = _extractEpoch(epoch);
+			epochAmount -= uint96(toSubtract);
+			if(block.number-80640>epochBlock){_createEpoch(epoch,epochAmount,false,length);}
+			else{by=abi.encodePacked(epochBlock,epochAmount,uint80(0));assembly{epoch:=mload(add(by,32))}_epochs[length-1]=epoch;}
 		}
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
@@ -121,42 +118,33 @@ contract StakingContract {
 		uint length;
 		if (founder) {
 			length = _founderEpochs.length;
-			if (epochToClaim < length-1) {
+			epochAmount = uint96(bytes12(epoch << 80));
+			if (length>0 && epochToClaim < length-1) {
 				uint blocks;
 				for (uint i = epochToClaim; i<length;i++) {
-					epoch = _founderEpochs[i];
-					epochBlock = uint80(bytes10(epoch));
-					epochAmount = uint96(bytes12(epoch << 80));
-					epochEnd = uint80(bytes10(epoch << 176));
+					(epochBlock,epochAmount,epochEnd) = _extractEpoch(_founderEpochs[i]);
 					if(i == length-1){epochEnd = uint80(block.number);}
 					if(i == epochToClaim) {epochBlock = uint80(lastClaim);}
-					halver = epochBlock/10000000;
-					if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;}}
 					blocks = epochEnd - epochBlock;
 					toClaim += blocks*tokenAmount*rate/epochAmount;
 				}
 				_ps[msg.sender].lastEpoch = uint16(length-1);
-			} else {toClaim = (block.number - lastClaim)*tokenAmount*rate/_founderTokenAmount;}
+			} else {epoch = _founderEpochs[length-1]; epochAmount = uint96(bytes12(epoch << 80)); toClaim = (block.number - lastClaim)*tokenAmount*rate/epochAmount;}
 		} else {
 			length = _epochs.length;
 			rate = rate*2/3;
-			if (epochToClaim < length-1) {
+			if (length > 0 && epochToClaim < length-1) {
 				uint blocks;
 				for (uint i = epochToClaim; i<length;i++) {
-					epoch = _epochs[i];
-					epochBlock = uint80(bytes10(epoch));
-					epochAmount = uint96(bytes12(epoch << 80));
-					epochEnd = uint80(bytes10(epoch << 176));
+					(epochBlock,epochAmount,epochEnd) = _extractEpoch(_epochs[i]);
 					if(i == length-1){epochEnd = uint80(block.number);}
 					if(i == epochToClaim) {epochBlock = uint80(lastClaim);}
-					halver = epochBlock/10000000;
-					if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;}}
 					blocks = epochEnd - epochBlock;
-					if (epochToClaim < 10) {rate = rate*2*epochToClaim/30;}
-					rate = rate*2/3; toClaim += blocks*tokenAmount*rate/epochAmount;
+					rate = rate*2/3;
+					toClaim += blocks*tokenAmount*rate/epochAmount;
 				}
 				_ps[msg.sender].lastEpoch = uint16(length-1);
-			} else {toClaim = (block.number - lastClaim)*_ps[msg.sender].tokenAmount*rate/_genTokenAmount;}
+			} else {epoch = _epochs[length-1]; epochAmount = uint96(bytes12(epoch << 80)); toClaim = (block.number - lastClaim)*_ps[msg.sender].tokenAmount*rate/epochAmount;}
 		}
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
 		require(success == true);
@@ -207,12 +195,11 @@ contract StakingContract {
 		IERC20(tkn).transferFrom(msg.sender,address(this),amount);
 		if(_ps[msg.sender].lastClaim==0 && length>0){_ps[msg.sender].lastClaim = uint32(block.number);_ps[msg.sender].lastEpoch == length-1;}
 		else{require(block.number < _ps[msg.sender].lastClaim+1000);}// this is still under question, could be considered even if it isn't
-		uint genTokenAmount = _genTokenAmount + amount;
-		_genTokenAmount = genTokenAmount;
 		bytes32 epoch = _epochs[length-1];
-		uint80 epochBlock = uint80(bytes10(epoch));
-		if(block.number-40320>epochBlock){_createEpoch(epoch,genTokenAmount,false,length);}
-		else{bytes memory by;by=abi.encodePacked(epochBlock,uint96(genTokenAmount),uint80(0));assembly{epoch:=mload(add(by,32))}_epochs[length-1]=epoch;}
+		(uint80 epochBlock,uint96 epochAmount,) = _extractEpoch(epoch);
+		epochAmount += uint96(amount);
+		if(block.number-80640>epochBlock){_createEpoch(epoch,epochAmount,false,length);}
+		else{bytes memory by;by=abi.encodePacked(epochBlock,uint96(epochAmount),uint80(0));assembly{epoch:=mload(add(by,32))}_epochs[length-1]=epoch;}
 		(uint res0,uint res1,)=IUniswapV2Pair(tkn).getReserves();
 		uint total = IERC20(tkn).totalSupply();
 		if (res1 > res0) {res0 = res1;}
@@ -223,18 +210,24 @@ contract StakingContract {
 	function _createEpoch(bytes32 epoch, uint amount, bool founder,uint length) internal {
 		bytes memory by;
 		uint80 epochBlock = uint80(bytes10(epoch));
-		uint96 epochAmount = uint96(bytes12(epoch << 80));
+		uint96 epochAmount = uint96(amount);
 		uint80 epochEnd = uint80(block.number - 1);
 		if (length > 0) {
 			by = abi.encodePacked(epochBlock,epochAmount,epochEnd);
 			assembly {epoch := mload(add(by, 32))}
-			if (founder == true){_founderEpochs[length-1] = epoch;} else {_epochs[length-1] = epoch;}	
+			if (founder == true){_founderEpochs[length-1] = epoch;} else {_epochs[length-1] = epoch;}
 		}
 		epochBlock = uint80(block.number);
-		epochAmount = uint96(amount);
 		by = abi.encodePacked(epochBlock,epochAmount,uint80(0));
 		assembly {epoch := mload(add(by, 32))}
 		if (founder == true){_founderEpochs.push(epoch);} else {_epochs.push(epoch);}
+	}
+
+	function _extractEpoch(bytes32 epoch) internal returns (uint80,uint96,uint80){
+		uint80 epochBlock = uint80(bytes10(epoch));
+		uint96 epochAmount = uint96(bytes12(epoch << 80));
+		uint80 epochEnd = uint80(bytes10(epoch << 176));
+		return (epochBlock,epochAmount,epochEnd);
 	}
  
 	function migrate(address contr,address tkn,uint amount) public lock {//can support any amount of bridges
@@ -248,7 +241,26 @@ contract StakingContract {
 			uint toSubtract = tknA*percent/100;
 			_ps[msg.sender].tokenAmount = tknA - uint128(toSubtract);
 			bool status = _ps[msg.sender].founder;
-			if (status == true){_founderTokenAmount -= toSubtract;} else{_genTokenAmount -= toSubtract;}
+			uint length;
+			bytes32 epoch;
+			uint80 epochBlock;
+			uint96 epochAmount;
+			bytes memory by;
+			if (status == true){
+				length = _founderEpochs.length;
+				epoch = _founderEpochs[length-1];
+				(epochBlock,epochAmount,) = _extractEpoch(epoch);
+				epochAmount -= uint96(toSubtract);
+				if(block.number-80640>epochBlock){_createEpoch(epoch,epochAmount,true,length);}
+				else {by = abi.encodePacked(epochBlock,epochAmount,uint80(0)); assembly {epoch := mload(add(by, 32))}_founderEpochs[length-1] = epoch;}
+			} else{
+				length = _epochs.length;
+				epoch = _epochs[length-1];
+				(epochBlock,epochAmount,) = _extractEpoch(epoch);
+				epochAmount -= uint96(toSubtract);
+				if(block.number-80640>epochBlock){_createEpoch(epoch,epochAmount,false,length);}
+				else {by = abi.encodePacked(epochBlock,epochAmount,uint80(0)); assembly {epoch := mload(add(by, 32))}_epochs[length-1] = epoch;}
+			}
 			IERC20(tkn).transfer(contr, amount);
 			IBridge(contr).provider(msg.sender,amount,_ps[msg.sender].lastClaim,toSubtract,status);
 		}
