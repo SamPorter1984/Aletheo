@@ -65,7 +65,7 @@ contract StakingContract {
 		uint tknAmount = ethContributed*1e24/foundingETH;
 		_ps[msg.sender].lpShare = uint128(lpShare);
 		_ps[msg.sender].tknAmount = uint128(tknAmount);
-		_ps[msg.sender].lastClaim = 12559000;
+		_ps[msg.sender].lastClaim = 12564000;
 	}
 
 	function unstakeLp(bool ok,uint amount) public lock {
@@ -240,9 +240,9 @@ contract StakingContract {
 			require(lpShare-lockedAmount >= amount);
 			_ps[msg.sender].lpShare = uint128(lpShare - amount);
 			uint percent = amount*100/lpShare;
-			uint128 tknA = _ps[msg.sender].tknAmount;
-			uint toSubtract = tknA*percent/100;
-			_ps[msg.sender].tknAmount = tknA - uint128(toSubtract);
+			uint128 tknAmount = _ps[msg.sender].tknAmount;
+			uint toSubtract = tknAmount*percent/100;
+			_ps[msg.sender].tknAmount = tknAmount - uint128(toSubtract);
 			bool status = _ps[msg.sender].founder;
 			uint length;
 			bytes32 epoch;
