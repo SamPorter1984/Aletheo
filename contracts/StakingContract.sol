@@ -108,43 +108,40 @@ contract StakingContract {
 		uint toClaim;
 		uint halver = block.number/10000000; // provider has to claim before halving
 		uint rate = 21e15;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;}}
-		uint80 epochBlock;
-		uint96 epochAmount;
-		uint80 epochEnd;
+		uint epochBlock;
+		uint epochAmount;
+		uint epochEnd;
 		bytes32 epoch;
 		uint length;
 		if (founder) {
 			length = _founderEpochs.length;
-			epochAmount = uint96(bytes12(epoch << 80));
+			epochAmount = uint(bytes12(epoch << 80));
 			if (length>0 && epochToClaim < length-1) {
-				uint blocks;
 				for (uint i = epochToClaim; i<length;i++) {
 					(epochBlock,epochAmount,epochEnd) = _extractEpoch(_founderEpochs[i]);
-					if(i == length-1){epochEnd = uint80(block.number);}
-					if(i == epochToClaim) {epochBlock = uint80(lastClaim);}
-					blocks = epochEnd - epochBlock;
-					toClaim += blocks*tokenAmount*rate/epochAmount;
+					if(i == epochToClaim) {epochBlock = lastClaim;}
+					toClaim += _computeRewards(epochBlock,epochAmount,epochEnd,tokenAmount,rate);
 				}
 				_ps[msg.sender].lastEpoch = uint16(length-1);
-			} else {epoch = _founderEpochs[length-1]; epochAmount = uint96(bytes12(epoch << 80)); toClaim = (block.number - lastClaim)*tokenAmount*rate/epochAmount;}
+			} else {epoch = _founderEpochs[length-1];epochAmount = uint(bytes12(epoch << 80));toClaim = _computeRewards(lastClaim,epochAmount,block.number,tokenAmount,rate);}
 		} else {
 			length = _epochs.length;
 			rate = rate*2/3;
 			if (length > 0 && epochToClaim < length-1) {
-				uint blocks;
 				for (uint i = epochToClaim; i<length;i++) {
 					(epochBlock,epochAmount,epochEnd) = _extractEpoch(_epochs[i]);
-					if(i == length-1){epochEnd = uint80(block.number);}
-					if(i == epochToClaim) {epochBlock = uint80(lastClaim);}
-					blocks = epochEnd - epochBlock;
-					rate = rate*2/3;
-					toClaim += blocks*tokenAmount*rate/epochAmount;
+					if(i == epochToClaim) {epochBlock = lastClaim;}
+					toClaim += _computeRewards(epochBlock,epochAmount,epochEnd,tokenAmount,rate);
 				}
 				_ps[msg.sender].lastEpoch = uint16(length-1);
-			} else {epoch = _epochs[length-1]; epochAmount = uint96(bytes12(epoch << 80)); toClaim = (block.number - lastClaim)*_ps[msg.sender].tokenAmount*rate/epochAmount;}
+			} else {epoch = _epochs[length-1]; epochAmount = uint(bytes12(epoch << 80)); toClaim = _computeRewards(lastClaim,epochAmount,block.number,tokenAmount,rate);}
 		}
 		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
 		require(success == true);
+	}
+
+	function _computeRewards(uint epochBlock, uint epochAmount, uint epochEnd, uint tokenAmount, uint rate) internal returns(uint){
+		if(epochEnd==0){epochEnd = block.number;} uint blocks = epochEnd - epochBlock; return (blocks*tokenAmount*rate/epochAmount);
 	}
 
 // this function has to be expensive as an alert of something fishy just in case
