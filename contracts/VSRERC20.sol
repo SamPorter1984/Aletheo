@@ -105,13 +105,15 @@ contract VSRERC20 {
 
 	function _beforeTokenTransfer(address from, uint amount) internal {
 		if(block.number < 12640000) {require(msg.sender == _founding || msg.sender == _governance);}
-		if (from == _treasury) {// hardcoded address
-			require(block.number > 12640000 && block.number > _holders[msg.sender].lock);
-			_holders[msg.sender].lock = uint128(block.number+600);
-			uint treasury = _holders[_treasury].balance;
-			uint withd =  999e24 - treasury;
-			uint allowed = (block.number - 12640000)*42e16 - withd;
-			require(amount <= allowed && amount <= treasury);
+		else {
+			if (from == _treasury) {// hardcoded address
+				require(block.number > 12640000 && block.number > _holders[msg.sender].lock);
+				_holders[msg.sender].lock = uint128(block.number+600);
+				uint treasury = _holders[_treasury].balance;
+				uint withd =  999e24 - treasury;
+				uint allowed = (block.number - 12640000)*42e16 - withd;
+				require(amount <= allowed && amount <= treasury);
+			}
 		}
 	}
 }
