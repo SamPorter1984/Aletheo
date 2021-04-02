@@ -45,7 +45,7 @@ contract FoundingEvent {
 		address staking = _staking; // has to be deployed before lge start
 		address tknETHLP = IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).getPair(token,WETH);
 		if (phase == 0) {_ETHDeposited = uint88(address(this).balance); if (tknETHLP == address(0)) {IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).createPair(token, WETH);}}
-		uint ethToDeposit = _ETHDeposited*4/5;
+		uint ethToDeposit = _ETHDeposited*3/5;
 		uint tokenToDeposit = 1e23;
 		if (phase == 90000) {
 			ethToDeposit = address(this).balance; IStaking(staking).init(_ETHDeposited, tknETHLP);
