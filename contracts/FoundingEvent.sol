@@ -20,13 +20,13 @@ import "./IStaking.sol";
 
 contract FoundingEvent {
 	mapping(address => uint) public contributions;
-	address private _staking;
-	bool private _lgeOngoing;
-	bool private _notInit;
-	address _token;
 	address payable private _deployer;
-	uint80 _ETHDeposited;
-	uint16 _phase; // so what about potential 51% attack? so just in case we have to transfer in parts
+	bool private _lgeOngoing;
+	uint88 _phase; // so what about potential 51% attack? so just in case we have to transfer in parts
+	address _token;
+	uint96 _ETHDeposited;
+	address private _staking;
+	bool private _notInit;
 
 	constructor() {_deployer = msg.sender;_notInit = true;}
 	function init(address c, address t) public {require(msg.sender == _deployer && _notInit == true);delete _notInit; _lgeOngoing = true; _staking = c; _token = t;}
@@ -37,7 +37,7 @@ contract FoundingEvent {
 		if (block.number >= 12550000) {
 			uint phase = _phase;
 			if (phase > 0) {_ETHDeposited += amount;}
-			if(block.number >= phase+12550000){_phase = uint16(phase + 1000);_createLiquidity(phase);}
+			if(block.number >= phase+12550000){_phase = uint16(phase + 10000);_createLiquidity(phase);}
 		}
 		else {uint deployerShare = amount/200; amount -= deployerShare; _deployer.transfer(deployerShare);}
 		contributions[msg.sender] += amount;
@@ -49,9 +49,9 @@ contract FoundingEvent {
 		address staking = _staking; // has to be deployed before lge start
 		address tknETHLP = getPair[token][WETH];
 		if (phase == 0) {_ETHDeposited = address(this).balance; if (tknETHLP == address(0)) {IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).createPair(token, WETH);}}
-		uint ethToDeposit = _ETHDeposited/10;
+		uint ethToDeposit = _ETHDeposited*4/5;
 		uint tokenToDeposit = 1e23;
-		if (phase == 9000) {
+		if (phase == 90000) {
 			ethToDeposit = address(this).balance;
 			IStaking(staking).init(_ETHDeposited, tknETHLP);
 			delete _staking; delete _lgeOngoing; delete _ETHDeposited; delete _phase;
