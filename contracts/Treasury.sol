@@ -1,7 +1,7 @@
 pragma solidity >=0.7.0;
 
 import "./IERC20.sol";
-
+// needs support for stable coin based grants
 contract Treasury {
 	address private _token;
 	address private _governance;
