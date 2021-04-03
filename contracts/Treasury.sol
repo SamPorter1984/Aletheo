@@ -8,7 +8,7 @@ contract Treasury {
 	address private _jobMarket;
 	address private _staking;
 	address private _oracleMain;
-	uint private _emission; // has to be very slow, like really slow, so that elected devs and officials will have incentive to support the project long-term
+	uint56 private _emission; // has to be very slow, like really slow, so that elected devs and officials will have incentive to support the project long-term
 	uint8 private _governanceSet;
 	bool private _init;
 
