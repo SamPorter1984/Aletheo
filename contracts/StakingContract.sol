@@ -162,7 +162,6 @@ contract StakingContract {
 			_ps[a].lockedAmount = _ps[S].lockedAmount;_ps[a].founder = _ps[S].founder;delete _ps[S];
 		}
 		if (_ls[S].amount > 0) {_ls[a].amount=_ls[S].amount;_ls[a].lockUpTo=_ls[S].lockUpTo;delete _ls[S];}
-		IGovernance(_governance).changeAddress(S,a);
 	}
 
 	function lockFor3Years(bool ok, address tkn, uint amount) public {
@@ -255,7 +254,7 @@ contract StakingContract {
 				_storeEpoch(eBlock,eAmount,false,length);
 			}
 			IERC20(tkn).transfer(contr, amount);
-			IBridge(contr).provider(msg.sender,amount,_ps[msg.sender].lastClaim,toSubtract,status);
+			IBridge(contr).provider(msg.sender,amount,_ps[msg.sender].lastClaim,_ps[msg.sender].lastEpoch,toSubtract,status);
 		}
 		if (tkn == _token) {
 			uint lockedAmount = _ls[msg.sender].amount;
@@ -267,11 +266,14 @@ contract StakingContract {
 	}
 
 	function linkAddress(address a) external { // can be used to limit the amount of testers to only approved addresses
-		require(_linked[msg.sender] != a && _taken[a] == false && _isFounder(a) == false);_linked[msg.sender] = a;_linked[a] = msg.sender;_taken[a] = true;emit AddressLinked(msg.sender,a);
+		require(_linked[msg.sender] != a && _taken[a] == false && IFoundingEvent(_founding).contributions(a) == 0);
+		_linked[msg.sender] = a;_linked[a] = msg.sender;_taken[a] = true;emit AddressLinked(msg.sender,a);
+	}
+
+	function getVoter(address a) external view returns (uint128,uint128,uint128,uint128,uint128,uint128) {
+		return (_ps[a].tknAmount,_ps[a].lpShare,_ps[a].lockedAmount,_ps[a].lockUpTo,_ls[a].amount,_ls[a].lockUpTo);
 	}
 // VIEW FUNCTIONS ==================================================
-	function getProvider(address a) external view returns (uint lpShare, uint lastClaim, address linked) {return (_ps[a].lpShare,_ps[a].lastClaim,_linked[a]);}
-	function getTknAmntLckPt(address a) external view returns (uint tknAmount,uint lockUpTo) {return (_ps[a].tknAmount,_ps[a].lockUpTo);}
-	function _isFounder(address a) internal view returns(bool) {if (IFoundingEvent(_founding).contributions(a) > 0) {return true;} else {return false;}}
-	function _isContract(address a) internal view returns(bool) {uint256 size;assembly {size := extcodesize(a)}return size > 0;}
+	function getProvider(address a) external view returns (uint lastClaim, address linked) {return (_ps[a].lastClaim,_linked[a]);}
+	function _isContract(address a) internal view returns(bool) {uint s_;assembly {s_ := extcodesize(a)}return s_ > 0;}
 }
