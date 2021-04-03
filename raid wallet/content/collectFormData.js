@@ -24,7 +24,7 @@ browser.runtime.onConnect.addListener((port) => {
 	});
 });
 // the order has to be from most popular to least popular
-let filter = [".4chan.",".4channel.","twitter.com","ylilauta.","komica.","kohlchan.","diochan.","ptchan.","hispachan.","2ch.hk","indiachan.","2chan.","github.com","bitcointalk.org",
+let filter = [".4chan.",".4channel.","twitter.com","ylilauta.","komica.","kohlchan.","diochan.","ptchan.","hispachan.","2ch.hk","indiachan.","2chan.","github.com","bitcointalk.org","endchan.","wrongthink.",
 "ethereum-magicians.org","forum.openzeppelin.com"];
 //----------------------------------------------------------------------------
 // EventQueue handling methods
