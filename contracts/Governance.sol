@@ -67,9 +67,12 @@ contract Governance {
 	}
 
 	function checkPrivelege() external {
-		(uint128 tknAmount, uint128 lpShare,uint128 lockedAmount,uint128 lockUpTo) = IStaking(_staking).getTknAmntLckPt(msg.sender);
-		require(lockUpTo > block.number);
-		uint votingPower = lockedAmount*tknAmount/lpShare;
+		(uint128 tknAmount, uint128 lpShare,uint128 lockedAmount,uint128 lockUpTo,uint128 amount,uint128 tLockUpTo) = IStaking(_staking).getVoter(msg.sender);
+		require(lockUpTo>block.number || tLockUpTo>block.number);
+		uint votingPower;
+		if (lockUpTo > block.number){votingPower = lockedAmount*tknAmount/lpShare;}
+		if (tLockUpTo > block.number){votingPower += amount;}
+		if (lockUpTo < tLockUpTo){lockUpTo = tLockUpTo;}
 		_voters[msg.sender].votingPower = uint80(votingPower);
 		_voters[msg.sender].nextPrivelegeCheck = uint80(lockUpTo-1036800);
 	}
