@@ -34,18 +34,18 @@ contract StakingContract {
 		_foundingETHDeposited = uint128(foundingETH);
 		_foundingLPtokensMinted = uint128(IERC20(tkn).balanceOf(address(this)));
 		_tokenETHLP = tkn;
-		_createEpoch(0x0000000000000000000000000000000000000000000000000000000000000000,1e24,true,0);
-		_createEpoch(0x0000000000000000000000000000000000000000000000000000000000000000,0,false,0);
+		_createEpoch(1e24,true);
+		_createEpoch(0,false);
 	}
 
-	struct Provider {uint32 lastClaim; uint16 lastEpoch; bool founder; uint128 tknAmount; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
-	struct Locker {uint128 amount;uint128 lockUpTo;}
+	struct LPProvider {uint32 lastClaim; uint16 lastEpoch; bool founder; uint128 tknAmount; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
+	struct TokenLocker {uint128 amount;uint128 lockUpTo;}
 
 	bytes32[] private _epochs;
 	bytes32[] private _founderEpochs;
 
-	mapping(address => Provider) private _ps;
-	mapping(address => Locker) private _ls;
+	mapping(address => LPProvider) private _ps;
+	mapping(address => TokenLocker) private _ls;
 	mapping(address => uint) private _locks;
 	mapping(address => address) public newAddresses;
 	mapping(address => address) private _linked;
@@ -87,27 +87,30 @@ contract StakingContract {
 			epoch = _founderEpochs[length-1];
 			(eBlock,eAmount,) = _extractEpoch(epoch);
 			eAmount -= uint96(toSubtract);
-			_storeEpoch(epoch,eBlock,eAmount,true,length);
+			_storeEpoch(eBlock,eAmount,true,length);
 		}else{
 			length = _epochs.length;
 			epoch = _epochs[length-1];
 			(eBlock,eAmount,) = _extractEpoch(epoch);
 			eAmount -= uint96(toSubtract);
-			_storeEpoch(epoch,eBlock,eAmount,false,length);
+			_storeEpoch(eBlock,eAmount,false,length);
 		}
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
 
-	function getRewards() public {//11300
-		uint lastClaim = _ps[msg.sender].lastClaim;
-		uint epochToClaim = _ps[msg.sender].lastEpoch;
-		bool founder = _ps[msg.sender].founder;
-		uint tknAmount = _ps[msg.sender].tknAmount;
+	function getRewards(address a) public {//11300
+		if (a == address(0)) {a = msg.sender;}
+		uint lastClaim = _ps[a].lastClaim;
+		uint epochToClaim = _ps[a].lastEpoch;
+		bool founder = _ps[a].founder;
+		uint tknAmount = _ps[a].tknAmount;
 		require(block.number>lastClaim);
-		_ps[msg.sender].lastClaim = uint32(block.number);
+		_ps[a].lastClaim = uint32(block.number);
 		uint toClaim;
 		uint halver = block.number/10000000; // provider has to claim before halving
-		uint rate = 21e15;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;}}
+		uint rateModifier = 25;
+		uint rate = 21e15;
+		if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;if(rateModifier > 1) {rateModifier--;}}}
 		uint eBlock;
 		uint eAmount;
 		uint eEnd;
@@ -115,28 +118,27 @@ contract StakingContract {
 		uint length;
 		if (founder) {
 			length = _founderEpochs.length;
-			eAmount = uint96(bytes12(epoch << 80));
 			if (length>0 && epochToClaim < length-1) {
 				for (uint i = epochToClaim; i<length;i++) {
 					(eBlock,eAmount,eEnd) = _extractEpoch(_founderEpochs[i]);
 					if(i == epochToClaim) {eBlock = lastClaim;}
 					toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
 				}
-				_ps[msg.sender].lastEpoch = uint16(length-1);
+				_ps[a].lastEpoch = uint16(length-1);
 			} else {epoch = _founderEpochs[length-1];eAmount = uint96(bytes12(epoch << 80));toClaim = _computeRewards(lastClaim,eAmount,block.number,tknAmount,rate);}
 		} else {
 			length = _epochs.length;
-			rate = rate*3/4;
+			rate=rate*20/rateModifier;
 			if (length > 0 && epochToClaim < length-1) {
 				for (uint i = epochToClaim; i<length;i++) {
 					(eBlock,eAmount,eEnd) = _extractEpoch(_epochs[i]);
 					if(i == epochToClaim) {eBlock = lastClaim;}
 					toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
 				}
-				_ps[msg.sender].lastEpoch = uint16(length-1);
+				_ps[a].lastEpoch = uint16(length-1);
 			} else {epoch = _epochs[length-1]; eAmount = uint96(bytes12(epoch << 80)); toClaim = _computeRewards(lastClaim,eAmount,block.number,tknAmount,rate);}
 		}
-		bool success = ITreasury(_treasury).getRewards(msg.sender, toClaim);
+		bool success = ITreasury(_treasury).getRewards(a, toClaim);
 		require(success == true);
 	}
 
@@ -185,14 +187,16 @@ contract StakingContract {
 	function stake(uint amount) public {
 		address tkn = _tokenETHLP;
 		uint length = _epochs.length;
+		uint lastClaim = _ps[msg.sender].lastClaim;
 		require(_ps[msg.sender].founder==false && IERC20(tkn).balanceOf(msg.sender)>=amount);
 		IERC20(tkn).transferFrom(msg.sender,address(this),amount);
-		if(_ps[msg.sender].lastClaim==0 && length>0){_ps[msg.sender].lastClaim = uint32(block.number);_ps[msg.sender].lastEpoch == length-1;}
-		else{require(block.number < _ps[msg.sender].lastClaim+1000);}// this is still under question, could be considered even if it isn't
+		if(lastClaim==0){_ps[msg.sender].lastClaim = uint32(block.number);}
+		else if (lastClaim != block.number) {getRewards(msg.sender);}
 		bytes32 epoch = _epochs[length-1];
 		(uint80 eBlock,uint96 eAmount,) = _extractEpoch(epoch);
 		eAmount += uint96(amount);
-		_storeEpoch(epoch,eBlock,eAmount,false,length);
+		_storeEpoch(eBlock,eAmount,false,length);
+		_ps[msg.sender].lastEpoch = length-1;
 		(uint res0,uint res1,)=IUniswapV2Pair(tkn).getReserves();
 		uint total = IERC20(tkn).totalSupply();
 		if (res1 > res0) {res0 = res1;}
@@ -207,29 +211,18 @@ contract StakingContract {
 		return (eBlock,eAmount,eEnd);
 	}
  
-	function _storeEpoch(bytes32 epoch, uint80 eBlock, uint96 eAmount, bool founder, uint length) internal {
-		if(block.number-80640>eBlock){_createEpoch(epoch,eAmount,founder,length);}
-		else {
-			bytes memory by;
-			by = abi.encodePacked(eBlock,eAmount,uint80(0));
-			assembly {epoch := mload(add(by, 32))}
-			if (founder) {_founderEpochs[length-1] = epoch;} else {_epochs[length-1] = epoch;}
-		}
+	function _storeEpoch(uint80 eBlock, uint96 eAmount, bool founder, uint length) internal {
+		uint eEnd;
+		if(block.number-80640>eBlock){eEnd = block.number-1;}// so an epoch can be bigger than 2 weeks, it's normal behavior and even desirable
+		bytes memory by = abi.encodePacked(eBlock,eAmount,uint80(eEnd));
+		bytes32 epoch; assembly {epoch := mload(add(by, 32))}
+		if (founder) {_founderEpochs[length-1] = epoch;} else {_epochs[length-1] = epoch;}
+		if (eEnd>0) {_createEpoch(eAmount,founder);}
 	}
 
-	function _createEpoch(bytes32 epoch, uint amount, bool founder,uint length) internal {
-		bytes memory by;
-		uint80 eBlock = uint80(bytes10(epoch));
-		uint96 eAmount = uint96(amount);
-		uint80 eEnd = uint80(block.number - 1);
-		if (length > 0) {
-			by = abi.encodePacked(eBlock,eAmount,eEnd);
-			assembly {epoch := mload(add(by, 32))}
-			if (founder == true){_founderEpochs[length-1] = epoch;} else {_epochs[length-1] = epoch;}
-		}
-		eBlock = uint80(block.number);
-		by = abi.encodePacked(eBlock,eAmount,uint80(0));
-		assembly {epoch := mload(add(by, 32))}
+	function _createEpoch(uint amount, bool founder) internal {
+		bytes memory by = abi.encodePacked(uint80(block.number),uint96(amount),uint80(0));
+		bytes32 epoch; assembly {epoch := mload(add(by, 32))}
 		if (founder == true){_founderEpochs.push(epoch);} else {_epochs.push(epoch);}
 	}
 
@@ -253,13 +246,13 @@ contract StakingContract {
 				epoch = _founderEpochs[length-1];
 				(eBlock,eAmount,) = _extractEpoch(epoch);
 				eAmount -= uint96(toSubtract);
-				_storeEpoch(epoch,eBlock,eAmount,true,length);
+				_storeEpoch(eBlock,eAmount,true,length);
 			} else{
 				length = _epochs.length;
 				epoch = _epochs[length-1];
 				(eBlock,eAmount,) = _extractEpoch(epoch);
 				eAmount -= uint96(toSubtract);
-				_storeEpoch(epoch,eBlock,eAmount,false,length);
+				_storeEpoch(eBlock,eAmount,false,length);
 			}
 			IERC20(tkn).transfer(contr, amount);
 			IBridge(contr).provider(msg.sender,amount,_ps[msg.sender].lastClaim,toSubtract,status);
