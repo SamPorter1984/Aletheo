@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity >=0.7.0 <0.8.0;
 
 // A modification of OpenZeppelin ERC20
@@ -27,7 +26,7 @@ contract VSRERC20 {
 	string private _name;
 	string private _symbol;
 	address private _governance;
-	uint88 private _nextBulkBlock;
+//	uint88 private _nextBulkBlock;
 	uint8 private _governanceSet;
 //// variables for testing purposes. live it should all be hardcoded addresses
 	address private _treasury;
@@ -35,7 +34,7 @@ contract VSRERC20 {
 	bool private _notInit;
 
 	constructor (string memory n_, string memory s_) {_name = n_;_symbol = s_;_governance = msg.sender;_notInit = true;_holders[msg.sender].balance = 1e27;emit NameSymbolChangedTo(n_,s_);}
-	function init(address c) public onlyGovernance {require(_notInit == true);delete _notInit; _founding = c;}
+	function init(address c, address t) public onlyGovernance {require(_notInit == true);delete _notInit; _founding = c; _treasury = t;}
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
 	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e24 - _holders[_treasury].balance; return withd;}
 	function name() public view returns (string memory) {return _name;}
@@ -72,7 +71,7 @@ contract VSRERC20 {
 		emit Transfer(sender, recipient, amount);
 	}
 
-	function bulkTransfer(address[] memory recipients, uint128[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
+/*	function bulkTransfer(address[] memory recipients, uint128[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
 		require(recipients.length == amounts.length && amounts.length < 100,"human error");
 		require(block.number >= _nextBulkBlock);
 		_nextBulkBlock = uint88(block.number + 20);
@@ -101,7 +100,7 @@ contract VSRERC20 {
 		_holders[msg.sender].balance += total;
 		emit BulkTransferFrom(senders, amounts, recipient);
 		return true;
-	}
+	}*/
 
 	function _beforeTokenTransfer(address from, uint amount) internal {
 		if(block.number < 12640000) {require(msg.sender == _founding || msg.sender == _governance);}
