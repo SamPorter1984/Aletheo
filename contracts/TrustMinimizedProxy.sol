@@ -17,9 +17,8 @@ pragma solidity >=0.7.0 <0.9.0;
 // Users have time to decide on if the deployer or the governance is malicious and exit safely.
 // 6. constructor does not require arguments
 
-// It fixes "upgradeability bug" I believe. Also I sincerely believe that upgradeability is not about fixing bugs, but about upgradeability,
-// so yeah, proposed logic has to be clean.
-// In my heart it exists as eip-1984 but it's too late for that number. https://ethereum-magicians.org/t/trust-minimized-proxy/5742/2
+// Upgradeability is not about fixing bugs, but about upgradeability, so yeah, proposed logic has to be clean.
+// In my heart it exists as eip-1984 but it's too late for that number. Triggered someone' autism: https://ethereum-magicians.org/t/trust-minimized-proxy/5742/2
 
 contract TrustMinimizedProxy {
 	event Upgraded(address indexed toLogic);
@@ -32,24 +31,23 @@ contract TrustMinimizedProxy {
 	bytes32 internal constant NEXT_LOGIC_SLOT = 0xb182d207b11df9fb38eec1e3fe4966cf344774ba58fb0e9d88ea35ad46f3601e;
 	bytes32 internal constant NEXT_LOGIC_BLOCK_SLOT = 0x96de003e85302815fe026bddb9630a50a1d4dc51c5c355def172204c3fd1c733;
 	bytes32 internal constant PROPOSE_BLOCK_SLOT = 0xbc9d35b69e82e85049be70f91154051f5e20e574471195334bde02d1a9974c90;
-	bytes32 internal constant DEADLINE_SLOT = 0xb124b82d2ac46ebdb08de751ebc55102cc7325d133e09c1f1c25014e20b979ad;
+//	bytes32 internal constant DEADLINE_SLOT = 0xb124b82d2ac46ebdb08de751ebc55102cc7325d133e09c1f1c25014e20b979ad;
 
 	constructor() payable {
 		require(ADMIN_SLOT == bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1) && LOGIC_SLOT == bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1) && // this require is simply against human error, can be removed if you know what you are doing
 		NEXT_LOGIC_SLOT == bytes32(uint256(keccak256('eip1984.proxy.nextLogic')) - 1) && NEXT_LOGIC_BLOCK_SLOT == bytes32(uint256(keccak256('eip1984.proxy.nextLogicBlock')) - 1) &&
-		PROPOSE_BLOCK_SLOT == bytes32(uint256(keccak256('eip1984.proxy.proposeBlock')) - 1) && DEADLINE_SLOT == bytes32(uint256(keccak256('eip1984.proxy.deadline')) - 1));
+		PROPOSE_BLOCK_SLOT == bytes32(uint256(keccak256('eip1984.proxy.proposeBlock')) - 1)/* && DEADLINE_SLOT == bytes32(uint256(keccak256('eip1984.proxy.deadline')) - 1)*/);
 		_setAdmin(msg.sender);
-		uint deadline = block.number + 4204800; // ~2 years as default
-		assembly {sstore(DEADLINE_SLOT,deadline)}
+//		uint deadline = block.number + 4204800; // ~2 years as default
+//		assembly {sstore(DEADLINE_SLOT,deadline)}
 	}
 
 	modifier ifAdmin() {if (msg.sender == _admin()) {_;} else {_fallback();}}
-
-	function getSettings() external ifAdmin returns(address logic, uint pgrdBlck, uint ddln) {return (_logic(), _proposeBlock(), _deadline());}
+	function getSettings() external ifAdmin returns(address logic, uint pgrdBlck/*, uint ddln*/) {return (_logic(), _proposeBlock()/*, _deadline()*/);}
 	function _logic() internal view returns (address logic) {assembly { logic := sload(LOGIC_SLOT) }}
 	function _proposeBlock() internal view returns (uint bl) {assembly { bl := sload(PROPOSE_BLOCK_SLOT) }}
 	function _nextLogicBlock() internal view returns (uint bl) {assembly { bl := sload(NEXT_LOGIC_BLOCK_SLOT) }}
-	function _deadline() internal view returns (uint bl) {assembly { bl := sload(DEADLINE_SLOT) }}
+//	function _deadline() internal view returns (uint bl) {assembly { bl := sload(DEADLINE_SLOT) }}
 	function _admin() internal view returns (address adm) {assembly { adm := sload(ADMIN_SLOT) }}
 	function _isContract(address account) internal view returns (bool b) {uint256 size;assembly { size := extcodesize(account) }return size > 0;}
 	function _setAdmin(address newAdm) internal {assembly {sstore(ADMIN_SLOT, newAdm)}}
@@ -57,7 +55,7 @@ contract TrustMinimizedProxy {
 	function proposeTo(address newLogic) external ifAdmin {if (_logic() == address(0)) {assembly {sstore(LOGIC_SLOT,newLogic)}} else{_setNextLogic(newLogic);}}
 	function prolongLock(uint block_) external ifAdmin {uint pb; assembly {pb := sload(PROPOSE_BLOCK_SLOT) pb := add(pb,block_) sstore(PROPOSE_BLOCK_SLOT,pb)}emit UpgradesRestrictedUntil(pb);}
 	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock());address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT,logic)}emit Upgraded(logic);}
-	function cancelUpgrade() external ifAdmin {address logic;assembly {logic := sstore(NEXT_LOGIC_SLOT, logic)}emit NextLogicCanceled(logic);}
+	function cancelUpgrade() external ifAdmin {address logic;assembly {logic := sload(LOGIC_SLOT) sstore(NEXT_LOGIC_SLOT, logic)}emit NextLogicCanceled(logic);}
 	fallback () external payable {_fallback();}
 	receive () external payable {_fallback();}
 	function _fallback() internal {require(msg.sender != _admin());_delegate(_logic());}
@@ -67,7 +65,7 @@ contract TrustMinimizedProxy {
 	}
 
 	function _setNextLogic(address nextLogic) internal {
-		require(block.number >= _proposeBlock() && block.number < _deadline());
+		require(block.number >= _proposeBlock()/* && block.number < _deadline()*/);
 		require(_isContract(nextLogic));
 		uint proposeBlock = block.number + 172800;
 		uint nextLogicBlock = block.number + 172800;
