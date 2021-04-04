@@ -1,7 +1,6 @@
 pragma solidity >=0.7.0 <0.8.0;
 
 // Author: Sam Porter
-
 // With LGE it's now possible to create fairer distribution and fund promising projects without VC vultures at all.
 // Non-upgradeable, not owned, liquidity is being created automatically on first transaction after last block of LGE.
 // Founders' liquidity is not locked, instead an incentive to keep it is introduced.
@@ -24,8 +23,8 @@ contract FoundingEvent {
 	uint88 private _ETHDeposited;
 	bool private _notInit;
 
-	constructor() {_deployer = msg.sender;_notInit = true;}
-	function init(address c) public {require(msg.sender == _deployer && _notInit == true);delete _notInit; _lgeOngoing = true; _staking = c;}
+	constructor() {_deployer = msg.sender;_notInit = true;_lgeOngoing = true;}
+	function init(address c) public {require(msg.sender == _deployer && _notInit == true);delete _notInit; _staking = c;}
 
 	function depositEth() external payable {
 		require(_lgeOngoing == true);
@@ -43,12 +42,16 @@ contract FoundingEvent {
 		address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 		address token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8;// hardcoded token address after erc20 will be deployed
 		address staking = _staking; // has to be deployed before lge start
-		address tknETHLP = IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).getPair[token][WETH];
-		if (phase == 0) {_ETHDeposited = uint88(address(this).balance); if (tknETHLP == address(0)) {IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).createPair(token, WETH);}}
-		uint ethToDeposit = _ETHDeposited*3/5;
+		address tknETHLP = IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).getPair(token,WETH);
+		if (phase == 0) {
+			_ETHDeposited = uint88(address(this).balance);
+			if (tknETHLP == address(0)) {IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f).createPair(token, WETH);require(tknETHLP != address(0));}
+		}
+		uint ETHDeposited = _ETHDeposited;
+		uint ethToDeposit = ETHDeposited*3/5;
 		uint tokenToDeposit = 1e23;
 		if (phase == 90000) {
-			ethToDeposit = address(this).balance; IStaking(staking).init(_ETHDeposited, tknETHLP);
+			ethToDeposit = address(this).balance; IStaking(staking).init(ETHDeposited, tknETHLP);
 			delete _staking; delete _lgeOngoing; delete _ETHDeposited; delete _phase; delete _deployer;
 		}
 		IWETH(WETH).deposit{value: ethToDeposit}();
