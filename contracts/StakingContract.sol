@@ -1,12 +1,7 @@
 pragma solidity >=0.7.0 <=0.8.0;
-// this contract is such a mess, if we want founders and liquidity providers have different rewards rate, while having different variables for tknAmount
-// can't just add a bonus modifier for founders, because that's how founders can compound that bonus, and liquidity mining can become way more
-// centralized than we can afford
-// i wrote full functionality first, but the code was looking too ugly
 // i almost want to change the entire system only to make the code look more or less nice
 // did change it a small bit: founders are unable to stake generic liquidity on top of their share, or it will be too expensive to sload
 // for that they will have to use another address
-// the code still looks ugly, not sure what can i do, but i will try
 
 import "./IUniswapV2Pair.sol";
 import "./ITreasury.sol";
@@ -105,9 +100,7 @@ contract StakingContract {
 		uint tknAmount = _ps[a].tknAmount;
 		require(block.number>lastClaim);
 		_ps[a].lastClaim = uint32(block.number);
-		uint halver = block.number/10000000; // provider has to claim before halving
-		uint rateModifier = 25;	uint rate = 21e15;
-		if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;if(rateModifier > 1) {rateModifier--;}}}
+		(uint rate,uint rateModifier) = _getRate();
 		uint eBlock; uint eAmount; uint eEnd; bytes32 epoch; uint length; uint toClaim;
 		if (founder) {
 			length = _founderEpochs.length;
@@ -134,7 +127,13 @@ contract StakingContract {
 		bool success = ITreasury(_treasury).getRewards(a, toClaim);	require(success == true);
 	}
 
-	function _computeRewards(uint eBlock, uint eAmount, uint eEnd, uint tknAmount, uint rate) internal returns(uint){
+	function _getRate() internal view returns (uint,uint){
+		uint rate = 21e15; uint rateModifier = 25; uint halver = block.number/10000000;
+		if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;if(rateModifier > 1) {rateModifier--;}}}
+		return(rate,rateModifier);
+	}
+
+	function _computeRewards(uint eBlock, uint eAmount, uint eEnd, uint tknAmount, uint rate) internal view returns(uint){
 		if(eEnd==0){eEnd = block.number;} uint blocks = eEnd - eBlock; return (blocks*tknAmount*rate/eAmount);
 	}
 
@@ -186,7 +185,7 @@ contract StakingContract {
 		(uint80 eBlock,uint96 eAmount,) = _extractEpoch(epoch);
 		eAmount += uint96(amount);
 		_storeEpoch(eBlock,eAmount,false,length);
-		_ps[msg.sender].lastEpoch = length-1;
+		_ps[msg.sender].lastEpoch = uint16(length-1);
 		(uint res0,uint res1,)=IUniswapV2Pair(tkn).getReserves();
 		uint total = IERC20(tkn).totalSupply();
 		if (res1 > res0) {res0 = res1;}
@@ -195,7 +194,7 @@ contract StakingContract {
 		_ps[msg.sender].lpShare += uint128(amount);
 	}
 
-	function _extractEpoch(bytes32 epoch) internal returns (uint80,uint96,uint80){
+	function _extractEpoch(bytes32 epoch) internal pure returns (uint80,uint96,uint80){
 		uint80 eBlock = uint80(bytes10(epoch));
 		uint96 eAmount = uint96(bytes12(epoch << 80));
 		uint80 eEnd = uint80(bytes10(epoch << 176));
