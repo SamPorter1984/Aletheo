@@ -70,8 +70,10 @@ contract StakingContract {
 	function unstakeLp(bool ok,uint amount) public lock {
 		uint lpShare = _ps[msg.sender].lpShare;
 		uint lockedAmount = _ps[msg.sender].lockedAmount;
+		uint lastClaim = _ps[msg.sender].lastClaim;
 		uint percent = amount*100;
 		require(lpShare-lockedAmount >= amount && ok == true);
+		if (lastClaim != block.number) {_getRewards(msg.sender);}
 		_ps[msg.sender].lpShare = uint128(lpShare - amount);
 		percent = percent/lpShare;
 		uint tknAmount = _ps[msg.sender].tknAmount;
@@ -91,7 +93,6 @@ contract StakingContract {
 			eAmount -= uint96(toSubtract);
 			_storeEpoch(eBlock,eAmount,false,length);
 		}
-		if (lastClaim != block.number) {_getRewards(msg.sender);}
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
 
@@ -191,6 +192,7 @@ contract StakingContract {
 		if (res1 > res0) {res0 = res1;}
 		uint share = amount*res0/total;
 		_ps[msg.sender].tknAmount += uint128(share);
+		_ps[msg.sender].lpShare += uint128(amount);
 	}
 
 	function _extractEpoch(bytes32 epoch) internal returns (uint80,uint96,uint80){
@@ -219,6 +221,8 @@ contract StakingContract {
 		if (tkn == _tokenETHLP) {
 			uint lpShare = _ps[msg.sender].lpShare;
 			uint lockedAmount = _ps[msg.sender].lockedAmount;
+			uint lastClaim = _ps[msg.sender].lastClaim;
+			if (lastClaim != block.number) {_getRewards(msg.sender);}
 			require(lpShare-lockedAmount >= amount);
 			_ps[msg.sender].lpShare = uint128(lpShare - amount);
 			uint percent = amount*100/lpShare;
@@ -240,7 +244,6 @@ contract StakingContract {
 				eAmount -= uint96(toSubtract);
 				_storeEpoch(eBlock,eAmount,false,length);
 			}
-			if (lastClaim != block.number) {_getRewards(msg.sender);}
 			IERC20(tkn).transfer(contr, amount);
 			IBridge(contr).provider(msg.sender,amount,_ps[msg.sender].lastClaim,_ps[msg.sender].lastEpoch,toSubtract,status);
 		}
