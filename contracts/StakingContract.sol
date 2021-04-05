@@ -63,17 +63,14 @@ contract StakingContract {
 	}
 
 	function unstakeLp(bool ok,uint amount) public lock {
-		uint lpShare = _ps[msg.sender].lpShare;
-		uint lockedAmount = _ps[msg.sender].lockedAmount;
-		uint lastClaim = _ps[msg.sender].lastClaim;
+		(uint lastClaim,bool status,uint tknAmount,uint lpShare,uint lockedAmount) = getProvider(msg.sender);
 		require(lpShare-lockedAmount >= amount && ok == true);
 		if (lastClaim != block.number) {_getRewards(msg.sender);}
 		_ps[msg.sender].lpShare = uint128(lpShare - amount);
-		uint tknAmount = _ps[msg.sender].tknAmount;
 		uint toSubtract = tknAmount*amount/lpShare; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
 		_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
 		bytes32 epoch; uint length; uint80 eBlock; uint96 eAmount;
-		if (_ps[msg.sender].founder == true) {
+		if (status == true) {
 			length = _founderEpochs.length;
 			epoch = _founderEpochs[length-1];
 			(eBlock,eAmount,) = _extractEpoch(epoch);
@@ -122,7 +119,7 @@ contract StakingContract {
 				_ps[a].lastEpoch = uint16(length-1);
 			} else {epoch = _epochs[length-1]; eAmount = uint96(bytes12(epoch << 80)); toClaim = _computeRewards(lastClaim,eAmount,block.number,tknAmount,rate);}
 		}
-		bool success = ITreasury(_treasury).getRewards(a, toClaim);	require(success == true);
+		bool success = ITreasury(_treasury).getRewards(a, toClaim); require(success == true);
 	}
 
 	function _getRate() internal view returns (uint,uint){
@@ -216,16 +213,12 @@ contract StakingContract {
 
 	function migrate(address contr,address tkn,uint amount) public lock {//can support any amount of bridges
 		if (tkn == _tokenETHLP) {
-			uint lpShare = _ps[msg.sender].lpShare;
-			uint lockedAmount = _ps[msg.sender].lockedAmount;
-			uint lastClaim = _ps[msg.sender].lastClaim;
+			(uint lastClaim,bool status,uint tknAmount,uint lpShare,uint lockedAmount) = getProvider(msg.sender);
 			if (lastClaim != block.number) {_getRewards(msg.sender);}
 			require(lpShare-lockedAmount >= amount);
 			_ps[msg.sender].lpShare = uint128(lpShare - amount);
-			uint128 tknAmount = _ps[msg.sender].tknAmount;
 			uint toSubtract = amount*tknAmount/lpShare;
 			_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
-			bool status = _ps[msg.sender].founder;
 			uint length; bytes32 epoch; uint80 eBlock; uint96 eAmount;
 			if (status == true){
 				length = _founderEpochs.length;
@@ -261,6 +254,7 @@ contract StakingContract {
 		return (_ps[a].tknAmount,_ps[a].lpShare,_ps[a].lockedAmount,_ps[a].lockUpTo,_ls[a].amount,_ls[a].lockUpTo);
 	}
 
-	function getProvider(address a) external view returns (uint lastClaim, address linked) {return (_ps[a].lastClaim,_linked[a]);}
+	function getProvider(address a) public view returns (uint,bool,uint,uint,uint) {return (_ps[a].lastClaim,_ps[a].founder,_ps[a].tknAmount,_ps[a].lpShare,_ps[a].lockedAmount);}
+	function getLinked(address a) external view returns (address linked){return _linked[a];}
 	function _isContract(address a) internal view returns(bool) {uint s_;assembly {s_ := extcodesize(a)}return s_ > 0;}
 }
