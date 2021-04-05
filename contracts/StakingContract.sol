@@ -91,13 +91,13 @@ contract StakingContract {
 		uint eBlock; uint eAmount; uint eEnd; bytes32 epoch; uint length; uint toClaim;
 		if (status) {length = _founderEpochs.length;} else {length = _epochs.length;}
 		if (length>0 && epochToClaim < length-1) {
-				for (uint i = epochToClaim; i<length;i++) {
-					if (status) {epoch = _founderEpochs[i];} else {epoch = _epochs[i];}
-					(eBlock,eAmount,eEnd) = _extractEpoch(epoch);
-					if(i == length-1) {eBlock = lastClaim;}
-					toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
-				}
-				_ps[a].lastEpoch = uint16(length-1);
+			for (uint i = epochToClaim; i<length;i++) {
+				if (status) {epoch = _founderEpochs[i];} else {epoch = _epochs[i];}
+				(eBlock,eAmount,eEnd) = _extractEpoch(epoch);
+				if(i == length-1) {eBlock = lastClaim;}
+				toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
+			}
+			_ps[a].lastEpoch = uint16(length-1);
 		} else {
 			if(status){epoch = _founderEpochs[length-1];} else {epoch = _epochs[length-1];}
 			eAmount = uint96(bytes12(epoch << 80));toClaim = _computeRewards(lastClaim,eAmount,block.number,tknAmount,rate);
