@@ -12,7 +12,7 @@ import "./IBridge.sol";
 contract StakingContract {
 	uint128 private _foundingETHDeposited;
 	uint128 private _foundingLPtokensMinted;
-	address private _tokenETHLP; // create2 and hardcode too?
+	address private _tokenETHLP;
 	bool private _notInit;
 ///////variables for testing purposes
 	address private _token; // hardcoded address
@@ -73,6 +73,7 @@ contract StakingContract {
 		percent = percent/lpShare;
 		uint tknAmount = _ps[msg.sender].tknAmount;
 		uint toSubtract = tknAmount*percent/100; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
+		_ps[msg.sender].tknAmount = tknAmount - uint128(toSubtract);
 		bytes32 epoch; uint length; uint80 eBlock; uint96 eAmount;
 		_ps[msg.sender].tknAmount = uint128(tknAmount - toSubtract);
 		if (_ps[msg.sender].founder == true) {
