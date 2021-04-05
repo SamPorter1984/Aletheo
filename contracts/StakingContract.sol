@@ -70,19 +70,11 @@ contract StakingContract {
 		uint toSubtract = tknAmount*amount/lpShare; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
 		_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
 		bytes32 epoch; uint length; uint80 eBlock; uint96 eAmount;
-		if (status == true) {
-			length = _founderEpochs.length;
-			epoch = _founderEpochs[length-1];
-			(eBlock,eAmount,) = _extractEpoch(epoch);
-			eAmount -= uint96(toSubtract);
-			_storeEpoch(eBlock,eAmount,true,length);
-		}else{
-			length = _epochs.length;
-			epoch = _epochs[length-1];
-			(eBlock,eAmount,) = _extractEpoch(epoch);
-			eAmount -= uint96(toSubtract);
-			_storeEpoch(eBlock,eAmount,false,length);
-		}
+		if (status == true) {length = _founderEpochs.length; epoch = _founderEpochs[length-1];}
+		else{length = _epochs.length; epoch = _epochs[length-1];}
+		(eBlock,eAmount,) = _extractEpoch(epoch);
+		eAmount -= uint96(toSubtract);
+		_storeEpoch(eBlock,eAmount,status,length);
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
 
@@ -91,18 +83,19 @@ contract StakingContract {
 	function _getRewards(address a) internal {
 		uint lastClaim = _ps[a].lastClaim;
 		uint epochToClaim = _ps[a].lastEpoch;
-		bool founder = _ps[a].founder;
+		bool status = _ps[a].founder;
 		uint tknAmount = _ps[a].tknAmount;
 		require(block.number>lastClaim);
 		_ps[a].lastClaim = uint32(block.number);
 		(uint rate,uint rateModifier) = _getRate();
 		uint eBlock; uint eAmount; uint eEnd; bytes32 epoch; uint length; uint toClaim;
-		if (founder) {
+		if (status) {
 			length = _founderEpochs.length;
+			//	_iterateEpochs(epoch,epochToClaim,status);
 			if (length>0 && epochToClaim < length-1) {
 				for (uint i = epochToClaim; i<length;i++) {
 					(eBlock,eAmount,eEnd) = _extractEpoch(_founderEpochs[i]);
-					if(i == epochToClaim) {eBlock = lastClaim;}
+					if(i == length-1) {eBlock = lastClaim;}
 					toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
 				}
 				_ps[a].lastEpoch = uint16(length-1);
@@ -113,7 +106,7 @@ contract StakingContract {
 			if (length > 0 && epochToClaim < length-1) {
 				for (uint i = epochToClaim; i<length;i++) {
 					(eBlock,eAmount,eEnd) = _extractEpoch(_epochs[i]);
-					if(i == epochToClaim) {eBlock = lastClaim;}
+					if(i == length-1) {eBlock = lastClaim;}
 					toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
 				}
 				_ps[a].lastEpoch = uint16(length-1);
@@ -220,19 +213,11 @@ contract StakingContract {
 			uint toSubtract = amount*tknAmount/lpShare;
 			_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
 			uint length; bytes32 epoch; uint80 eBlock; uint96 eAmount;
-			if (status == true){
-				length = _founderEpochs.length;
-				epoch = _founderEpochs[length-1];
-				(eBlock,eAmount,) = _extractEpoch(epoch);
-				eAmount -= uint96(toSubtract);
-				_storeEpoch(eBlock,eAmount,true,length);
-			} else{
-				length = _epochs.length;
-				epoch = _epochs[length-1];
-				(eBlock,eAmount,) = _extractEpoch(epoch);
-				eAmount -= uint96(toSubtract);
-				_storeEpoch(eBlock,eAmount,false,length);
-			}
+			if (status == true){length = _founderEpochs.length; epoch = _founderEpochs[length-1];}
+			else{length = _epochs.length; epoch = _epochs[length-1];}
+			(eBlock,eAmount,) = _extractEpoch(epoch);
+			eAmount -= uint96(toSubtract);
+			_storeEpoch(eBlock,eAmount,status,length);
 			IERC20(tkn).transfer(contr, amount);
 			IBridge(contr).provider(msg.sender,amount,_ps[msg.sender].lastClaim,_ps[msg.sender].lastEpoch,toSubtract,status);
 		}
@@ -254,7 +239,7 @@ contract StakingContract {
 		return (_ps[a].tknAmount,_ps[a].lpShare,_ps[a].lockedAmount,_ps[a].lockUpTo,_ls[a].amount,_ls[a].lockUpTo);
 	}
 
-	function getProvider(address a) public view returns (uint,bool,uint,uint,uint) {return (_ps[a].lastClaim,_ps[a].founder,_ps[a].tknAmount,_ps[a].lpShare,_ps[a].lockedAmount);}
+	function getProvider(address a)public view returns(uint,bool,uint,uint,uint){return(_ps[a].lastClaim,_ps[a].founder,_ps[a].tknAmount,_ps[a].lpShare,_ps[a].lockedAmount);}
 	function getLinked(address a) external view returns (address linked){return _linked[a];}
 	function _isContract(address a) internal view returns(bool) {uint s_;assembly {s_ := extcodesize(a)}return s_ > 0;}
 }
