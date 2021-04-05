@@ -66,13 +66,11 @@ contract StakingContract {
 		uint lpShare = _ps[msg.sender].lpShare;
 		uint lockedAmount = _ps[msg.sender].lockedAmount;
 		uint lastClaim = _ps[msg.sender].lastClaim;
-		uint percent = amount*100;
 		require(lpShare-lockedAmount >= amount && ok == true);
 		if (lastClaim != block.number) {_getRewards(msg.sender);}
 		_ps[msg.sender].lpShare = uint128(lpShare - amount);
-		percent = percent/lpShare;
 		uint tknAmount = _ps[msg.sender].tknAmount;
-		uint toSubtract = tknAmount*percent/100; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
+		uint toSubtract = tknAmount*amount/lpShare; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
 		_ps[msg.sender].tknAmount = uint128(_safeSub(tknAmount,toSubtract));
 		bytes32 epoch; uint length; uint80 eBlock; uint96 eAmount;
 		if (_ps[msg.sender].founder == true) {
@@ -226,9 +224,8 @@ contract StakingContract {
 			if (lastClaim != block.number) {_getRewards(msg.sender);}
 			require(lpShare-lockedAmount >= amount);
 			_ps[msg.sender].lpShare = uint128(lpShare - amount);
-			uint percent = amount*100/lpShare;
 			uint128 tknAmount = _ps[msg.sender].tknAmount;
-			uint toSubtract = tknAmount*percent/100;
+			uint toSubtract = amount*tknAmount/lpShare;
 			_ps[msg.sender].tknAmount = uint128(_safeSub(tknAmount,toSubtract));
 			bool status = _ps[msg.sender].founder;
 			uint length; bytes32 epoch; uint80 eBlock; uint96 eAmount;
