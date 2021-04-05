@@ -89,28 +89,18 @@ contract StakingContract {
 		_ps[a].lastClaim = uint32(block.number);
 		(uint rate,uint rateModifier) = _getRate();
 		uint eBlock; uint eAmount; uint eEnd; bytes32 epoch; uint length; uint toClaim;
-		if (status) {
-			length = _founderEpochs.length;
-			//	_iterateEpochs(epoch,epochToClaim,status);
-			if (length>0 && epochToClaim < length-1) {
+		if (status) {length = _founderEpochs.length;} else {length = _epochs.length;}
+		if (length>0 && epochToClaim < length-1) {
 				for (uint i = epochToClaim; i<length;i++) {
-					(eBlock,eAmount,eEnd) = _extractEpoch(_founderEpochs[i]);
+					if (status) {epoch = _founderEpochs[i];} else {epoch = _epochs[i];}
+					(eBlock,eAmount,eEnd) = _extractEpoch(epoch);
 					if(i == length-1) {eBlock = lastClaim;}
 					toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
 				}
 				_ps[a].lastEpoch = uint16(length-1);
-			} else {epoch = _founderEpochs[length-1];eAmount = uint96(bytes12(epoch << 80));toClaim = _computeRewards(lastClaim,eAmount,block.number,tknAmount,rate);}
 		} else {
-			length = _epochs.length;
-			rate=rate*20/rateModifier;
-			if (length > 0 && epochToClaim < length-1) {
-				for (uint i = epochToClaim; i<length;i++) {
-					(eBlock,eAmount,eEnd) = _extractEpoch(_epochs[i]);
-					if(i == length-1) {eBlock = lastClaim;}
-					toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
-				}
-				_ps[a].lastEpoch = uint16(length-1);
-			} else {epoch = _epochs[length-1]; eAmount = uint96(bytes12(epoch << 80)); toClaim = _computeRewards(lastClaim,eAmount,block.number,tknAmount,rate);}
+			if(status){epoch = _founderEpochs[length-1];} else {epoch = _epochs[length-1];}
+			eAmount = uint96(bytes12(epoch << 80));toClaim = _computeRewards(lastClaim,eAmount,block.number,tknAmount,rate);
 		}
 		bool success = ITreasury(_treasury).getRewards(a, toClaim); require(success == true);
 	}
