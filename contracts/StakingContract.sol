@@ -89,7 +89,7 @@ contract StakingContract {
 		_ps[a].lastClaim = uint32(block.number);
 		(uint rate,uint rateModifier) = _getRate();
 		uint eBlock; uint eAmount; uint eEnd; bytes32 epoch; uint length; uint toClaim;
-		if (status) {length = _founderEpochs.length;} else {length = _epochs.length;}
+		if (status) {length = _founderEpochs.length;} else {length = _epochs.length;rate=rate*20/rateModifier;}
 		if (length>0 && epochToClaim < length-1) {
 			for (uint i = epochToClaim; i<length;i++) {
 				if (status) {epoch = _founderEpochs[i];} else {epoch = _epochs[i];}
