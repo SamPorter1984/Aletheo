@@ -71,7 +71,7 @@ contract StakingContract {
 		_ps[msg.sender].lpShare = uint128(lpShare - amount);
 		uint tknAmount = _ps[msg.sender].tknAmount;
 		uint toSubtract = tknAmount*amount/lpShare; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
-		_ps[msg.sender].tknAmount = uint128(_safeSub(tknAmount,toSubtract));
+		_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
 		bytes32 epoch; uint length; uint80 eBlock; uint96 eAmount;
 		if (_ps[msg.sender].founder == true) {
 			length = _founderEpochs.length;
@@ -88,8 +88,6 @@ contract StakingContract {
 		}
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
 	}
-
-	function _safeSub(uint a,uint b) returns(uint){if(a<b){a=b;} return a-b;}
 
 	function getRewards() public {_getRewards(msg.sender);}
 
@@ -226,7 +224,7 @@ contract StakingContract {
 			_ps[msg.sender].lpShare = uint128(lpShare - amount);
 			uint128 tknAmount = _ps[msg.sender].tknAmount;
 			uint toSubtract = amount*tknAmount/lpShare;
-			_ps[msg.sender].tknAmount = uint128(_safeSub(tknAmount,toSubtract));
+			_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
 			bool status = _ps[msg.sender].founder;
 			uint length; bytes32 epoch; uint80 eBlock; uint96 eAmount;
 			if (status == true){
