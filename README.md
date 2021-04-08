@@ -1,5 +1,4 @@
-# RAID
+# Aletheo(LET)
 
-RAID does not tolerate any illegal activities.
-
-https://t.me/RaidProtocol
+From Greek it's the Bringer of truth from God, or simply God of Truth.
+https://t.me/AletheoProtocol
