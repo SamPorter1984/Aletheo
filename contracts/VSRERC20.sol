@@ -31,13 +31,13 @@ contract VSRERC20 {
 	address private _registry;
 	address private _founding;
 	bool private _init;
-	bool private _init1;
+	bool private _contractsDefined;
 
 	function init() public {
 		require(_init == false);_init = true;_name = "RAID";_symbol = "RAID";_governance = msg.sender;_balances[msg.sender] = 1e27;emit NameSymbolChangedTo("RAID","RAID");
 	}
 
-	function init1(address c, address t) public onlyGovernance {require(_init1 == false);_init1 = true; _founding = c; _registry = t;}
+	function defineContracts(address c, address t) public onlyGovernance {require(_contractsDefined == false);_contractsDefined = true; _founding = c; _registry = t;}
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
 	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e24 - _balances[_registry]; return withd;}
 	function name() public view returns (string memory) {return _name;}
