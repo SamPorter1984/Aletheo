@@ -23,7 +23,7 @@ contract VSRERC20 {
 	mapping (address => mapping (address => bool)) private _allowances;
 	mapping (address => Holder) private _holders;
 
-	string private _name;
+	string private _name;//kept it as string so that third-party services won't be misled in any way
 	string private _symbol;
 	address private _governance;
 //	uint88 private _nextBulkBlock;
@@ -31,10 +31,14 @@ contract VSRERC20 {
 //// variables for testing purposes. live it should all be hardcoded addresses
 	address private _treasury;
 	address private _founding;
-	bool private _notInit;
+	bool private _init;
+	bool private _init1;
 
-	constructor (string memory n_, string memory s_) {_name = n_;_symbol = s_;_governance = msg.sender;_notInit = true;_holders[msg.sender].balance = 1e27;emit NameSymbolChangedTo(n_,s_);}
-	function init(address c, address t) public onlyGovernance {require(_notInit == true);delete _notInit; _founding = c; _treasury = t;}
+	function init() public {
+		require(_init == false);_init = true;_name = "RAID";_symbol = "RAID";_governance = msg.sender;_holders[msg.sender].balance = 1e27;emit NameSymbolChangedTo("RAID","RAID");
+	}
+	
+	function init1(address c, address t) public onlyGovernance {require(_init1 == false);_init1 = true; _founding = c; _treasury = t;}
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
 	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e24 - _holders[_treasury].balance; return withd;}
 	function name() public view returns (string memory) {return _name;}
