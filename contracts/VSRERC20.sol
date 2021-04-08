@@ -15,13 +15,12 @@ pragma solidity >=0.7.0 <0.8.0;
 contract VSRERC20 {
 	event Transfer(address indexed from, address indexed to, uint value);
 	event Approval(address indexed owner, address indexed spender, uint value);
-	event BulkTransfer(address indexed from, address[] indexed recipients, uint128[] amounts);
-	event BulkTransferFrom(address[] indexed senders, uint128[] amounts, address indexed recipient);
+	event BulkTransfer(address indexed from, address[] indexed recipients, uint[] amounts);
+	event BulkTransferFrom(address[] indexed senders, uint[] amounts, address indexed recipient);
 	event NameSymbolChangedTo(string name, string symbol);
-	
-	struct Holder {uint128 balance;uint128 lock;}
+
 	mapping (address => mapping (address => bool)) private _allowances;
-	mapping (address => Holder) private _holders;
+	mapping (address => uint) private _balances;
 
 	string private _name;//kept it as string so that third-party services won't be misled in any way
 	string private _symbol;
@@ -35,22 +34,22 @@ contract VSRERC20 {
 	bool private _init1;
 
 	function init() public {
-		require(_init == false);_init = true;_name = "RAID";_symbol = "RAID";_governance = msg.sender;_holders[msg.sender].balance = 1e27;emit NameSymbolChangedTo("RAID","RAID");
+		require(_init == false);_init = true;_name = "RAID";_symbol = "RAID";_governance = msg.sender;_balances[msg.sender] = 1e27;emit NameSymbolChangedTo("RAID","RAID");
 	}
 
 	function init1(address c, address t) public onlyGovernance {require(_init1 == false);_init1 = true; _founding = c; _registry = t;}
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
-	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e24 - _holders[_registry].balance; return withd;}
+	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e24 - _balances[_registry]; return withd;}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view returns (uint) {uint supply = (block.number - 12640000)*42e16+1e24;if (supply > 1e27) {supply = 1e27;}return supply;}
 	function decimals() public pure returns (uint) {return 18;}
-	function balanceOf(address a) public view returns (uint) {return _holders[a].balance;}
+	function balanceOf(address a) public view returns (uint) {return _balances[a];}
 	function transfer(address recipient, uint amount) public returns (bool) {_transfer(msg.sender, recipient, amount);return true;}
 	function disallow(address spender) public returns (bool) {delete _allowances[msg.sender][spender];emit Approval(msg.sender, spender, 0);return true;}
 	function setNameSymbol(string memory n_, string memory s_) public onlyGovernance {_name = n_;_symbol = s_;emit NameSymbolChangedTo(n_,s_);}
 	function setGovernance(address a) public onlyGovernance {require(_governanceSet < 3);_governanceSet += 1;_governance = a;}
-	function _isContract(address a) internal view returns(bool) {uint256 s_;assembly {s_ := extcodesize(a)}return s_ > 0;}
+	function _isContract(address a) internal view returns(bool) {uint s_;assembly {s_ := extcodesize(a)}return s_ > 0;}
 
 	function approve(address spender, uint amount) public returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
 		if (spender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D) {emit Approval(msg.sender, spender, 2**256 - 1);return true;}
@@ -68,40 +67,40 @@ contract VSRERC20 {
 	function _transfer(address sender, address recipient, uint amount) internal {
 		require(sender != address(0) && recipient != address(0));
 		_beforeTokenTransfer(sender, recipient, amount);
-		uint senderBalance = _holders[sender].balance;
+		uint senderBalance = _balances[sender];
 		require(senderBalance >= amount);
-		if (senderBalance == amount) {delete _holders[sender].balance;} else {_holders[sender].balance = uint128(senderBalance - amount);}
-		_holders[recipient].balance += uint128(amount);
+		_balances[sender] = senderBalance - amount;
+		_balances[recipient] += amount;
 		emit Transfer(sender, recipient, amount);
 	}
 
-/*	function bulkTransfer(address[] memory recipients, uint128[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
+/*	function bulkTransfer(address[] memory recipients, uint[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
 		require(recipients.length == amounts.length && amounts.length < 100,"human error");
 		require(block.number >= _nextBulkBlock);
 		_nextBulkBlock = uint88(block.number + 20);
-		uint128 senderBalance = _holders[msg.sender].balance;
-		uint128 total;
-		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];_holders[recipients[i]].balance += amounts[i];}else{revert();}}
+		uint senderBalance = _balances[msg.sender];
+		uint total;
+		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];_balances[recipients[i]] += amounts[i];}else{revert();}}
 		require(senderBalance >= total);
 		if (msg.sender == _registry) {_beforeTokenTransfer(msg.sender, total);}
-		if (senderBalance == total) {delete _holders[msg.sender].balance;} else {_holders[msg.sender].balance = senderBalance - total;}
+		if (senderBalance == total) {delete _balances[msg.sender];} else {_balances[msg.sender] = senderBalance - total;}
 		emit BulkTransfer(msg.sender, recipients, amounts);
 		return true;
 	}
 
-	function bulkTransferFrom(address[] memory senders, address recipient, uint128[] memory amounts) public returns (bool) {
+	function bulkTransferFrom(address[] memory senders, address recipient, uint[] memory amounts) public returns (bool) {
 		require(senders.length == amounts.length && amounts.length < 100,"human error");
 		require(block.number >= _nextBulkBlock);
 		_nextBulkBlock = uint88(block.number + 20);
-		uint128 total;
-		uint128 senderBalance;
+		uint total;
+		uint senderBalance;
 		for (uint i = 0;i<amounts.length;i++) {
-			senderBalance = _holders[senders[i]].balance;
+			senderBalance = _balances[senders[i]];
 			if (amounts[i] > 0 && senderBalance >= amounts[i] && _allowances[senders[i]][msg.sender]== true){
-				total+= amounts[i];	_holders[senders[i]].balance = senderBalance - total;//does not delete if empty, since it could be just trading
+				total+= amounts[i];	_balances[senders[i]] = senderBalance - total;//does not delete if empty, since it could be just trading
 			} else {revert();}
 		}
-		_holders[msg.sender].balance += total;
+		_balances[msg.sender] += total;
 		emit BulkTransferFrom(senders, amounts, recipient);
 		return true;
 	}*/
@@ -110,9 +109,8 @@ contract VSRERC20 {
 		if(block.number < 12640000) {require(from == _founding || from == _governance);}
 		else {
 			if (from == _registry) {// hardcoded address
-				require(block.number > 12640000 && block.number > _holders[to].lock);
-				_holders[to].lock = uint128(block.number);
-				uint registry = _holders[_registry].balance;
+				require(block.number > 12640000);
+				uint registry = _balances[_registry];
 				uint withd =  999e24 - registry;
 				uint allowed = (block.number - 12640000)*42e16 - withd;
 				require(amount <= allowed && amount <= registry);
