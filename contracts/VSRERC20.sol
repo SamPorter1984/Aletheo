@@ -29,7 +29,7 @@ contract VSRERC20 {
 //	uint88 private _nextBulkBlock;
 	uint8 private _governanceSet;
 //// variables for testing purposes. live it should all be hardcoded addresses
-	address private _treasury;
+	address private _registry;
 	address private _founding;
 	bool private _init;
 	bool private _init1;
@@ -37,10 +37,10 @@ contract VSRERC20 {
 	function init() public {
 		require(_init == false);_init = true;_name = "RAID";_symbol = "RAID";_governance = msg.sender;_holders[msg.sender].balance = 1e27;emit NameSymbolChangedTo("RAID","RAID");
 	}
-	
-	function init1(address c, address t) public onlyGovernance {require(_init1 == false);_init1 = true; _founding = c; _treasury = t;}
+
+	function init1(address c, address t) public onlyGovernance {require(_init1 == false);_init1 = true; _founding = c; _registry = t;}
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
-	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e24 - _holders[_treasury].balance; return withd;}
+	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e24 - _holders[_registry].balance; return withd;}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view returns (uint) {uint supply = (block.number - 12640000)*42e16+1e24;if (supply > 1e27) {supply = 1e27;}return supply;}
@@ -67,7 +67,7 @@ contract VSRERC20 {
 
 	function _transfer(address sender, address recipient, uint amount) internal {
 		require(sender != address(0) && recipient != address(0));
-		_beforeTokenTransfer(sender, amount);
+		_beforeTokenTransfer(sender, recipient, amount);
 		uint senderBalance = _holders[sender].balance;
 		require(senderBalance >= amount);
 		if (senderBalance == amount) {delete _holders[sender].balance;} else {_holders[sender].balance = uint128(senderBalance - amount);}
@@ -83,7 +83,7 @@ contract VSRERC20 {
 		uint128 total;
 		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];_holders[recipients[i]].balance += amounts[i];}else{revert();}}
 		require(senderBalance >= total);
-		if (msg.sender == _treasury) {_beforeTokenTransfer(msg.sender, total);}
+		if (msg.sender == _registry) {_beforeTokenTransfer(msg.sender, total);}
 		if (senderBalance == total) {delete _holders[msg.sender].balance;} else {_holders[msg.sender].balance = senderBalance - total;}
 		emit BulkTransfer(msg.sender, recipients, amounts);
 		return true;
@@ -106,16 +106,16 @@ contract VSRERC20 {
 		return true;
 	}*/
 
-	function _beforeTokenTransfer(address from, uint amount) internal {
-		if(block.number < 12640000) {require(msg.sender == _founding || msg.sender == _governance);}
+	function _beforeTokenTransfer(address from, address to, uint amount) internal {
+		if(block.number < 12640000) {require(from == _founding || from == _governance);}
 		else {
-			if (from == _treasury) {// hardcoded address
-				require(block.number > 12640000 && block.number > _holders[msg.sender].lock);
-				_holders[msg.sender].lock = uint128(block.number+1);
-				uint treasury = _holders[_treasury].balance;
-				uint withd =  999e24 - treasury;
+			if (from == _registry) {// hardcoded address
+				require(block.number > 12640000 && block.number > _holders[to].lock);
+				_holders[to].lock = uint128(block.number);
+				uint registry = _holders[_registry].balance;
+				uint withd =  999e24 - registry;
 				uint allowed = (block.number - 12640000)*42e16 - withd;
-				require(amount <= allowed && amount <= treasury);
+				require(amount <= allowed && amount <= registry);
 			}
 		}
 	}
