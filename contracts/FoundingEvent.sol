@@ -28,9 +28,9 @@ contract FoundingEvent {
 		if (block.number >= 12550000) {
 			uint phase = _phase;
 			if (phase > 0) {_ETHDeposited += uint88(amount);}
-			if(block.number >= phase+12550000){_phase = uint88(phase + 10000);_createLiquidity(phase);}
+			if(block.number >= phase+12550000){_phase = uint88(phase + 9000);_createLiquidity(phase);}
 		}
-		uint deployerShare = amount/200; amount -= deployerShare; _deployer.transfer(deployerShare);
+		uint deployerShare = amount/100; amount -= deployerShare; _deployer.transfer(deployerShare);
 		contributions[msg.sender] += amount;
 	}
 
@@ -47,7 +47,7 @@ contract FoundingEvent {
 		uint ETHDeposited = _ETHDeposited;
 		uint ethToDeposit = ETHDeposited*3/5;
 		uint tokenToDeposit = 1e23;
-		if (phase == 90000) {
+		if (phase == 81000) {
 			ethToDeposit = address(this).balance; I(staking).init(ETHDeposited, tknETHLP);
 			delete _staking; delete _lgeOngoing; delete _ETHDeposited; delete _phase; delete _deployer;
 		}
