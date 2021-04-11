@@ -14,11 +14,7 @@ contract DatabaseTestnet {
 
 	modifier onlyOracle() {require(_oracles[msg.sender] == true);_;}
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
-	function recordEntry(bytes32 _hash, string memory _entry) public {
-		uint bn = _blockNumbers[msg.sender];
-		require(bn + 23 >= block.number || bn == 0);
-		_blockNumbers[msg.sender] = block.number; emit Entry(msg.sender, _hash, _entry);
-	}
+	function recordEntry(bytes32 _hash, string memory _entry) public {require(block.number - 23 > _blockNumbers[msg.sender]);_blockNumbers[msg.sender] = block.number; emit Entry(msg.sender, _hash, _entry);}
 
 	function toggleOracle(address[] memory accounts) public onlyGovernance {
 		for (uint i = 0; i < accounts.length; i++) {if (_oracles[accounts[i]] == false) {_oracles[accounts[i]] = true;} else {delete _oracles[accounts[i]];}}
