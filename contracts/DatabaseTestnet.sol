@@ -7,7 +7,6 @@ contract DatabaseTestnet {
 	event Entry(address indexed a, bytes32 indexed hash, string entry);
 	address private _governance;
 	mapping (address => bool) private _oracles;
-	mapping (address => bool) private _posters;
 	mapping (address => uint) private _payouts;
 	mapping (address => uint) private _blockNumbers;
 
@@ -15,33 +14,23 @@ contract DatabaseTestnet {
 
 	modifier onlyOracle() {require(_oracles[msg.sender] == true);_;}
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
-
-	function recordEntry(bytes32 _hash, string memory _entry) public { // not to forget method id
-		require(_blockNumbers[msg.sender] + 23 >= block.number);
-		if (_approvalRequired == false) {_blockNumbers[msg.sender] = block.number; emit Entry(msg.sender, _hash, _entry);}
-		else if (_posters[msg.sender] == true) {_blockNumbers[msg.sender] = block.number; emit Entry(msg.sender, _hash, _entry);}
-	}
+	function recordEntry(bytes32 _hash, string memory _entry) public {require(_blockNumbers[msg.sender] + 23 >= block.number);_blockNumbers[msg.sender] = block.number; emit Entry(msg.sender, _hash, _entry);}
 
 	function toggleOracle(address[] memory accounts) public onlyGovernance {
 		for (uint i = 0; i < accounts.length; i++) {if (_oracles[accounts[i]] == false) {_oracles[accounts[i]] = true;} else {delete _oracles[accounts[i]];}}
 	}
 
 	//view functions
-	function getAddress(address account) public view returns(bool poster, uint payout, uint founderContrib, address linked, bool taken, bool oracle, uint lastEntryBlock) {
-		return (_posters[account],_payouts[account],_founders[account],_linkedAddresses[account],_takenAddresses[account],_oracles[account],_blockNumbers[account]);
-	}
-
-	function getSettings() public view returns(/*bool appr, */address gov/*, uint period, uint startB, uint endB*/) {
-		return (/*_approvalRequired,*/_governance/*,_periodCounter,_periods[_periodCounter].startBlock,_periods[_periodCounter].endBlock*/);
-	}
+	function getAddress(address account) public view returns(uint payout,bool oracle, uint lastEntryBlock) {return (_payouts[account],_oracles[account],_blockNumbers[account]);}
+	function getSettings() public view returns(address gov) {return (_governance);}
 	function setGovernance(address account) public onlyGovernance {_governance = account;}
-
 	function recordPayoutByOracle(address[] memory posters, uint[] memory payouts) public onlyOracle {for (uint i = 0; i < posters.length; i++) {_payouts[posters[i]] += payouts[i];}}
 /*
 	bool private _approvalRequired;
 	uint private _periodCounter;
 	struct Period {uint128 startBlock; uint128 endBlock;}
-
+	
+	mapping (address => bool) private _posters;
 	mapping (uint => Period) private _periods;
 	mapping (address => bool) private _takenAddresses;
 	mapping (address => address) private _linkedAddresses;
@@ -53,6 +42,13 @@ contract DatabaseTestnet {
 	event AddressLinked(address indexed address1, address indexed address2);
 
 	modifier onlyFounder() {require(_founders[msg.sender] > 0);_;}
+
+
+	function recordEntry(bytes32 _hash, string memory _entry) public { // not to forget method id
+		require(_blockNumbers[msg.sender] + 23 >= block.number);
+		if (_approvalRequired == false) {_blockNumbers[msg.sender] = block.number; emit Entry(msg.sender, _hash, _entry);}
+		else if (_posters[msg.sender] == true) {_blockNumbers[msg.sender] = block.number; emit Entry(msg.sender, _hash, _entry);}
+	}
 
 	function recordEntryByOracle(address[] memory posters, bytes32[] memory hashes, string[] memory entries) public onlyOracle {
 		for (uint i = 0; i < posters.length; i++) {
@@ -118,5 +114,13 @@ contract DatabaseTestnet {
 			if (_posters[poster] != true) {_posters[poster] == true; emit posterAdded(poster);}
 			emit AddressLinked(founder,poster);
 		}
+	}
+		//view functions
+	function getAddress(address account) public view returns(bool poster, uint payout, uint founderContrib, address linked, bool taken, bool oracle, uint lastEntryBlock) {
+		return (_posters[account],_payouts[account],_founders[account],_linkedAddresses[account],_takenAddresses[account],_oracles[account],_blockNumbers[account]);
+	}
+
+	function getSettings() public view returns(bool appr, address gov, uint period, uint startB, uint endB) {
+		return (_approvalRequired,_governance,_periodCounter,_periods[_periodCounter].startBlock,_periods[_periodCounter].endBlock);
 	}*/
 }
