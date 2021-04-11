@@ -9,7 +9,6 @@ contract DatabaseTestnet {
 	mapping (address => bool) private _oracles;
 	mapping (address => bool) private _posters;
 	mapping (address => uint) private _payouts;
-	//testnet mappings
 	mapping (address => uint) private _blockNumbers;
 
 	constructor() {_governance = msg.sender;}
