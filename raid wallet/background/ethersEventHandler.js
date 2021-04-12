@@ -26,7 +26,7 @@ function receiveEvents(event, sender, sendResponse) {
 function saveTextField(event){
 	if (event) {
 		entry = event;
-		entry.url = entry.url.replace(/^\/\/|^.*?:(\/\/)?/, '');
+//		entry.url = entry.url.replace(/^\/\/|^.*?:(\/\/)?/, '');
 //		entry.url = entry.url.split('/');if (entry.url.length > 2) {for (let n=2;n<entry.url.length;n++) {entry.url[1] += '/' + entry.url[n];}}
 		entry.value = stripQuote(entry.value);
 		browser.storage.local.set({entry});
