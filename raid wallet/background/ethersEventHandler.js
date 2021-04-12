@@ -4,9 +4,9 @@ let entry;
 
 //let gasStationURL = 'https://gasstation-mumbai.matic.today';
 let abi = ["event Entry(address indexed addressFrom, bytes32 indexed hash, string entry)","function recordEntry(bytes32 _hash, string memory _entry)"];
-let contractAddress = "0x920eA7543d48B3DdaC612492620Bc970430C954d";
+let contractAddress = "0xC51bCa9db7Cf91F0341143D1d51FDE645ca1b383";
 let timer;
-
+console.log("0xC51bCa9db7Cf91F0341143D1d51FDE645ca1b383");
 browser.runtime.onMessage.addListener(receiveEvents);
 
 function receiveEvents(event, sender, sendResponse) {
@@ -129,7 +129,7 @@ function sendFailureResponse(answer){
 	}).catch((err) => {});
 }
 
-function transact(entry){ // not supposed to recreate/reconnect wallet, it's a grog function
+function transact(entry){ // not supposed to recreate/reconnect wallet, it's Grog method
 //  let language = "en"; // entry.language or client.language;
 	let post = entry.value;
 	let url = entry.url;//let url = entry.url[0]+"/"+entry.url[1];
@@ -137,7 +137,7 @@ function transact(entry){ // not supposed to recreate/reconnect wallet, it's a g
 //  if (language !== "en") {}
 	if (post) {
 		//let message = language + ":;" + entry.url + ":;" + post;
-		let message = "test:;"+post; // CHANGE THIS
+		let message = entry.url+":;"+post; // CHANGE THIS
 		post = message;
 		getMnemonic().then(res => {
 			let mnemonic = res;
@@ -159,7 +159,10 @@ function transact(entry){ // not supposed to recreate/reconnect wallet, it's a g
 //  	                console.log(res);
 //  	                let p = res.fast;
 						console.log(wallet.address.toLowerCase());
-						let tx = await contractWithSigner.recordEntry(ethers.utils.id(wallet.address.toLowerCase() + post),lastMessage/*,{gasPrice: p}*/);
+						// so apparently if the transaction fails, it reposts the last message again on first successful transaction, which is good
+						// however, that way a failing transaction with revealed message can become fetchable i guess, therefore it can be front-ran
+						// so have to make sure that user can't post a paid transaction before the limit allows
+						let tx = await contractWithSigner.recordEntry(ethers.utils.id(wallet.address.toLowerCase() + post),lastMessage,{gasLimit: 1000000});
 						await tx.wait(1).then((receipt) => {browser.storage.local.set({lastMessage: post});timerMessage(true,null);});
 //  	            });
 				});
