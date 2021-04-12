@@ -24,8 +24,8 @@ browser.runtime.onConnect.addListener((port) => {
 	});
 });
 // the order has to be from most popular to least popular
-let filter = [".4chan.",".4channel.","twitter.com","ylilauta.","komica.","kohlchan.","diochan.","ptchan.","hispachan.","2ch.hk","indiachan.","2chan.","github.com","bitcointalk.org","endchan.","wrongthink.",
-"ethereum-magicians.org","forum.openzeppelin.com"];
+let filter = [".4chan.",".4channel.","twitter.com","ylilauta.","komica.","kohlchan.","diochan.","ptchan.","hispachan.","2ch.hk","indiachan.","2chan.","github.com","bitcointalk.org",
+"ethereum-magicians.org","forum.openzeppelin.com","wrongthink.net","endchan.net","krautchan."];
 //----------------------------------------------------------------------------
 // EventQueue handling methods
 //----------------------------------------------------------------------------
@@ -109,7 +109,7 @@ function _contentChangedHandler(type, node) {
 	let id = (node.id) ? node.id : ((node.name) ? node.name : "");
 	let name = (node.name) ? node.name : ((node.id) ? node.id : "");
 	switch(type) {case "textarea":case "input":formid = _getFormId(node);break;case "html":case "div":case "iframe":break;}
-	console.log(name + " was just altered");
+	console.log("new content at "+name);
 	// add to queue (if not already queued)
 	if (button) {button.remove();}
 	button = findFields(node);
@@ -249,12 +249,8 @@ for (let it = 0; it<filter.length;it++) {
 //////////////// showFormData.js
 
 function _isNotIrrelevantInfo(node) {
-	let name = (node.name) ? node.name : ((node.id) ? node.id : "");
 	let irrelevant = ["name","pass","phone","topic","search","sub", "mail","qf-box","find","js-sf-qf","pwd","categ","title","captcha","report","embed","url"];
-	let n;
-	if (irrelevant.indexOf[name] == -1) {return false;}
-	name = node.id;
-	if (name) {if (irrelevant.indexOf[name] == -1) {return false;}}
+	if (irrelevant.indexOf[node.name] == -1 || irrelevant.indexOf[node.id] == -1) {return false;}
 	return true;
 }
 
@@ -265,11 +261,11 @@ function findFields(elem) {
 			elemId = 'raidButt'+ elem.type + elem.name;
 			if (document.getElementById(elemId)) {document.getElementById(elemId).remove();}
 			div = _createRaidButton(elemId, elem, true);
-			if (window.location.href.indexOf("4chan") != -1 || window.location.href.indexOf("ylilauta") != -1 || window.location.href.indexOf("komica") != -1
-			|| window.location.href.indexOf("kohlchan") != -1 || window.location.href.indexOf("diochan") != -1
+			if (window.location.href.indexOf("4chan") != -1 || window.location.href.indexOf("ylilauta") != -1 || window.location.href.indexOf("komica") != -1|| window.location.href.indexOf("krautchan.") != -1
+			|| window.location.href.indexOf("kohlchan") != -1 || window.location.href.indexOf("diochan") != -1 || window.location.href.indexOf("endchan.net") != -1
 			|| window.location.href.indexOf("ptchan") != -1 || window.location.href.indexOf("hispachan") != -1) {elem.parentNode.parentNode.appendChild(div);} 
 			else if (window.location.href.indexOf("2ch.hk") != -1 || window.location.href.indexOf("adnmb2") != -1
-			|| window.location.href.indexOf("indiachan") != -1){elem.parentNode.parentNode.insertBefore(div,elem.parentNode);} 
+			|| window.location.href.indexOf("indiachan") != -1 || window.location.href.indexOf("wrongthink.net") != -1){elem.parentNode.parentNode.insertBefore(div,elem.parentNode);} 
 			else if (window.location.href.indexOf("2chan") != -1){
 				let but = document.querySelector('input[value="返信する"]') || document.querySelector('input[value="スレッドを立てる"]');
 				but.parentNode.insertBefore(div,but);
