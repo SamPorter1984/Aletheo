@@ -8,8 +8,8 @@ import "./I.sol";
 contract StakingContract {
 	uint128 private _foundingETHDeposited;
 	uint128 private _foundingLPtokensMinted;
-	uint128 private _foundingLPtokens;
 	address private _tokenETHLP;
+	uint88 private _foundingLPtokens;
 	bool private _init;
 
 	struct LPProvider {uint32 lastClaim; uint16 lastEpoch; bool founder; uint128 tknAmount; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
@@ -29,12 +29,12 @@ contract StakingContract {
 
 	function init(uint foundingETH, address tkn) public {
 		require(msg.sender == 0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe && _init == false);
-		_init = true;
 		_foundingETHDeposited = uint128(foundingETH);
-		uint128 fLPtokensMinted = uint128(I(tkn).balanceOf(address(this)));
-		_foundingLPtokensMinted = fLPtokensMinted;
-		_foundingLPtokens = fLPtokensMinted;
+		uint fLPtokensMinted = I(tkn).balanceOf(address(this));
+		_foundingLPtokensMinted = uint128(fLPtokensMinted);
 		_tokenETHLP = tkn;
+		_foundingLPtokens = uint88(fLPtokensMinted/1e10);
+		_init = true;
 		_createEpoch(1e24,true);
 		_createEpoch(0,false);
 	}
@@ -60,7 +60,7 @@ contract StakingContract {
 		uint toSubtract = tknAmount*amount/lpShare; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
 		_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
 		bytes32 epoch; uint length;
-		if (status == true) {length = _founderEpochs.length; epoch = _founderEpochs[length-1]; _foundingLPtokens -= uint128(amount);}
+		if (status == true) {length = _founderEpochs.length; epoch = _founderEpochs[length-1]; _foundingLPtokens -= uint88(amount/1e10);}
 		else{length = _epochs.length; epoch = _epochs[length-1];}
 		(uint80 eBlock,uint96 eAmount,) = _extractEpoch(epoch);
 		eAmount -= uint96(toSubtract);
@@ -152,7 +152,7 @@ contract StakingContract {
 		eAmount += uint96(amount);
 		_storeEpoch(eBlock,eAmount,false,length);
 		_ps[msg.sender].lastEpoch = uint16(_epochs.length);
-		uint share = amount*I(0x0cB9dAB71Dd14951D580904825e7F0985B29D375).balanceOf(tkn)/(I(tkn).totalSupply() - _foundingLPtokens);
+		uint share = amount*I(0x0cB9dAB71Dd14951D580904825e7F0985B29D375).balanceOf(tkn)/(I(tkn).totalSupply() - _foundingLPtokens*1e10);
 		_ps[msg.sender].tknAmount += uint128(share);
 		_ps[msg.sender].lpShare += uint128(amount);
 	}
