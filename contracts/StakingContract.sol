@@ -7,7 +7,7 @@ import "./IUniswapV2Pair.sol";
 import "./ITreasury.sol";
 import "./IERC20.sol";
 import "./IGovernance.sol";
-import "./IBridge.sol";
+//import "./IBridge.sol";
 
 contract StakingContract {
 	uint128 private _foundingETHDeposited;
@@ -23,9 +23,8 @@ contract StakingContract {
 
 	mapping(address => LPProvider) private _ps;
 	mapping(address => TokenLocker) private _ls;
-	mapping(address => uint) private _locks;
-	mapping(address => address) public newAddresses;
-	mapping(address => bool) private _takenNew;
+//	mapping(address => address) public newAddresses;
+//	mapping(address => bool) private _takenNew;
 	mapping(address => address) private _linked;
 	mapping(address => bool) private _taken;
 
@@ -105,7 +104,7 @@ contract StakingContract {
 
 // this function has to be expensive as an alert of something fishy just in case
 // metamask has to somehow provide more info about a transaction
-	function newAddress(address a) public {
+/*	function newAddress(address a) public {
 		require(_takenNew[a] == false && _ps[a].lpShare == 0 && _ls[a].amount == 0);
 		if(_ps[msg.sender].lockedAmount>0||_ls[msg.sender].amount>0){require(_isContract(msg.sender) == false);}
 		_takenNew[a] = true;
@@ -120,7 +119,7 @@ contract StakingContract {
 			_ps[a].lpShare = _ps[S].lpShare;_ps[a].lockUpTo = _ps[S].lockUpTo;_ps[a].lockedAmount = _ps[S].lockedAmount;delete _ps[S];
 		}
 		if (_ls[S].amount > 0) {_ls[a].amount=_ls[S].amount;_ls[a].lockUpTo=_ls[S].lockUpTo;delete _ls[S];}
-	}
+	}*/
 
 	function lockFor3Years(bool ok, address tkn, uint amount) public {
 		require(ok==true && amount>0 && _isContract(msg.sender) == false);
