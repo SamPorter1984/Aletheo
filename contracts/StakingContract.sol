@@ -13,24 +13,7 @@ contract StakingContract {
 	uint128 private _foundingETHDeposited;
 	uint128 private _foundingLPtokensMinted;
 	address private _tokenETHLP;
-	bool private _notInit;
-///////variables for testing purposes
-	address private _token; // hardcoded address
-	address private _treasury; // hardcoded
-	address private _governance; // hardcoded
-	address private _founding;// hardcoded
-
-	constructor() {_token = 0xf8e81D47203A594245E36C48e151709F0C19fBe8; /*testing*/_notInit = true;}
-
-	function init(uint foundingETH, address tkn) public {
-		require(msg.sender == _founding && _notInit == true);
-		delete _notInit;
-		_foundingETHDeposited = uint128(foundingETH);
-		_foundingLPtokensMinted = uint128(IERC20(tkn).balanceOf(address(this)));
-		_tokenETHLP = tkn;
-		_createEpoch(1e24,true);
-		_createEpoch(0,false);
-	}
+	bool private _init;
 
 	struct LPProvider {uint32 lastClaim; uint16 lastEpoch; bool founder; uint128 tknAmount; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
 	struct TokenLocker {uint128 amount;uint128 lockUpTo;}
@@ -42,15 +25,24 @@ contract StakingContract {
 	mapping(address => TokenLocker) private _ls;
 	mapping(address => uint) private _locks;
 	mapping(address => address) public newAddresses;
+	mapping(address => bool) private _takenNew;
 	mapping(address => address) private _linked;
 	mapping(address => bool) private _taken;
 
 	event AddressLinked(address indexed a1, address indexed a2);
 
-	modifier lock() {require(block.number>_locks[msg.sender]);_locks[msg.sender] = block.number + 1;_;}
+	function init(uint foundingETH, address tkn) public {
+		require(msg.sender == 0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe && _init == false);
+		_init = true;
+		_foundingETHDeposited = uint128(foundingETH);
+		_foundingLPtokensMinted = uint128(IERC20(tkn).balanceOf(address(this)));
+		_tokenETHLP = tkn;
+		_createEpoch(1e24,true);
+		_createEpoch(0,false);
+	}
 
 	function claimFounderStatus() public {
-		uint ethContributed = IFoundingEvent(_founding).contributions(msg.sender);
+		uint ethContributed = IFoundingEvent(0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe).contributions(msg.sender);
 		require(ethContributed > 0);
 		require(_notInit == false && _ps[msg.sender].founder == false);
 		_ps[msg.sender].founder = true;
@@ -62,17 +54,17 @@ contract StakingContract {
 		_ps[msg.sender].lastClaim = 12564000;
 	}
 
-	function unstakeLp(bool ok,uint amount) public lock {
+	function unstakeLp(bool ok,uint amount) public {
 		(uint lastClaim,bool status,uint tknAmount,uint lpShare,uint lockedAmount) = getProvider(msg.sender);
 		require(lpShare-lockedAmount >= amount && ok == true);
 		if (lastClaim != block.number) {_getRewards(msg.sender);}
 		_ps[msg.sender].lpShare = uint128(lpShare - amount);
 		uint toSubtract = tknAmount*amount/lpShare; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
 		_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
-		bytes32 epoch; uint length; uint80 eBlock; uint96 eAmount;
+		bytes32 epoch; uint length;
 		if (status == true) {length = _founderEpochs.length; epoch = _founderEpochs[length-1];}
 		else{length = _epochs.length; epoch = _epochs[length-1];}
-		(eBlock,eAmount,) = _extractEpoch(epoch);
+		(uint80 eBlock,uint96 eAmount,) = _extractEpoch(epoch);
 		eAmount -= uint96(toSubtract);
 		_storeEpoch(eBlock,eAmount,status,length);
 		IERC20(_tokenETHLP).transfer(address(msg.sender), amount);
@@ -87,9 +79,9 @@ contract StakingContract {
 		uint tknAmount = _ps[a].tknAmount;
 		require(block.number>lastClaim);
 		_ps[a].lastClaim = uint32(block.number);
-		(uint rate,uint rateModifier) = _getRate();
+		uint rate = _getRate();
 		uint eBlock; uint eAmount; uint eEnd; bytes32 epoch; uint length; uint toClaim;
-		if (status) {length = _founderEpochs.length;} else {length = _epochs.length;rate=rate*20/rateModifier;}
+		if (status) {length = _founderEpochs.length;} else {length = _epochs.length;}
 		if (length>0 && epochToClaim < length-1) {
 			for (uint i = epochToClaim; i<length;i++) {
 				if (status) {epoch = _founderEpochs[i];} else {epoch = _epochs[i];}
@@ -100,16 +92,12 @@ contract StakingContract {
 			_ps[a].lastEpoch = uint16(length-1);
 		} else {
 			if(status){epoch = _founderEpochs[length-1];} else {epoch = _epochs[length-1];}
-			eAmount = uint96(bytes12(epoch << 80));toClaim = _computeRewards(lastClaim,eAmount,block.number,tknAmount,rate);
+			eAmount = uint96(bytes12(epoch << 80)); toClaim = _computeRewards(lastClaim,eAmount,block.number,tknAmount,rate);
 		}
-		bool success = ITreasury(_treasury).getRewards(a, toClaim); require(success == true);
+		bool success = ITreasury(0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5).getRewards(a, toClaim); require(success == true);
 	}
 
-	function _getRate() internal view returns (uint,uint){
-		uint rate = 21e15; uint rateModifier = 25; uint halver = block.number/10000000;
-		if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*5/7;if(rateModifier > 1) {rateModifier--;}}}
-		return(rate,rateModifier);
-	}
+	function _getRate() internal view returns(uint){uint rate = 21e15; uint halver = block.number/10000000;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}}return rate;}
 
 	function _computeRewards(uint eBlock, uint eAmount, uint eEnd, uint tknAmount, uint rate) internal view returns(uint){
 		if(eEnd==0){eEnd = block.number;} uint blocks = eEnd - eBlock; return (blocks*tknAmount*rate/eAmount);
@@ -118,16 +106,18 @@ contract StakingContract {
 // this function has to be expensive as an alert of something fishy just in case
 // metamask has to somehow provide more info about a transaction
 	function newAddress(address a) public {
+		require(_takenNew[a] == false && _ps[a].lpShare == 0 && _ls[a].amount == 0);
 		if(_ps[msg.sender].lockedAmount>0||_ls[msg.sender].amount>0){require(_isContract(msg.sender) == false);}
-		for (uint i = 0;i<10;i++) {newAddresses[msg.sender] = msg.sender;newAddresses[msg.sender] = a;}
+		_takenNew[a] = true;
+		newAddresses[msg.sender] = a;
 	}
 // nobody should trust dapp interface. maybe a function like this should not be provided through dapp at all
-	function changeAddress(address ad) public lock { // while user can confirm newAddress by public method, still has to enter the same address second time
+	function changeAddress(address ad) public { // while user can confirm newAddress by public method, still has to enter the same address second time
 		address S = msg.sender;	address a = newAddresses[S];
-		require(a != address(0) && a == ad && block.number + 172800 > IGovernance(_governance).getLastVoted(S));
-		if (_ps[S].lpShare >0) {
-			_ps[a].lpShare = _ps[S].lpShare;_ps[a].tknAmount = _ps[S].tknAmount;_ps[a].lastClaim = _ps[S].lastClaim;_ps[a].lockUpTo = _ps[S].lockUpTo;
-			_ps[a].lockedAmount = _ps[S].lockedAmount;_ps[a].founder = _ps[S].founder;delete _ps[S];
+		require(a != address(0) && a == ad && a != msg.sender && block.number - 172800 > IGovernance(0xaE9564269B75f67510Bf20a512632869e3d42217).getLastVoted(S));
+		if (_ps[S].lpShare > 0) {
+			_ps[a].lastClaim = _ps[S].lastClaim;_ps[a].lastEpoch = _ps[S].lastEpoch;_ps[a].founder = _ps[S].founder;_ps[a].tknAmount = _ps[S].tknAmount;
+			_ps[a].lpShare = _ps[S].lpShare;_ps[a].lockUpTo = _ps[S].lockUpTo;_ps[a].lockedAmount = _ps[S].lockedAmount;delete _ps[S];
 		}
 		if (_ls[S].amount > 0) {_ls[a].amount=_ls[S].amount;_ls[a].lockUpTo=_ls[S].lockUpTo;delete _ls[S];}
 	}
@@ -137,7 +127,7 @@ contract StakingContract {
 		if(tkn ==_tokenETHLP) {
 			require(_ps[msg.sender].lpShare-_ps[msg.sender].lockedAmount>=amount); _ps[msg.sender].lockUpTo=uint128(block.number+6307200);_ps[msg.sender].lockedAmount+=uint128(amount);	
 		}
-		if(tkn == _token) {
+		if(tkn == 0x0cB9dAB71Dd14951D580904825e7F0985B29D375) {
 			require(IERC20(tkn).balanceOf(msg.sender)>=amount);
 			_ls[msg.sender].lockUpTo=uint128(block.number+6307200);
 			_ls[msg.sender].amount+=uint128(amount);
@@ -145,10 +135,10 @@ contract StakingContract {
 		}
 	}
 
-	function unlock() public lock {
+	function unlock() public {
 		if (_ps[msg.sender].lockedAmount > 0 && block.number>=_ps[msg.sender].lockUpTo) {_ps[msg.sender].lockedAmount = 0;}
 		uint amount = _ls[msg.sender].amount;
-		if (amount > 0 && block.number>=_ls[msg.sender].lockUpTo) {IERC20(_token).transfer(msg.sender,amount);_ls[msg.sender].amount = 0;}
+		if (amount > 0 && block.number>=_ls[msg.sender].lockUpTo) {IERC20(0x0cB9dAB71Dd14951D580904825e7F0985B29D375).transfer(msg.sender,amount);_ls[msg.sender].amount = 0;}
 	}
 
 	function stake(uint amount) public {
@@ -163,11 +153,11 @@ contract StakingContract {
 		(uint80 eBlock,uint96 eAmount,) = _extractEpoch(epoch);
 		eAmount += uint96(amount);
 		_storeEpoch(eBlock,eAmount,false,length);
-		_ps[msg.sender].lastEpoch = uint16(length-1);
+		_ps[msg.sender].lastEpoch = uint16(_epochs.length);
 		(uint res0,uint res1,)=IUniswapV2Pair(tkn).getReserves();
-		uint total = IERC20(tkn).totalSupply();
-		if (res1 > res0) {res0 = res1;}
-		uint share = amount*res0/total;
+		uint b = IERC20(0x0cB9dAB71Dd14951D580904825e7F0985B29D375).balanceOf(tkn);
+		uint t = IERC20(tkn).totalSupply();
+		uint share = amount*b/t;
 		_ps[msg.sender].tknAmount += uint128(share);
 		_ps[msg.sender].lpShare += uint128(amount);
 	}
@@ -194,7 +184,7 @@ contract StakingContract {
 		if (founder == true){_founderEpochs.push(epoch);} else {_epochs.push(epoch);}
 	}
 
-	function migrate(address contr,address tkn,uint amount) public lock {//can support any amount of bridges
+/*	function migrate(address contr,address tkn,uint amount) public lock {//can support any amount of bridges
 		if (tkn == _tokenETHLP) {
 			(uint lastClaim,bool status,uint tknAmount,uint lpShare,uint lockedAmount) = getProvider(msg.sender);
 			if (lastClaim != block.number) {_getRewards(msg.sender);}
@@ -202,26 +192,26 @@ contract StakingContract {
 			_ps[msg.sender].lpShare = uint128(lpShare - amount);
 			uint toSubtract = amount*tknAmount/lpShare;
 			_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
-			uint length; bytes32 epoch; uint80 eBlock; uint96 eAmount;
+			uint length; bytes32 epoch;
 			if (status == true){length = _founderEpochs.length; epoch = _founderEpochs[length-1];}
 			else{length = _epochs.length; epoch = _epochs[length-1];}
-			(eBlock,eAmount,) = _extractEpoch(epoch);
+			(uint80 eBlock, uint96 eAmount,) = _extractEpoch(epoch);
 			eAmount -= uint96(toSubtract);
 			_storeEpoch(eBlock,eAmount,status,length);
 			IERC20(tkn).transfer(contr, amount);
 			IBridge(contr).provider(msg.sender,amount,_ps[msg.sender].lastClaim,_ps[msg.sender].lastEpoch,toSubtract,status);
 		}
-		if (tkn == _token) {
+		if (tkn == 0x0cB9dAB71Dd14951D580904825e7F0985B29D375) {
 			uint lockedAmount = _ls[msg.sender].amount;
 			require(lockedAmount >= amount);
 			IERC20(tkn).transfer(contr, amount);
 			_ls[msg.sender].amount = uint128(lockedAmount-amount);
 			IBridge(contr).locker(msg.sender,amount,_ls[msg.sender].lockUpTo);
 		}
-	}
+	}*/
 
 	function linkAddress(address a) external { // can be used to limit the amount of testers to only approved addresses
-		require(_linked[msg.sender] != a && _taken[a] == false && IFoundingEvent(_founding).contributions(a) == 0);
+		require(_linked[msg.sender] != a && _taken[a] == false && IFoundingEvent(0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe).contributions(a) == 0);
 		_linked[msg.sender] = a;_linked[a] = msg.sender;_taken[a] = true;emit AddressLinked(msg.sender,a);
 	}
 // VIEW FUNCTIONS ==================================================
