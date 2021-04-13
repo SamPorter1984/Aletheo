@@ -60,7 +60,7 @@ contract StakingContract {
 		uint toSubtract = tknAmount*amount/lpShare; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
 		_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
 		bytes32 epoch; uint length;
-		if (status == true) {length = _founderEpochs.length; epoch = _founderEpochs[length-1]; _foundingLPtokens -= amount;}
+		if (status == true) {length = _founderEpochs.length; epoch = _founderEpochs[length-1]; _foundingLPtokens -= uint128(amount);}
 		else{length = _epochs.length; epoch = _epochs[length-1];}
 		(uint80 eBlock,uint96 eAmount,) = _extractEpoch(epoch);
 		eAmount -= uint96(toSubtract);
