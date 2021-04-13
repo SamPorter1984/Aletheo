@@ -153,7 +153,6 @@ contract StakingContract {
 		eAmount += uint96(amount);
 		_storeEpoch(eBlock,eAmount,false,length);
 		_ps[msg.sender].lastEpoch = uint16(_epochs.length);
-		(uint res0,uint res1,)=IUniswapV2Pair(tkn).getReserves();
 		uint b = IERC20(0x0cB9dAB71Dd14951D580904825e7F0985B29D375).balanceOf(tkn);
 		uint t = IERC20(tkn).totalSupply();
 		uint share = amount*b/t;
