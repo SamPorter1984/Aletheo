@@ -43,7 +43,7 @@ contract StakingContract {
 	function claimFounderStatus() public {
 		uint ethContributed = IFoundingEvent(0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe).contributions(msg.sender);
 		require(ethContributed > 0);
-		require(_notInit == false && _ps[msg.sender].founder == false);
+		require(_init == true && _ps[msg.sender].founder == false);
 		_ps[msg.sender].founder = true;
 		uint foundingETH = _foundingETHDeposited;
 		uint lpShare = _foundingLPtokensMinted*ethContributed/foundingETH;
