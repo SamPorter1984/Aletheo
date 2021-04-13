@@ -22,24 +22,23 @@ contract VSRERC20 {
 	mapping (address => mapping (address => bool)) private _allowances;
 	mapping (address => uint) private _balances;
 
-	string private _name;//kept it as string so that third-party services won't be misled in any way
+	string private _name;
 	string private _symbol;
 	address private _governance;
 //	uint88 private _nextBulkBlock;
 	uint8 private _governanceSet;
-//// variables for testing purposes. live it should all be hardcoded addresses
-	address private _registry;
-	address private _founding;
 	bool private _init;
-	bool private _contractsDefined;
 
 	function init() public {
-		require(_init == false);_init = true;_name = "RAID";_symbol = "RAID";_governance = msg.sender;_balances[msg.sender] = 1e27;emit NameSymbolChangedTo("RAID","RAID");
+		require(_init == false);
+		_init = true;_name = "Aletheo";
+		_symbol = "LET";
+		_governance = 0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2;
+		_balances[0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2] = 1e27;
+		emit NameSymbolChangedTo("Aletheo","LET");
 	}
 
-	function defineContracts(address c, address t) public onlyGovernance {require(_contractsDefined == false);_contractsDefined = true; _founding = c; _registry = t;}
 	modifier onlyGovernance() {require(msg.sender == _governance);_;}
-	function withdrawn() public view returns(uint wthdrwn) {uint withd =  999e24 - _balances[_registry]; return withd;}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view returns (uint) {uint supply = (block.number - 12640000)*42e16+1e24;if (supply > 1e27) {supply = 1e27;}return supply;}
@@ -66,7 +65,7 @@ contract VSRERC20 {
 
 	function _transfer(address sender, address recipient, uint amount) internal {
 		require(sender != address(0) && recipient != address(0));
-		_beforeTokenTransfer(sender, recipient, amount);
+		_beforeTokenTransfer(sender, amount);
 		uint senderBalance = _balances[sender];
 		require(senderBalance >= amount);
 		_balances[sender] = senderBalance - amount;
@@ -82,7 +81,7 @@ contract VSRERC20 {
 		uint total;
 		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];_balances[recipients[i]] += amounts[i];}else{revert();}}
 		require(senderBalance >= total);
-		if (msg.sender == _registry) {_beforeTokenTransfer(msg.sender, total);}
+		if (msg.sender == 0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5) {_beforeTokenTransfer(msg.sender, total);}
 		if (senderBalance == total) {delete _balances[msg.sender];} else {_balances[msg.sender] = senderBalance - total;}
 		emit BulkTransfer(msg.sender, recipients, amounts);
 		return true;
@@ -105,15 +104,15 @@ contract VSRERC20 {
 		return true;
 	}*/
 
-	function _beforeTokenTransfer(address from, address to, uint amount) internal {
-		if(block.number < 12640000) {require(from == _founding || from == _governance);}
+	function _beforeTokenTransfer(address from, uint amount) internal view {
+		if(block.number < 12640000) {require(from == 0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe || from == _governance);}
 		else {
-			if (from == _registry) {// hardcoded address
+			if (from == 0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5) {// hardcoded treasury proxy address
 				require(block.number > 12640000);
-				uint registry = _balances[_registry];
-				uint withd =  999e24 - registry;
+				uint treasury = _balances[0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5];
+				uint withd =  999e24 - treasury;
 				uint allowed = (block.number - 12640000)*42e16 - withd;
-				require(amount <= allowed && amount <= registry);
+				require(amount <= allowed && amount <= treasury);
 			}
 		}
 	}
