@@ -93,7 +93,7 @@ contract StakingContract {
 		bool success = I(0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5).getRewards(a, toClaim); require(success == true);
 	}
 
-	function _getRate() internal view returns(uint){uint rate = 10e15; uint halver = block.number/10000000;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}}return rate;}
+	function _getRate() internal view returns(uint){uint rate = 21e16; uint halver = block.number/10000000;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}}return rate;}
 
 	function _computeRewards(uint eBlock, uint eAmount, uint eEnd, uint tknAmount, uint rate) internal view returns(uint){
 		if(eEnd==0){eEnd = block.number;} uint blocks = eEnd - eBlock; return (blocks*tknAmount*rate/eAmount);
@@ -180,7 +180,7 @@ contract StakingContract {
 		if (founder == true){_founderEpochs.push(epoch);} else {_epochs.push(epoch);}
 	}
 
-/*	function migrate(address contr,address tkn,uint amount) public lock {//can support any amount of bridges
+	function migrate(address contr,address tkn,uint amount) public lock {//can support any amount of bridges
 		if (tkn == _tokenETHLP) {
 			(uint lastClaim,bool status,uint tknAmount,uint lpShare,uint lockedAmount) = getProvider(msg.sender);
 			if (lastClaim != block.number) {_getRewards(msg.sender);}
@@ -190,7 +190,7 @@ contract StakingContract {
 			_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
 			uint length; bytes32 epoch;
 			if (status == true){length = _founderEpochs.length; epoch = _founderEpochs[length-1];}
-			else{length = _epochs.length; epoch = _epochs[length-1];}
+			else{length = _epochs.length; epoch = _epochs[length-1]; _genLPtokens -= uint88(amount/1e10);}
 			(uint80 eBlock, uint96 eAmount,) = _extractEpoch(epoch);
 			eAmount -= uint96(toSubtract);
 			_storeEpoch(eBlock,eAmount,status,length);
@@ -204,7 +204,7 @@ contract StakingContract {
 			_ls[msg.sender].amount = uint128(lockedAmount-amount);
 			I(contr).locker(msg.sender,amount,_ls[msg.sender].lockUpTo);
 		}
-	}*/
+	}
 
 	function linkAddress(address a) external { // can be used to limit the amount of testers to only approved addresses
 		require(_linked[msg.sender] != a && _taken[a] == false && I(0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe).contributions(a) == 0);
