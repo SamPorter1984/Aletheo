@@ -22,13 +22,13 @@ contract StakingContract {
 	mapping(address => TokenLocker) private _ls;
 //	mapping(address => address) public newAddresses;
 //	mapping(address => bool) private _takenNew;
-	mapping(address => address) private _linked;
-	mapping(address => bool) private _taken;
+//	mapping(address => address) private _linked;
+//	mapping(address => bool) private _taken;
 
-	event AddressLinked(address indexed a1, address indexed a2);
+//	event AddressLinked(address indexed a1, address indexed a2);
 
 	function init(uint foundingETH, address tkn) public {
-		require(msg.sender == 0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe && _init == false);
+		require(msg.sender == 0xB4695db4AC415657FaD2788647126fA00A284e52 && _init == false);
 		_foundingETHDeposited = uint128(foundingETH);
 		_foundingLPtokensMinted = uint128(I(tkn).balanceOf(address(this)));
 		_tokenETHLP = tkn;
@@ -38,7 +38,7 @@ contract StakingContract {
 	}
 
 	function claimFounderStatus() public {
-		uint ethContributed = I(0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe).contributions(msg.sender);
+		uint ethContributed = I(0xB4695db4AC415657FaD2788647126fA00A284e52).contributions(msg.sender);
 		require(ethContributed > 0);
 		require(_init == true && _ps[msg.sender].founder == false);
 		_ps[msg.sender].founder = true;
@@ -123,7 +123,7 @@ contract StakingContract {
 		if(tkn ==_tokenETHLP) {
 			require(_ps[msg.sender].lpShare-_ps[msg.sender].lockedAmount>=amount); _ps[msg.sender].lockUpTo=uint128(block.number+6307200);_ps[msg.sender].lockedAmount+=uint128(amount);	
 		}
-		if(tkn == 0x0cB9dAB71Dd14951D580904825e7F0985B29D375) {
+		if(tkn == 0x95A28A02Ffb969e48B78554777f223445661fB9f) {
 			require(I(tkn).balanceOf(msg.sender)>=amount);
 			_ls[msg.sender].lockUpTo=uint128(block.number+6307200);
 			_ls[msg.sender].amount+=uint128(amount);
@@ -134,7 +134,7 @@ contract StakingContract {
 	function unlock() public {
 		if (_ps[msg.sender].lockedAmount > 0 && block.number>=_ps[msg.sender].lockUpTo) {_ps[msg.sender].lockedAmount = 0;}
 		uint amount = _ls[msg.sender].amount;
-		if (amount > 0 && block.number>=_ls[msg.sender].lockUpTo) {I(0x0cB9dAB71Dd14951D580904825e7F0985B29D375).transfer(msg.sender,amount);_ls[msg.sender].amount = 0;}
+		if (amount > 0 && block.number>=_ls[msg.sender].lockUpTo) {I(0x95A28A02Ffb969e48B78554777f223445661fB9f).transfer(msg.sender,amount);_ls[msg.sender].amount = 0;}
 	}
 
 	function stake(uint amount) public {
@@ -153,7 +153,7 @@ contract StakingContract {
 		uint genLPtokens = _genLPtokens*1e10;
 		genLPtokens += amount;
 		_genLPtokens = uint88(genLPtokens/1e10);
-		uint share = amount*I(0x0cB9dAB71Dd14951D580904825e7F0985B29D375).balanceOf(tkn)/genLPtokens;
+		uint share = amount*I(0x95A28A02Ffb969e48B78554777f223445661fB9f).balanceOf(tkn)/genLPtokens;
 		_ps[msg.sender].tknAmount += uint128(share);
 		_ps[msg.sender].lpShare += uint128(amount);
 	}
@@ -180,7 +180,7 @@ contract StakingContract {
 		if (founder == true){_founderEpochs.push(epoch);} else {_epochs.push(epoch);}
 	}
 
-	function migrate(address contr,address tkn,uint amount) public lock {//can support any amount of bridges
+/*	function migrate(address contr,address tkn,uint amount) public lock {//can support any amount of bridges
 		if (tkn == _tokenETHLP) {
 			(uint lastClaim,bool status,uint tknAmount,uint lpShare,uint lockedAmount) = getProvider(msg.sender);
 			if (lastClaim != block.number) {_getRewards(msg.sender);}
@@ -209,13 +209,13 @@ contract StakingContract {
 	function linkAddress(address a) external { // can be used to limit the amount of testers to only approved addresses
 		require(_linked[msg.sender] != a && _taken[a] == false && I(0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe).contributions(a) == 0);
 		_linked[msg.sender] = a;_linked[a] = msg.sender;_taken[a] = true;emit AddressLinked(msg.sender,a);
-	}
+	}*/
 // VIEW FUNCTIONS ==================================================
 	function getVoter(address a) external view returns (uint128,uint128,uint128,uint128,uint128,uint128) {
 		return (_ps[a].tknAmount,_ps[a].lpShare,_ps[a].lockedAmount,_ps[a].lockUpTo,_ls[a].amount,_ls[a].lockUpTo);
 	}
 
 	function getProvider(address a)public view returns(uint,bool,uint,uint,uint){return(_ps[a].lastClaim,_ps[a].founder,_ps[a].tknAmount,_ps[a].lpShare,_ps[a].lockedAmount);}
-	function getLinked(address a) external view returns (address linked){return _linked[a];}
+//	function getLinked(address a) external view returns (address linked){return _linked[a];}
 	function _isContract(address a) internal view returns(bool) {uint s_;assembly {s_ := extcodesize(a)}return s_ > 0;}
 }
