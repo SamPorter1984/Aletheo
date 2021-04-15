@@ -8,7 +8,7 @@ pragma solidity >=0.7.0 <0.8.0;
 // 0,5% of contributed Eth goes to developer for earliest development expenses including audits and bug bounties.
 // Blockchain needs no VCs, no authorities.
 
-//import "./I.sol";
+import "./I.sol";
 
 contract FoundingEvent {
 	mapping(address => uint) public contributions;
