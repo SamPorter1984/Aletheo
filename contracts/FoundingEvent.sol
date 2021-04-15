@@ -6,7 +6,7 @@ pragma solidity >=0.7.0 <0.8.0;
 // Founders' liquidity is not locked, instead an incentive to keep it is introduced.
 // The Event lasts for ~2 months to ensure fair distribution.
 // 0,5% of contributed Eth goes to developer for earliest development expenses including audits and bug bounties.
-// Blockchain needs no VCs, no authorities.
+// Blockchain needs no VCs, no authorities.12631000 81000
 
 //import "./I.sol";
 
@@ -34,8 +34,8 @@ contract FoundingEvent {
 		address factory = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
 		address tknETHLP = I(factory).getPair(token,WETH);
 		if (tknETHLP == address(0)) {tknETHLP=I(factory).createPair(token, WETH);}
-		_ETHDeposited += address(this).balance;
 		uint ethToDeposit = address(this).balance;
+		_ETHDeposited += ethToDeposit;
 		uint tokenToDeposit = 1e23;
 		if (phase == 81000) {I(staking).init(_ETHDeposited, tknETHLP);delete _lgeOngoing; delete _ETHDeposited; delete _phase; delete _deployer;}
 		I(WETH).deposit{value: ethToDeposit}();
