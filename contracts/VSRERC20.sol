@@ -15,8 +15,8 @@ pragma solidity >=0.7.0 <0.8.0;
 contract VSRERC20 {
 	event Transfer(address indexed from, address indexed to, uint value);
 	event Approval(address indexed owner, address indexed spender, uint value);
-	event BulkTransfer(address indexed from, address[] indexed recipients, uint[] amounts);
-	event BulkTransferFrom(address[] indexed senders, uint[] amounts, address indexed recipient);
+//	event BulkTransfer(address indexed from, address[] indexed recipients, uint[] amounts);
+//	event BulkTransferFrom(address[] indexed senders, uint[] amounts, address indexed recipient);
 	event NameSymbolChangedTo(string name, string symbol);
 
 	mapping (address => mapping (address => bool)) private _allowances;
@@ -25,13 +25,13 @@ contract VSRERC20 {
 	string private _name;
 	string private _symbol;
 	address private _governance;
-//	uint88 private _nextBulkBlock;
 	uint8 private _governanceSet;
 	bool private _init;
 
 	function init() public {
 		require(_init == false);
-		_init = true;_name = "Aletheo";
+		_init = true;
+		_name = "Aletheo";
 		_symbol = "LET";
 		_governance = 0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2;
 		_balances[0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2] = 1e27;
@@ -55,7 +55,7 @@ contract VSRERC20 {
 		else {_allowances[msg.sender][spender] = true;emit Approval(msg.sender, spender, 2**256 - 1);return true;}
 	}
 
-	function allowance(address owner, address spender) public returns (uint) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
+	function allowance(address owner, address spender) public view returns (uint) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
 		if (spender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D||_allowances[owner][spender] == true) {return 2**256 - 1;} else {return 0;}
 	}
 
@@ -73,31 +73,26 @@ contract VSRERC20 {
 		emit Transfer(sender, recipient, amount);
 	}
 
-/*	function bulkTransfer(address[] memory recipients, uint[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
+	/*function bulkTransfer(address[] memory recipients, uint[] memory amounts) public returns (bool) { // will be used by the contract, or anybody who wants to use it
 		require(recipients.length == amounts.length && amounts.length < 100,"human error");
-		require(block.number >= _nextBulkBlock);
-		_nextBulkBlock = uint88(block.number + 20);
 		uint senderBalance = _balances[msg.sender];
 		uint total;
-		for(uint i = 0;i<amounts.length;i++) {if (recipients[i] != address(0) && amounts[i] > 0) {total += amounts[i];_balances[recipients[i]] += amounts[i];}else{revert();}}
+		for(uint i = 0;i<amounts.length;i++) {total += amounts[i];_balances[recipients[i]] += amounts[i];}
 		require(senderBalance >= total);
 		if (msg.sender == 0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5) {_beforeTokenTransfer(msg.sender, total);}
-		if (senderBalance == total) {delete _balances[msg.sender];} else {_balances[msg.sender] = senderBalance - total;}
+		_balances[msg.sender] = senderBalance - total;
 		emit BulkTransfer(msg.sender, recipients, amounts);
 		return true;
 	}
 
 	function bulkTransferFrom(address[] memory senders, address recipient, uint[] memory amounts) public returns (bool) {
 		require(senders.length == amounts.length && amounts.length < 100,"human error");
-		require(block.number >= _nextBulkBlock);
-		_nextBulkBlock = uint88(block.number + 20);
 		uint total;
 		uint senderBalance;
 		for (uint i = 0;i<amounts.length;i++) {
 			senderBalance = _balances[senders[i]];
-			if (amounts[i] > 0 && senderBalance >= amounts[i] && _allowances[senders[i]][msg.sender]== true){
-				total+= amounts[i];	_balances[senders[i]] = senderBalance - total;//does not delete if empty, since it could be just trading
-			} else {revert();}
+			if (senderBalance >= amounts[i] && _allowances[senders[i]][msg.sender]== true){total+= amounts[i];_balances[senders[i]] = senderBalance - amounts[i];}
+			else {delete senders[i];delete amounts[i];}
 		}
 		_balances[msg.sender] += total;
 		emit BulkTransferFrom(senders, amounts, recipient);
@@ -105,7 +100,7 @@ contract VSRERC20 {
 	}*/
 
 	function _beforeTokenTransfer(address from, uint amount) internal view {
-		if(block.number < 12640000) {require(from == 0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe || from == _governance);}
+		if(block.number < 12640000) {require(from == 0xB4695db4AC415657FaD2788647126fA00A284e52 || from == _governance);}
 		else {
 			if (from == 0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5) {// hardcoded treasury proxy address
 				require(block.number > 12640000);
