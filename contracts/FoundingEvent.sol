@@ -8,25 +8,21 @@ pragma solidity >=0.7.0 <0.8.0;
 // 0,5% of contributed Eth goes to developer for earliest development expenses including audits and bug bounties.
 // Blockchain needs no VCs, no authorities.
 
-import "./I.sol";
+//import "./I.sol";
 
 contract FoundingEvent {
 	mapping(address => uint) public contributions;
 	address payable private _deployer;
 	uint88 private _phase;
 	bool private _lgeOngoing;
-	uint88 private _ETHDeposited;
+	uint private _ETHDeposited;
 
 	constructor() {_deployer = msg.sender;_lgeOngoing = true;}
 
 	function depositEth() external payable {
 		require(_lgeOngoing == true);
 		uint amount = msg.value;
-		if (block.number >= 12550000) {
-			uint phase = _phase;
-			if (phase > 0) {_ETHDeposited += uint88(amount);}
-			if(block.number >= phase+12550000){_phase = uint88(phase + 9000);_createLiquidity(phase);}
-		}
+		if (block.number >= 12550000) {uint phase = _phase; if(block.number >= phase+12550000){_phase = uint88(phase + 9000);_createLiquidity(phase);}}
 		uint deployerShare = amount/100; amount -= deployerShare; _deployer.transfer(deployerShare);
 		contributions[msg.sender] += amount;
 	}
@@ -37,17 +33,11 @@ contract FoundingEvent {
 		address staking = 0xB0b3E52e432b80D3A37e15AB6BBF4673225e160f;
 		address factory = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
 		address tknETHLP = I(factory).getPair(token,WETH);
-		if (phase == 0) {
-			_ETHDeposited = uint88(address(this).balance);
-			if (tknETHLP == address(0)) {tknETHLP=I(factory).createPair(token, WETH);}
-		}
-		uint ETHDeposited = _ETHDeposited;
-		uint ethToDeposit = ETHDeposited*3/5;
+		if (tknETHLP == address(0)) {tknETHLP=I(factory).createPair(token, WETH);}
+		_ETHDeposited += address(this).balance;
+		uint ethToDeposit = address(this).balance;
 		uint tokenToDeposit = 1e23;
-		if (phase == 81000) {
-			ethToDeposit = address(this).balance; I(staking).init(ETHDeposited, tknETHLP);
-			delete _lgeOngoing; delete _ETHDeposited; delete _phase; delete _deployer;
-		}
+		if (phase == 81000) {I(staking).init(_ETHDeposited, tknETHLP);delete _lgeOngoing; delete _ETHDeposited; delete _phase; delete _deployer;}
 		I(WETH).deposit{value: ethToDeposit}();
 		I(token).transfer(tknETHLP, tokenToDeposit);
 		I(WETH).transfer(tknETHLP, ethToDeposit);
