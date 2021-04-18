@@ -47,7 +47,7 @@ contract StakingContract {
 		uint tknAmount = ethContributed*1e24/foundingETH;
 		_ps[msg.sender].lpShare = uint128(lpShare);
 		_ps[msg.sender].tknAmount = uint128(tknAmount);
-		_ps[msg.sender].lastClaim = 12564000; // intended bonus, not a bug
+		_ps[msg.sender].lastClaim = 12564000; // intended bonus, not a bug, a way to make founding event attractive without promising returns
 	}
 
 	function unstakeLp(bool ok,uint amount) public {
