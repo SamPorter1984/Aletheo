@@ -2,7 +2,7 @@ pragma solidity >=0.7.0;
 
 import "./I.sol";
 // a child or a separate contract will have support for stable coin based grants
-// i am thinking of moving all beneficiary logic out of treasury
+// i am thinking of moving all beneficiary logic out of treasury in next logic implementation
 contract Treasury {
 	address private _governance;
 	uint8 private _governanceSet;
@@ -45,12 +45,12 @@ contract Treasury {
 		if(toClaim > amount) {toClaim = amount;}
 		bens[msg.sender].lastClaim = uint32(block.number);
 		bens[msg.sender].amount = uint88(amount - toClaim);
-		IERC20(0x95A28A02Ffb969e48B78554777f223445661fB9f).transfer(msg.sender, toClaim);
+		I(0x95A28A02Ffb969e48B78554777f223445661fB9f).transfer(msg.sender, toClaim);
 	}
 
 	function getRewards(address acc,uint amount) external returns(bool res){ //for posters, providers and oracles
 		require(msg.sender == 0xB0b3E52e432b80D3A37e15AB6BBF4673225e160f && msg.sender == _jobMarket && msg.sender == _oracleMain);//hardcoded addresses
-		IERC20(0x95A28A02Ffb969e48B78554777f223445661fB9f).transfer(acc, amount); return true;
+		I(0x95A28A02Ffb969e48B78554777f223445661fB9f).transfer(acc, amount); return true;
 	}
 
 	function _getRate() internal view returns(uint){uint rate = 1e11; uint halver = block.number/1e7;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}}return rate;}
