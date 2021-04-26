@@ -94,7 +94,10 @@ contract StakingContract {
 		bool success = I(0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5).getRewards(a, toClaim); require(success == true);
 	}
 
-	function _getRate() internal view returns(uint){uint rate = 63e15; uint halver = block.number/1e7;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}}return rate;}
+	function _getRate() internal view returns(uint){
+		uint rate = 63e15; if (block.number < 13189285) {rate = 126e15;}
+		uint halver = block.number/1e7; if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}} return rate;
+	}
 
 	function _computeRewards(uint eBlock, uint eAmount, uint eEnd, uint tknAmount, uint rate) internal view returns(uint){
 		if(eEnd==0){eEnd = block.number;} uint blocks = eEnd - eBlock; return (blocks*tknAmount*rate/eAmount);
