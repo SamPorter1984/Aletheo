@@ -41,7 +41,8 @@ contract StakingContract {
 	function initFeature() public {require(msg.sender == 0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2 && _initF == false);_initF=true; _endEpoch(true);_endEpoch(false);}
 
 	function _endEpoch(bool founder) internal {
-		bytes32 epoch = _founderEpochs[_founderEpochs.length-1];
+		bytes32 epoch;
+		if (founder) {epoch = _founderEpochs[_founderEpochs.length-1];} else {epoch = _epochs[epochs.length-1];}
 		(uint80 eBlock,uint96 eAmount,) = _extractEpoch(epoch);
 		uint80 eEnd = uint80(block.number-1);
 		bytes memory by = abi.encodePacked(eBlock,eAmount,eEnd);
