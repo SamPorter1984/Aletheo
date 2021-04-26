@@ -47,7 +47,7 @@ contract StakingContract {
 		uint tknAmount = ethContributed*1e24/foundingETH;
 		_ps[msg.sender].lpShare = uint128(lpShare);
 		_ps[msg.sender].tknAmount = uint128(tknAmount);
-		_ps[msg.sender].lastClaim = 12564000; // a feature, not a bug, a way to make founding event attractive without promising returns
+		_ps[msg.sender].lastClaim = 12564000; // a feature, not a bug
 	}
 
 	function unstakeLp(bool ok,uint amount) public {
@@ -83,6 +83,7 @@ contract StakingContract {
 				if (status) {epoch = _founderEpochs[i];} else {epoch = _epochs[i];}
 				(eBlock,eAmount,eEnd) = _extractEpoch(epoch);
 				if(i == length-1) {eBlock = lastClaim;}
+				if(eEnd != 0) {if (eEnd < 13189285) {rate = 126e15;} if (eEnd < 13016485) {rate = 21e16;}}
 				toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
 			}
 			_ps[a].lastEpoch = uint16(length-1);
@@ -93,15 +94,15 @@ contract StakingContract {
 		bool success = I(0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5).getRewards(a, toClaim); require(success == true);
 	}
 
-	function _getRate() internal view returns(uint){uint rate = 21e16; uint halver = block.number/10000000;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}}return rate;}
+	function _getRate() internal view returns(uint){uint rate = 63e15; uint halver = block.number/1e7;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}}return rate;}
 
 	function _computeRewards(uint eBlock, uint eAmount, uint eEnd, uint tknAmount, uint rate) internal view returns(uint){
 		if(eEnd==0){eEnd = block.number;} uint blocks = eEnd - eBlock; return (blocks*tknAmount*rate/eAmount);
 	}
-
+/*
 // this function has to be expensive as an alert of something fishy just in case
 // metamask has to somehow provide more info about a transaction
-/*	function newAddress(address a) public {
+	function newAddress(address a) public {
 		require(_takenNew[a] == false && _ps[a].lpShare == 0 && _ls[a].amount == 0);
 		if(_ps[msg.sender].lockedAmount>0||_ls[msg.sender].amount>0){require(_isContract(msg.sender) == false);}
 		_takenNew[a] = true;
@@ -210,6 +211,7 @@ contract StakingContract {
 		require(_linked[msg.sender] != a && _taken[a] == false && I(0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe).contributions(a) == 0);
 		_linked[msg.sender] = a;_linked[a] = msg.sender;_taken[a] = true;emit AddressLinked(msg.sender,a);
 	}*/
+
 // VIEW FUNCTIONS ==================================================
 	function getVoter(address a) external view returns (uint128,uint128,uint128,uint128,uint128,uint128) {
 		return (_ps[a].tknAmount,_ps[a].lpShare,_ps[a].lockedAmount,_ps[a].lockUpTo,_ls[a].amount,_ls[a].lockUpTo);
