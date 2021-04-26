@@ -83,7 +83,7 @@ contract StakingContract {
 				if (status) {epoch = _founderEpochs[i];} else {epoch = _epochs[i];}
 				(eBlock,eAmount,eEnd) = _extractEpoch(epoch);
 				if(i == length-1) {eBlock = lastClaim;}
-				if(eEnd != 0) {if (eEnd < 13189285) {rate = 126e15;} if (eEnd < 13016485) {rate = 21e16;}}
+				if(eEnd != 0) {if (eEnd < 13189285) {rate = 126e15;} if (eEnd < 13016485||eBlock < 13016485) {rate = 21e16;}}
 				toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
 			}
 			_ps[a].lastEpoch = uint16(length-1);
