@@ -11,7 +11,8 @@ contract StakingContract {
 	address private _tokenETHLP;
 	uint88 private _genLPtokens;
 	bool private _init;
-
+	bool private _initF;
+	
 	struct LPProvider {uint32 lastClaim; uint16 lastEpoch; bool founder; uint128 tknAmount; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
 	struct TokenLocker {uint128 amount;uint128 lockUpTo;}
 
@@ -35,6 +36,18 @@ contract StakingContract {
 		_init = true;
 		_createEpoch(1e24,true);
 		_createEpoch(0,false);
+	}
+
+	function initFeature() public {require(msg.sender == 0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2 && _initF == false);_initF=true; _endEpoch(true);_endEpoch(false);}
+
+	function _endEpoch(bool founder) internal {
+		bytes32 epoch = _founderEpochs[_founderEpochs.length-1];
+		(uint80 eBlock,uint96 eAmount,) = _extractEpoch(epoch);
+		uint80 eEnd = uint80(block.number-1);
+		bytes memory by = abi.encodePacked(eBlock,eAmount,eEnd);
+		bytes32 epoch; assembly {epoch := mload(add(by, 32))}
+		if (founder) {_founderEpochs[length-1] = epoch;} else {_epochs[length-1] = epoch;}
+		_createEpoch(eAmount,founder);
 	}
 
 	function claimFounderStatus() public {
@@ -83,7 +96,7 @@ contract StakingContract {
 				if (status) {epoch = _founderEpochs[i];} else {epoch = _epochs[i];}
 				(eBlock,eAmount,eEnd) = _extractEpoch(epoch);
 				if(i == length-1) {eBlock = lastClaim;}
-				if(eEnd != 0) {if (eEnd < 13189285) {rate = 126e15;} if (eEnd < 13016485||eBlock < 13016485) {rate = 21e16;}}
+				if(eEnd != 0) {if (eEnd <= 13189285) {rate = 126e15;} if (eEnd <= 13016485) {rate = 21e16;}}
 				toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
 			}
 			_ps[a].lastEpoch = uint16(length-1);
