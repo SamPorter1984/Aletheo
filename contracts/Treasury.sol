@@ -38,6 +38,7 @@ contract Treasury {
 	}
 
 	function getBeneficiaryRewards() external {
+		require(block.number > 1264e4);
 		uint lastClaim = bens[msg.sender].lastClaim;
 		uint amount = bens[msg.sender].amount;
 		uint rate = _getRate();
