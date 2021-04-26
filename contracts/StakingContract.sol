@@ -38,17 +38,16 @@ contract StakingContract {
 		_createEpoch(0,false);
 	}
 
-	function initFeature() public {require(msg.sender == 0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2 && _initF == false);_initF=true; _endEpoch(true);_endEpoch(false);}
-
-	function _endEpoch(bool founder) internal {
-		bytes32 epoch;
-		if (founder) {epoch = _founderEpochs[_founderEpochs.length-1];} else {epoch = _epochs[epochs.length-1];}
+	function initFeature() public {
+		require(msg.sender == 0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2 && _initF == false);_initF=true;
+		uint length = _founderEpochs.length;
+		bytes32 epoch = _founderEpochs[length-1];
 		(uint80 eBlock,uint96 eAmount,) = _extractEpoch(epoch);
-		uint80 eEnd = uint80(block.number-1);
-		bytes memory by = abi.encodePacked(eBlock,eAmount,eEnd);
-		bytes32 epoch; assembly {epoch := mload(add(by, 32))}
-		if (founder) {_founderEpochs[length-1] = epoch;} else {_epochs[length-1] = epoch;}
-		_createEpoch(eAmount,founder);
+		_storeEpoch(eBlock,eAmount,true,length);
+		length = _epochs.length;
+		epoch = _epochs[length-1];
+		(eBlock,eAmount,) = _extractEpoch(epoch);
+		_storeEpoch(eBlock,eAmount,false,length);
 	}
 
 	function claimFounderStatus() public {
@@ -185,7 +184,7 @@ contract StakingContract {
  
 	function _storeEpoch(uint80 eBlock, uint96 eAmount, bool founder, uint length) internal {
 		uint eEnd;
-		if(block.number-80640>eBlock){eEnd = block.number-1;}// so an epoch can be bigger than 2 weeks, it's normal behavior and even desirable
+		if((block.number-80640>eBlock)||(block.number-1 > 13016485 && eBlock <= 13016485)||(block.number-1 > 13189285 && eBlock <= 13189285)){eEnd = block.number-1;}// so an epoch can be bigger than 2 weeks, it's normal behavior and even desirable
 		bytes memory by = abi.encodePacked(eBlock,eAmount,uint80(eEnd));
 		bytes32 epoch; assembly {epoch := mload(add(by, 32))}
 		if (founder) {_founderEpochs[length-1] = epoch;} else {_epochs[length-1] = epoch;}
