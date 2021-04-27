@@ -16,18 +16,18 @@ contract Treasury {
 		require(_init == false && msg.sender == 0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2);
 		_init=true;
 		_governance = msg.sender;
-		setBeneficiary(true,0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2,32857142857e12,0,1e4);
-		setBeneficiary(true,0x174F4EbE08a7193833e985d4ef0Ad6ce50F7cBc4,28857142857e12,0,1e4);
-		setBeneficiary(true,0xFA9675E41a9457E8278B2701C504cf4d132Fe2c2,19285714286e12,0,1e4);
+		setBeneficiary(0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2,true,32857142857e12,1264e4,1e4);
+		setBeneficiary(0x174F4EbE08a7193833e985d4ef0Ad6ce50F7cBc4,true,28857142857e12,1264e4,1e4);
+		setBeneficiary(0xFA9675E41a9457E8278B2701C504cf4d132Fe2c2,true,19285714286e12,1264e4,1e4);
 	}
 // so we assume that not only beneficiaries but also the governance is malicious
 // the function can overwrite some existing beneficiaries parameters
 // or we do it differently: a boolean that makes a grant editable/removable/irremovable, so that governance can express trust,
-// because if a malicious beneficiary scams governance, governance can ruin that beneficiary' reputation, 
+// because if a malicious beneficiary scams governance, governance can ruin that beneficiary' reputation,
 // however if malicious governance scams a beneficiary, beneficiary can't do anything
 // best solution is yet to be found, design could change
-	function setBeneficiary(bool solid, address a, uint amount, uint lastClaim, uint emission) public {
-		require(amount<=3e22 && bens[a].solid == false && lastClaim < block.number+1e6 && emission >= 1e2 && emission <=1e4 && msg.sender == _governance && lastClaim >= 1264e4);
+	function setBeneficiary(address a, bool solid, uint amount, uint lastClaim, uint emission) public {
+		require(msg.sender == _governance && bens[a].solid == false && amount<=4e22 && lastClaim < block.number+1e6 && lastClaim >= 1264e4 && emission >= 1e2 && emission <=1e4);
 		if(lastClaim < block.number) {lastClaim = block.number;}
 		if (solid == true) {bens[a].solid = true;}
 		uint lc = bens[a].lastClaim;
@@ -38,7 +38,6 @@ contract Treasury {
 	}
 
 	function getBeneficiaryRewards() external {
-		require(block.number > 1264e4);
 		uint lastClaim = bens[msg.sender].lastClaim;
 		uint amount = bens[msg.sender].amount;
 		uint rate = _getRate();
@@ -46,7 +45,7 @@ contract Treasury {
 		require(amount > 0 && block.number > lastClaim);
 		if(toClaim > amount) {toClaim = amount;}
 		bens[msg.sender].lastClaim = uint32(block.number);
-		bens[msg.sender].amount = uint88(amount - toClaim);
+		bens[msg.sender].amount = uint88(amount) - uint88(toClaim);
 		I(0x95A28A02Ffb969e48B78554777f223445661fB9f).transfer(msg.sender, toClaim);
 	}
 
