@@ -9,7 +9,7 @@ pragma solidity >=0.7.0 <0.9.0;
 // Maybe not even required for most contracts, but I kept it in case if something happens to developers.
 // 2. PROPOSE_BLOCK defines how often the contract can be upgraded. Defined in _setNextLogic() function and the interval here is set
 // to 172800 blocks ~1 month.
-// 3. Admin rights are burnable. Rather not do that without deadline
+// 3. Admin rights are burnable
 // 4. prolongLock() allows to add to PROPOSE_BLOCK. Basically allows to prolong lock. For example if there no upgrades planned soon,
 // then this function could be called to set next upgrade being possible only in a year, so investors won't need to monitor the code too closely
 // all the time. Could prolong to maximum solidity number so the deadline might not be needed 
@@ -17,7 +17,8 @@ pragma solidity >=0.7.0 <0.9.0;
 // Users have time to decide on if the deployer or the governance is malicious and exit safely.
 // 6. constructor does not require arguments
 
-// Upgradeability is not about fixing bugs, but about upgradeability, so yeah, proposed logic has to be clean.
+// It fixes "upgradeability bug" I believe. Also I sincerely believe that upgradeability is not about fixing bugs, but about upgradeability,
+// so yeah, proposed logic has to be clean and without typos(!).
 // In my heart it exists as eip-1984 but it's too late for that number. https://ethereum-magicians.org/t/trust-minimized-proxy/5742/2
 
 contract TrustMinimizedProxy{
@@ -49,7 +50,6 @@ contract TrustMinimizedProxy{
 	function _nextLogicBlock() internal view returns (uint bl) {assembly { bl := sload(NEXT_LOGIC_BLOCK_SLOT) }}
 //	function _deadline() internal view returns (uint bl) {assembly { bl := sload(DEADLINE_SLOT) }}
 	function _admin() internal view returns (address adm) {assembly { adm := sload(ADMIN_SLOT) }}
-	function _isContract(address account) internal view returns (bool b) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}//not required
 	function _setAdmin(address newAdm) internal {assembly {sstore(ADMIN_SLOT, newAdm)}}
 	function changeAdmin(address newAdm) external ifAdmin {emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
 	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock());address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT,logic)}emit Upgraded(logic);}
@@ -57,22 +57,18 @@ contract TrustMinimizedProxy{
 	receive () external payable {_fallback();}
 	function _fallback() internal {require(msg.sender != _admin());_delegate(_logic());}
 	function cancelUpgrade() external ifAdmin {address logic; assembly {logic := sload(LOGIC_SLOT)sstore(NEXT_LOGIC_SLOT, logic)}emit NextLogicCanceled(logic);}
-
-	function proposeTo(address newLogic) external ifAdmin {//not required
-		if (_logic() == address(0)) {_updateBlockSlots();assembly {sstore(LOGIC_SLOT,newLogic)}emit Upgraded(newLogic);} else{_setNextLogic(newLogic);}
-	}
 	
 	function prolongLock(uint block_) external ifAdmin {
 		uint pb; assembly {pb := sload(PROPOSE_BLOCK_SLOT) pb := add(pb,block_) sstore(PROPOSE_BLOCK_SLOT,pb)}emit UpgradesRestrictedUntil(pb);
 	}
 	
 	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {
-		if (_logic() == address(0)) {_updateBlockSlots();assembly {sstore(LOGIC_SLOT,newLogic)}}else{_setNextLogic(newLogic);}
+		if (_logic() == address(0)) {_updateBlockSlots();assembly {sstore(LOGIC_SLOT,newLogic)}emit Upgraded(newLogic);}else{_setNextLogic(newLogic);}
 		(bool success,) = newLogic.delegatecall(data);require(success);
 	}
 
 	function _setNextLogic(address nextLogic) internal {
-		require(block.number >= _proposeBlock() && _isContract(nextLogic));
+		require(block.number >= _proposeBlock());
 		_updateBlockSlots();
 		assembly { sstore(NEXT_LOGIC_SLOT, nextLogic)}
 		emit NextLogicDefined(nextLogic,block.number + 172800);
