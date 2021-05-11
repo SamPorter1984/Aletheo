@@ -49,7 +49,7 @@ contract TrustMinimizedProxy{
 	function _nextLogicBlock() internal view returns (uint bl) {assembly { bl := sload(NEXT_LOGIC_BLOCK_SLOT) }}
 //	function _deadline() internal view returns (uint bl) {assembly { bl := sload(DEADLINE_SLOT) }}
 	function _admin() internal view returns (address adm) {assembly { adm := sload(ADMIN_SLOT) }}
-	function _isContract(address account) internal view returns (bool b) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}
+	function _isContract(address account) internal view returns (bool b) {uint256 size;assembly {size := extcodesize(account)}return size > 0;}//not required
 	function _setAdmin(address newAdm) internal {assembly {sstore(ADMIN_SLOT, newAdm)}}
 	function changeAdmin(address newAdm) external ifAdmin {emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
 	function upgrade() external ifAdmin {require(block.number>=_nextLogicBlock());address logic;assembly {logic := sload(NEXT_LOGIC_SLOT) sstore(LOGIC_SLOT,logic)}emit Upgraded(logic);}
@@ -58,7 +58,7 @@ contract TrustMinimizedProxy{
 	function _fallback() internal {require(msg.sender != _admin());_delegate(_logic());}
 	function cancelUpgrade() external ifAdmin {address logic; assembly {logic := sload(LOGIC_SLOT)sstore(NEXT_LOGIC_SLOT, logic)}emit NextLogicCanceled(logic);}
 
-	function proposeTo(address newLogic) external ifAdmin {
+	function proposeTo(address newLogic) external ifAdmin {//not required
 		if (_logic() == address(0)) {_updateBlockSlots();assembly {sstore(LOGIC_SLOT,newLogic)}emit Upgraded(newLogic);} else{_setNextLogic(newLogic);}
 	}
 	
