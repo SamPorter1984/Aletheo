@@ -57,5 +57,5 @@ contract Treasury {
 	function _getRate() internal view returns(uint){uint rate = 1e11; uint halver = block.number/1e7;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}}return rate;}
 
 	function setGovernance(address a) public {require(_governanceSet < 3 && msg.sender == _governance);_governanceSet += 1;_governance = a;}
-	function setContracts(address j, address om) public {require(msg.sender == _governance); _jobMarket = j; _oracleMain = om;}
+	function setContracts(address j, address om) public {require(msg.sender == _governance); _jobMarket = j; _oracleMain = om;}// forgot to add a boolean for convenience, it's ok though
 }
