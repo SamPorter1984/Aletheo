@@ -58,7 +58,7 @@ contract TrustMinimizedProxy{
 	function _fallback() internal {require(msg.sender != _admin());_delegate(_logic());}
 	function cancelUpgrade() external ifAdmin {address logic; assembly {logic := sload(LOGIC_SLOT)sstore(NEXT_LOGIC_SLOT, logic)}emit NextLogicCanceled(logic);}
 	
-	function prolongLock(uint block_) external ifAdmin {// if interpreter is below 0.8.0, then it overflows
+	function prolongLock(uint block_) external ifAdmin {// if interpreter is below 0.8.0, then it can overflow
 		uint pb; assembly {pb := sload(PROPOSE_BLOCK_SLOT) pb := add(pb,block_) sstore(PROPOSE_BLOCK_SLOT,pb)}emit UpgradesRestrictedUntil(pb);
 	}
 	
