@@ -70,12 +70,12 @@ contract TrustMinimizedProxy{
 	}
 	
 	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {
-		if (_logic() == address(0) || _trustMinimized() != 1) {_updateBlockSlots();assembly {sstore(LOGIC_SLOT,newLogic)}emit Upgraded(newLogic);}else{_setNextLogic(newLogic);}
+		if (_logic() == address(0) || _trustMinimized() == false) {_updateBlockSlots();assembly {sstore(LOGIC_SLOT,newLogic)}emit Upgraded(newLogic);}else{_setNextLogic(newLogic);}
 		(bool success,) = newLogic.delegatecall(data);require(success);
 	}
 
 	function removeTrust() external ifAdmin { // before this called acts like a normal eip 1967 transparent proxy. after the deployer confirms everything is deployed correctly must be called
-		assembly{ sstore(TRUST_MINIMIZED_SLOT, 1) }
+		assembly{ sstore(TRUST_MINIMIZED_SLOT, true) }
 		emit TrustRemoved();
 	}
 
