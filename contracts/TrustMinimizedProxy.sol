@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0 <0.9.0;
 
 // OpenZeppelin Upgradeability contracts modified by Sam Porter. Proxy for Nameless Protocol contracts
@@ -7,26 +8,25 @@ pragma solidity >=0.8.0 <0.9.0;
 // but in one contract with some differences:
 // 1. DEADLINE is a block after which it becomes impossible to upgrade the contract. Defined in constructor and here it's ~2 years.
 // Maybe not even required for most contracts, but I kept it in case if something happens to developers.
-// 2. PROPOSE_BLOCK defines how often the contract can be upgraded. Defined in _setNextLogic() function and the interval here is set
-// to 172800 blocks ~1 month.
+// 2. with prolongLock() PROPOSE_BLOCK seals the code and proposals of next logic for as long as required.
+// For example if there no upgrades planned soon, then this function could be called to set next upgrade
+// being possible only in a year, so investors won't need to monitor the code too closely all the time.
 // 3. Admin rights are burnable
-// 4. prolongLock() allows to add to PROPOSE_BLOCK. Basically allows to prolong lock. For example if there no upgrades planned soon,
-// then this function could be called to set next upgrade being possible only in a year, so investors won't need to monitor the code too closely
-// all the time. Could prolong to maximum solidity number so the deadline might not be needed 
-// 5. logic contract is not being set suddenly. it's being stored in NEXT_LOGIC_SLOT for a month and only after that it can be set as LOGIC_SLOT.
+// 4. logic contract is not being set suddenly. it's being stored in NEXT_LOGIC_SLOT for a month(this value
+// is being kept in NEXT_LOGIC_BLOCK_SLOT) and only after that it can be set as LOGIC_SLOT.
 // Users have time to decide on if the deployer or the governance is malicious and exit safely.
-// 6. constructor does not require arguments
-// 7. before removeTrust() is called, the proxy acts like eip-1967 proxy, can be upgraded at any point in time. it's to counter human error,
+// 5. constructor does not require arguments
+// 6. before removeTrust() is called, the proxy acts like eip-1967 proxy, can be upgraded at any point in time. it's to counter human error,
 // after deployer confirms that everything is deployed correctly, must be called
 
 // It fixes "upgradeability bug" I believe. Also I sincerely believe that upgradeability is not about fixing bugs, but about upgradeability,
-// so yeah, proposed logic has to be clean and without typos(!).
+// so yeah, proposed logic has to be clean and without typos(!) and overflows(!).
 // In my heart it exists as eip-1984 but it's too late for that number. https://ethereum-magicians.org/t/trust-minimized-proxy/5742/2
 
-contract TrustMinimizedProxy{
+contract TrustMinimizedProxy{ // THE CODE FITS ON THE SCREEN UNBELIAVABLE LETS STOP ENDLESS SCROLLING UP AND DOWN
 	event Upgraded(address indexed toLogic);
 	event AdminChanged(address indexed previousAdmin, address indexed newAdmin);
-	event NextLogicDefined(address indexed nextLogic, uint timeOfArrivalBlock);
+	event NextLogicDefined(address indexed nextLogic, uint earliestArrivalBlock);
 	event UpgradesRestrictedUntil(uint block);
 	event NextLogicCanceled(address indexed toLogic);
 	event TrustRemoved();
@@ -63,31 +63,14 @@ contract TrustMinimizedProxy{
 	receive () external payable {_fallback();}
 	function _fallback() internal {require(msg.sender != _admin());_delegate(_logic());}
 	function cancelUpgrade() external ifAdmin {address logic; assembly {logic := sload(LOGIC_SLOT)sstore(NEXT_LOGIC_SLOT, logic)}emit NextLogicCanceled(logic);}
-	
-	function prolongLock(uint b) external ifAdmin {
-		uint a = _proposeBlock(); uint pb = a + b; require(pb > a);// if interpreter is below 0.8.0, then it can overflow
-		assembly {sstore(PROPOSE_BLOCK_SLOT,pb)} emit UpgradesRestrictedUntil(pb);
-	}
-	
+	function prolongLock(uint b) external ifAdmin {require(b > _proposeBlock()); assembly {sstore(PROPOSE_BLOCK_SLOT,b)} emit UpgradesRestrictedUntil(b);}// if interpreter is below 0.8.0, then it can overflow
+	function removeTrust() external ifAdmin {assembly{ sstore(TRUST_MINIMIZED_SLOT, true) }emit TrustRemoved();} // before this called acts like a normal eip 1967 transparent proxy. after the deployer confirms everything is deployed correctly must be called
+	function _updateBlockSlots() internal {uint nlb = block.number + 172800; assembly {sstore(NEXT_LOGIC_BLOCK_SLOT,nlb)}}
+	function _setNextLogic(address nl) internal {require(block.number >= _proposeBlock());_updateBlockSlots();assembly { sstore(NEXT_LOGIC_SLOT, nl)}emit NextLogicDefined(nl,block.number + 172800);}
+
 	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {
 		if (_logic() == address(0) || _trustMinimized() == false) {_updateBlockSlots();assembly {sstore(LOGIC_SLOT,newLogic)}emit Upgraded(newLogic);}else{_setNextLogic(newLogic);}
 		(bool success,) = newLogic.delegatecall(data);require(success);
-	}
-
-	function removeTrust() external ifAdmin { // before this called acts like a normal eip 1967 transparent proxy. after the deployer confirms everything is deployed correctly must be called
-		assembly{ sstore(TRUST_MINIMIZED_SLOT, true) }
-		emit TrustRemoved();
-	}
-
-	function _setNextLogic(address nextLogic) internal {
-		require(block.number >= _proposeBlock());
-		_updateBlockSlots();
-		assembly { sstore(NEXT_LOGIC_SLOT, nextLogic)}
-		emit NextLogicDefined(nextLogic,block.number + 172800);
-	}
-
-	function _updateBlockSlots() internal {
-	    uint proposeBlock = block.number + 172800;uint nextLogicBlock = block.number + 172800; assembly {sstore(NEXT_LOGIC_BLOCK_SLOT,nextLogicBlock) sstore(PROPOSE_BLOCK_SLOT,proposeBlock)}
 	}
 
 	function _delegate(address logic_) internal {
