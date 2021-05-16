@@ -9,16 +9,18 @@ contract Treasury {
 	bool private _init;
 	address private _jobMarket;
 	address private _oracleMain;// oracle registry contract
+	uint88 private _totalBenEmission;
 
 	struct Beneficiary {bool solid; uint88 amount; uint32 lastClaim; uint16 emission;}
 	mapping (address => Beneficiary) public bens;
+
 	function init() public {
 		require(_init == false && msg.sender == 0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2);
 		_init=true;
 		_governance = msg.sender;
 		setBeneficiary(0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2,true,32857142857e12,1264e4,1e4);
 		setBeneficiary(0x174F4EbE08a7193833e985d4ef0Ad6ce50F7cBc4,true,28857142857e12,1264e4,1e4);
-		setBeneficiary(0xFA9675E41a9457E8278B2701C504cf4d132Fe2c2,true,19285714286e12,1264e4,1e4);
+		setBeneficiary(0xFA9675E41a9457E8278B2701C504cf4d132Fe2c2,true,25285714286e12,1264e4,1e4);
 	}
 // so we assume that not only beneficiaries but also the governance is malicious
 // the function can overwrite some existing beneficiaries parameters
@@ -28,6 +30,8 @@ contract Treasury {
 // best solution is yet to be found, design could change
 	function setBeneficiary(address a, bool solid, uint amount, uint lastClaim, uint emission) public {
 		require(msg.sender == _governance && bens[a].solid == false && amount<=4e22 && lastClaim < block.number+1e6 && lastClaim >= 1264e4 && emission >= 1e2 && emission <=1e4);
+		uint totalBenEmission = _totalBenEmission;
+		require(totalBenEmission <= 4e5);//can't surpass 80k per year
 		if(lastClaim < block.number) {lastClaim = block.number;}
 		if (solid == true) {bens[a].solid = true;}
 		uint lc = bens[a].lastClaim;
@@ -35,17 +39,20 @@ contract Treasury {
 		if (bens[a].amount == 0 && lc != 0) {bens[a].lastClaim = uint32(lastClaim);}
 		bens[a].amount = uint88(amount);
 		bens[a].emission = uint16(emission);
+		_totalBenEmission = totalBenEmission + uint88(emission);
 	}
 
 	function getBeneficiaryRewards() external {
 		uint lastClaim = bens[msg.sender].lastClaim;
 		uint amount = bens[msg.sender].amount;
 		uint rate = _getRate();
-		uint toClaim = (block.number - lastClaim)*bens[msg.sender].emission*rate;
+		uint emission = bens[msg.sender].emission;
+		uint toClaim = (block.number - lastClaim)*emission*rate;
 		require(amount > 0 && block.number > lastClaim);
 		if(toClaim > amount) {toClaim = amount;}
 		bens[msg.sender].lastClaim = uint32(block.number);
 		bens[msg.sender].amount = uint88(amount) - uint88(toClaim);
+		if (toClaim == amount) {_totalBenEmission -= emission;}
 		I(0x95A28A02Ffb969e48B78554777f223445661fB9f).transfer(msg.sender, toClaim);
 	}
 
@@ -55,7 +62,6 @@ contract Treasury {
 	}
 
 	function _getRate() internal view returns(uint){uint rate = 1e11; uint halver = block.number/1e7;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}}return rate;}
-
 	function setGovernance(address a) public {require(_governanceSet < 3 && msg.sender == _governance);_governanceSet += 1;_governance = a;}
 	function setContracts(address j, address om) public {require(msg.sender == _governance); _jobMarket = j; _oracleMain = om;}// forgot to add a boolean for convenience, it's ok though
 }
