@@ -31,7 +31,7 @@ contract Treasury {
 	function setBeneficiary(address a, bool solid, uint amount, uint lastClaim, uint emission) public {
 		require(msg.sender == _governance && bens[a].solid == false && amount<=4e22 && lastClaim < block.number+1e6 && lastClaim >= 1264e4 && emission >= 1e2 && emission <=1e4);
 		uint totalBenEmission = _totalBenEmission;
-		require(totalBenEmission <= 4e5);//can't surpass 80k per year
+		require(totalBenEmission <= 5e5);//can't surpass 100k per year
 		if(lastClaim < block.number) {lastClaim = block.number;}
 		if (solid == true) {bens[a].solid = true;}
 		uint lc = bens[a].lastClaim;
