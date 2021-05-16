@@ -1,18 +1,33 @@
-pragma solidity >=0.7.0 <=0.8.0;
+/**
+ *Submitted for verification at Etherscan.io on 2021-04-15
+*/
+
+pragma solidity >=0.6.0 <0.8.0;
+interface I {
+	function balanceOf(address a) external view returns (uint);
+	function transfer(address recipient, uint amount) external returns (bool);
+	function transferFrom(address sender,address recipient, uint amount) external returns (bool);
+	function totalSupply() external view returns (uint);
+//	function getLastVoted(address account) external view returns (uint lastVoted); function changeAddress(address acc,address acc1) external;
+	function getRewards(address a,uint rewToClaim) external returns(bool);
+	function contributions(address a) external view returns(uint);
+//	function providerMigr(address a,uint lpShare,uint lastClaim,uint lastEpoch,uint tknAmount,bool status) external;function lockerMigr(address a,uint amount,uint lockUpTo) external;
+}
+
+pragma solidity >=0.8.0 <0.9.0;
 // i almost want to change the entire system only to make the code look more or less nice
 // did change it a small bit: founders are unable to stake generic liquidity on top of their share, or it will be too expensive to sload
 // for that they will have to use another address
 
-import "./I.sol";
+//import "./I.sol";
 
 contract StakingContract {
 	uint128 private _foundingETHDeposited;
 	uint128 private _foundingLPtokensMinted;
 	address private _tokenETHLP;
-	uint88 private _genLPtokens;
 	bool private _init;
-	bool private _initF;
-	
+	uint88 private _genLPtokens;
+
 	struct LPProvider {uint32 lastClaim; uint16 lastEpoch; bool founder; uint128 tknAmount; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
 	struct TokenLocker {uint128 amount;uint128 lockUpTo;}
 
@@ -25,7 +40,6 @@ contract StakingContract {
 //	mapping(address => bool) private _takenNew;
 //	mapping(address => address) private _linked;
 //	mapping(address => bool) private _taken;
-
 //	event AddressLinked(address indexed a1, address indexed a2);
 
 	function init(uint foundingETH, address tkn) public {
@@ -38,18 +52,6 @@ contract StakingContract {
 		_createEpoch(0,false);
 	}
 
-	function initFeature() public {
-		require(msg.sender == 0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2 && _initF == false);_initF=true;
-		uint length = _founderEpochs.length;
-		bytes32 epoch = _founderEpochs[length-1];
-		(uint80 eBlock,uint96 eAmount,) = _extractEpoch(epoch);
-		_storeEpoch(eBlock,eAmount,true,length);
-		length = _epochs.length;
-		epoch = _epochs[length-1];
-		(eBlock,eAmount,) = _extractEpoch(epoch);
-		_storeEpoch(eBlock,eAmount,false,length);
-	}
-
 	function claimFounderStatus() public {
 		uint ethContributed = I(0xB4695db4AC415657FaD2788647126fA00A284e52).contributions(msg.sender);
 		require(ethContributed > 0);
@@ -60,7 +62,7 @@ contract StakingContract {
 		uint tknAmount = ethContributed*1e24/foundingETH;
 		_ps[msg.sender].lpShare = uint128(lpShare);
 		_ps[msg.sender].tknAmount = uint128(tknAmount);
-		_ps[msg.sender].lastClaim = 12564000; // a feature, not a bug
+		_ps[msg.sender].lastClaim = 12640000;
 	}
 
 	function unstakeLp(bool ok,uint amount) public {
@@ -96,7 +98,6 @@ contract StakingContract {
 				if (status) {epoch = _founderEpochs[i];} else {epoch = _epochs[i];}
 				(eBlock,eAmount,eEnd) = _extractEpoch(epoch);
 				if(i == length-1) {eBlock = lastClaim;}
-				if(eEnd != 0) {if (eEnd <= 13189285) {rate = 126e15;} if (eEnd <= 13016485) {rate = 21e16;}}
 				toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
 			}
 			_ps[a].lastEpoch = uint16(length-1);
@@ -107,18 +108,15 @@ contract StakingContract {
 		bool success = I(0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5).getRewards(a, toClaim); require(success == true);
 	}
 
-	function _getRate() internal view returns(uint){
-		uint rate = 63e15; if (block.number < 13189285) {rate = 126e15;}
-		uint halver = block.number/1e7; if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}} return rate;
-	}
+	function _getRate() internal view returns(uint){uint rate = 105e15; uint halver = block.number/10000000;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}}return rate;}
 
 	function _computeRewards(uint eBlock, uint eAmount, uint eEnd, uint tknAmount, uint rate) internal view returns(uint){
 		if(eEnd==0){eEnd = block.number;} uint blocks = eEnd - eBlock; return (blocks*tknAmount*rate/eAmount);
 	}
-/*
+
 // this function has to be expensive as an alert of something fishy just in case
 // metamask has to somehow provide more info about a transaction
-	function newAddress(address a) public {
+/*	function newAddress(address a) public {
 		require(_takenNew[a] == false && _ps[a].lpShare == 0 && _ls[a].amount == 0);
 		if(_ps[msg.sender].lockedAmount>0||_ls[msg.sender].amount>0){require(_isContract(msg.sender) == false);}
 		_takenNew[a] = true;
@@ -136,7 +134,7 @@ contract StakingContract {
 	}*/
 
 	function lockFor3Years(bool ok, address tkn, uint amount) public {
-		require(ok==true && amount>0 && _isContract(msg.sender) == false);
+		require(ok==true && amount>0/* && _isContract(msg.sender) == false*/);
 		if(tkn ==_tokenETHLP) {
 			require(_ps[msg.sender].lpShare-_ps[msg.sender].lockedAmount>=amount); _ps[msg.sender].lockUpTo=uint128(block.number+6307200);_ps[msg.sender].lockedAmount+=uint128(amount);	
 		}
@@ -184,7 +182,7 @@ contract StakingContract {
  
 	function _storeEpoch(uint80 eBlock, uint96 eAmount, bool founder, uint length) internal {
 		uint eEnd;
-		if((block.number-80640>eBlock)||(block.number-1 > 13016485 && eBlock <= 13016485)||(block.number-1 > 13189285 && eBlock <= 13189285)){eEnd = block.number-1;}// so an epoch can be bigger than 2 weeks, it's normal behavior and even desirable
+		if(block.number-80640>eBlock){eEnd = block.number-1;}// so an epoch can be bigger than 2 weeks, it's normal behavior and even desirable
 		bytes memory by = abi.encodePacked(eBlock,eAmount,uint80(eEnd));
 		bytes32 epoch; assembly {epoch := mload(add(by, 32))}
 		if (founder) {_founderEpochs[length-1] = epoch;} else {_epochs[length-1] = epoch;}
@@ -227,7 +225,6 @@ contract StakingContract {
 		require(_linked[msg.sender] != a && _taken[a] == false && I(0x350E3Ef976c649BeaAD702e9c02A833D20A63CBe).contributions(a) == 0);
 		_linked[msg.sender] = a;_linked[a] = msg.sender;_taken[a] = true;emit AddressLinked(msg.sender,a);
 	}*/
-
 // VIEW FUNCTIONS ==================================================
 	function getVoter(address a) external view returns (uint128,uint128,uint128,uint128,uint128,uint128) {
 		return (_ps[a].tknAmount,_ps[a].lpShare,_ps[a].lockedAmount,_ps[a].lockUpTo,_ls[a].amount,_ls[a].lockUpTo);
@@ -235,5 +232,8 @@ contract StakingContract {
 
 	function getProvider(address a)public view returns(uint,bool,uint,uint,uint){return(_ps[a].lastClaim,_ps[a].founder,_ps[a].tknAmount,_ps[a].lpShare,_ps[a].lockedAmount);}
 //	function getLinked(address a) external view returns (address linked){return _linked[a];}
-	function _isContract(address a) internal view returns(bool) {uint s_;assembly {s_ := extcodesize(a)}return s_ > 0;}
+//	function _isContract(address a) internal view returns(bool) {uint s_;assembly {s_ := extcodesize(a)}return s_ > 0;}
 }
+
+
+
