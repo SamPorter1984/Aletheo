@@ -16,6 +16,8 @@ pragma solidity >=0.8.0 <0.9.0;
 // 5. logic contract is not being set suddenly. it's being stored in NEXT_LOGIC_SLOT for a month and only after that it can be set as LOGIC_SLOT.
 // Users have time to decide on if the deployer or the governance is malicious and exit safely.
 // 6. constructor does not require arguments
+// 7. before removeTrust() is called, the proxy acts like eip-1967 proxy, can be upgraded at any point in time. it's to counter human error,
+// after deployer confirms that everything is deployed correctly, must be called
 
 // It fixes "upgradeability bug" I believe. Also I sincerely believe that upgradeability is not about fixing bugs, but about upgradeability,
 // so yeah, proposed logic has to be clean and without typos(!).
@@ -27,18 +29,21 @@ contract TrustMinimizedProxy{
 	event NextLogicDefined(address indexed nextLogic, uint timeOfArrivalBlock);
 	event UpgradesRestrictedUntil(uint block);
 	event NextLogicCanceled(address indexed toLogic);
-	
+	event TrustRemoved();
+
 	bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 	bytes32 internal constant LOGIC_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 	bytes32 internal constant NEXT_LOGIC_SLOT = 0xb182d207b11df9fb38eec1e3fe4966cf344774ba58fb0e9d88ea35ad46f3601e;
 	bytes32 internal constant NEXT_LOGIC_BLOCK_SLOT = 0x96de003e85302815fe026bddb9630a50a1d4dc51c5c355def172204c3fd1c733;
 	bytes32 internal constant PROPOSE_BLOCK_SLOT = 0xbc9d35b69e82e85049be70f91154051f5e20e574471195334bde02d1a9974c90;
 //	bytes32 internal constant DEADLINE_SLOT = 0xb124b82d2ac46ebdb08de751ebc55102cc7325d133e09c1f1c25014e20b979ad;
+	bytes32 internal constant TRUST_MINIMIZED_SLOT = 0xa0ea182b754772c4f5848349cff27d3431643ba25790e0c61a8e4bdf4cec9201;
 
 	constructor() payable {
 		require(ADMIN_SLOT == bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1) && LOGIC_SLOT==bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1) // this require is simply against human error, can be removed if you know what you are doing
 		&& NEXT_LOGIC_SLOT == bytes32(uint256(keccak256('eip1984.proxy.nextLogic')) - 1) && NEXT_LOGIC_BLOCK_SLOT == bytes32(uint256(keccak256('eip1984.proxy.nextLogicBlock')) - 1)
-		&& PROPOSE_BLOCK_SLOT == bytes32(uint256(keccak256('eip1984.proxy.proposeBlock')) - 1)/* && DEADLINE_SLOT == bytes32(uint256(keccak256('eip1984.proxy.deadline')) - 1)*/);
+		&& PROPOSE_BLOCK_SLOT == bytes32(uint256(keccak256('eip1984.proxy.proposeBlock')) - 1)/* && DEADLINE_SLOT == bytes32(uint256(keccak256('eip1984.proxy.deadline')) - 1)*/
+		&& TRUST_MINIMIZED_SLOT == bytes32(uint256(keccak256('eip1984.proxy.trustMinimized')) - 1));
 		_setAdmin(msg.sender);
 //		uint deadline = block.number + 4204800; // ~2 years as default
 //		assembly {sstore(DEADLINE_SLOT,deadline)}
@@ -49,6 +54,7 @@ contract TrustMinimizedProxy{
 	function _proposeBlock() internal view returns (uint bl) {assembly { bl := sload(PROPOSE_BLOCK_SLOT) }}
 	function _nextLogicBlock() internal view returns (uint bl) {assembly { bl := sload(NEXT_LOGIC_BLOCK_SLOT) }}
 //	function _deadline() internal view returns (uint bl) {assembly { bl := sload(DEADLINE_SLOT) }}
+	function _trustMinimized() internal view returns (bool tm) {assembly { tm := sload(TRUST_MINIMIZED_SLOT) }}
 	function _admin() internal view returns (address adm) {assembly { adm := sload(ADMIN_SLOT) }}
 	function _setAdmin(address newAdm) internal {assembly {sstore(ADMIN_SLOT, newAdm)}}
 	function changeAdmin(address newAdm) external ifAdmin {emit AdminChanged(_admin(), newAdm);_setAdmin(newAdm);}
@@ -58,13 +64,19 @@ contract TrustMinimizedProxy{
 	function _fallback() internal {require(msg.sender != _admin());_delegate(_logic());}
 	function cancelUpgrade() external ifAdmin {address logic; assembly {logic := sload(LOGIC_SLOT)sstore(NEXT_LOGIC_SLOT, logic)}emit NextLogicCanceled(logic);}
 	
-	function prolongLock(uint block_) external ifAdmin {// if interpreter is below 0.8.0, then it can overflow
-		uint pb; assembly {pb := sload(PROPOSE_BLOCK_SLOT) pb := add(pb,block_) sstore(PROPOSE_BLOCK_SLOT,pb)}emit UpgradesRestrictedUntil(pb);
+	function prolongLock(uint b) external ifAdmin {
+		uint a = _proposeBlock(); uint pb = a + b; require(pb > a);// if interpreter is below 0.8.0, then it can overflow
+		assembly {sstore(PROPOSE_BLOCK_SLOT,pb)} emit UpgradesRestrictedUntil(pb);
 	}
 	
 	function proposeToAndCall(address newLogic, bytes calldata data) payable external ifAdmin {
-		if (_logic() == address(0)) {_updateBlockSlots();assembly {sstore(LOGIC_SLOT,newLogic)}emit Upgraded(newLogic);}else{_setNextLogic(newLogic);}
+		if (_logic() == address(0) || _trustMinimized() != 1) {_updateBlockSlots();assembly {sstore(LOGIC_SLOT,newLogic)}emit Upgraded(newLogic);}else{_setNextLogic(newLogic);}
 		(bool success,) = newLogic.delegatecall(data);require(success);
+	}
+
+	function removeTrust() external ifAdmin { // before this called acts like a normal eip 1967 transparent proxy. after the deployer confirms everything is deployed correctly must be called
+		assembly{ sstore(TRUST_MINIMIZED_SLOT, 1) }
+		emit TrustRemoved();
 	}
 
 	function _setNextLogic(address nextLogic) internal {
