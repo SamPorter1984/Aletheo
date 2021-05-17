@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: much wow
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4 <0.9.0;
 interface I {
 	function balanceOf(address a) external view returns (uint);
@@ -123,14 +123,14 @@ contract StakingContract {
 		if (_ls[S].amount > 0) {_ls[a].amount=_ls[S].amount;_ls[a].lockUpTo=_ls[S].lockUpTo;delete _ls[S];}
 	}*/
 
-	function lockFor3Years(bool ok, address tkn, uint amount) public {
+	function lockFor6Months(bool ok, address tkn, uint amount) public {
 		require(ok==true && amount>0);
 		if(tkn ==_tokenETHLP) {
-			require(_ps[msg.sender].lpShare-_ps[msg.sender].lockedAmount>=amount); _ps[msg.sender].lockUpTo=uint128(block.number+6307200);_ps[msg.sender].lockedAmount+=uint128(amount);	
+			require(_ps[msg.sender].lpShare-_ps[msg.sender].lockedAmount>=amount); _ps[msg.sender].lockUpTo=uint128(block.number+1e6);_ps[msg.sender].lockedAmount+=uint128(amount);	
 		}
 		if(tkn == 0x1565616E3994353482Eb032f7583469F5e0bcBEC) {
 			require(I(tkn).balanceOf(msg.sender)>=amount);
-			_ls[msg.sender].lockUpTo=uint128(block.number+6e6);
+			_ls[msg.sender].lockUpTo=uint128(block.number+1e6);
 			_ls[msg.sender].amount+=uint128(amount);
 			I(tkn).transferFrom(msg.sender,address(this),amount);
 		}
