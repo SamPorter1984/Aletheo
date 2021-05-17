@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.7.0 <0.8.0;
+pragma solidity >=0.8.4 <0.9.0;
+// since contract is now upgradeable with EIP-3561 proxy, name can be changed anyway with an upgrade, so that was removed
+// added hardcoded uni v3 router to allowances
 
 // A modification of OpenZeppelin ERC20
 // Original can be found here: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol
@@ -12,20 +14,19 @@ pragma solidity >=0.7.0 <0.8.0;
 // Token name and symbol can be changed.
 // Bulk transfer allows to transact in bulk cheaper by making up to three times less store writes in comparison to regular erc-20 transfers
 
-contract VSRERC20 {
+interface I{function lgeOngoing() external returns(bool);}
+
+contract VSRERC {
 	event Transfer(address indexed from, address indexed to, uint value);
 	event Approval(address indexed owner, address indexed spender, uint value);
 //	event BulkTransfer(address indexed from, address[] indexed recipients, uint[] amounts);
 //	event BulkTransferFrom(address[] indexed senders, uint[] amounts, address indexed recipient);
-	event NameSymbolChangedTo(string name, string symbol);
 
 	mapping (address => mapping (address => bool)) private _allowances;
 	mapping (address => uint) private _balances;
 
 	string private _name;
 	string private _symbol;
-	address private _governance;
-	uint8 private _governanceSet;
 	bool private _init;
 
 	function init() public {
@@ -33,12 +34,10 @@ contract VSRERC20 {
 		_init = true;
 		_name = "Aletheo";
 		_symbol = "LET";
-		_governance = 0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2;
-		_balances[0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2] = 1e27;
-		emit NameSymbolChangedTo("Aletheo","LET");
+		_balances[0x901628CF11454AFF335770e8a9407CccAb3675BE] = 1e24;
+		_balances[0x3E6AE87673424B1a1111E7F8180294B57be36476] = 999e24;
 	}
 
-	modifier onlyGovernance() {require(msg.sender == _governance);_;}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
 	function totalSupply() public view returns (uint) {uint supply = (block.number - 12640000)*42e16+1e24;if (supply > 1e27) {supply = 1e27;}return supply;}
@@ -46,9 +45,6 @@ contract VSRERC20 {
 	function balanceOf(address a) public view returns (uint) {return _balances[a];}
 	function transfer(address recipient, uint amount) public returns (bool) {_transfer(msg.sender, recipient, amount);return true;}
 	function disallow(address spender) public returns (bool) {delete _allowances[msg.sender][spender];emit Approval(msg.sender, spender, 0);return true;}
-	function setNameSymbol(string memory n_, string memory s_) public onlyGovernance {_name = n_;_symbol = s_;emit NameSymbolChangedTo(n_,s_);}
-	function setGovernance(address a) public onlyGovernance {require(_governanceSet < 3);_governanceSet += 1;_governance = a;}
-	function _isContract(address a) internal view returns(bool) {uint s_;assembly {s_ := extcodesize(a)}return s_ > 0;}
 
 	function approve(address spender, uint amount) public returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
 		if (spender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D) {emit Approval(msg.sender, spender, 2**256 - 1);return true;}
@@ -59,8 +55,8 @@ contract VSRERC20 {
 		if (spender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D||_allowances[owner][spender] == true) {return 2**256 - 1;} else {return 0;}
 	}
 
-	function transferFrom(address sender, address recipient, uint amount) public returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
-		require(msg.sender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D||_allowances[sender][msg.sender] == true);_transfer(sender, recipient, amount);return true;
+	function transferFrom(address sender, address recipient, uint amount) public returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library, also univ3 router now
+		require(msg.sender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D|| msg.sender == 0xE592427A0AEce92De3Edee1F18E0157C05861564 || _allowances[sender][msg.sender] == true);_transfer(sender, recipient, amount);return true;
 	}
 
 	function _transfer(address sender, address recipient, uint amount) internal {
@@ -79,7 +75,7 @@ contract VSRERC20 {
 		uint total;
 		for(uint i = 0;i<amounts.length;i++) {total += amounts[i];_balances[recipients[i]] += amounts[i];}
 		require(senderBalance >= total);
-		if (msg.sender == 0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5) {_beforeTokenTransfer(msg.sender, total);}
+		if (msg.sender == 0x3E6AE87673424B1a1111E7F8180294B57be36476) {_beforeTokenTransfer(msg.sender, total);}
 		_balances[msg.sender] = senderBalance - total;
 		emit BulkTransfer(msg.sender, recipients, amounts);
 		return true;
@@ -99,12 +95,12 @@ contract VSRERC20 {
 		return true;
 	}*/
 
-	function _beforeTokenTransfer(address from, uint amount) internal view {
-		if(block.number < 12640000) {require(from == 0xB4695db4AC415657FaD2788647126fA00A284e52 || from == _governance);}
+	function _beforeTokenTransfer(address from, uint amount) internal {
+		if(I(0x901628CF11454AFF335770e8a9407CccAb3675BE).lgeOngoing() == true) {require(from == 0x901628CF11454AFF335770e8a9407CccAb3675BE);}
 		else {
-			if (from == 0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5) {// hardcoded treasury proxy address
+			if (from == 0x3E6AE87673424B1a1111E7F8180294B57be36476) {// hardcoded treasury proxy address
 				require(block.number > 12640000);
-				uint treasury = _balances[0xFBcEd1B6BaF244c20Ae896BAAc1d74d88c6E0CD5];
+				uint treasury = _balances[0x3E6AE87673424B1a1111E7F8180294B57be36476];
 				uint withd =  999e24 - treasury;
 				uint allowed = (block.number - 12640000)*42e16 - withd;
 				require(amount <= allowed && amount <= treasury);
