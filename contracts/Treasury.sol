@@ -46,12 +46,12 @@ contract Treasury {
 		if(toClaim > amount) {toClaim = amount;}
 		bens[msg.sender].lastClaim = uint32(block.number);
 		bens[msg.sender].amount = uint88(amount) - uint88(toClaim);
-		I(0x95A28A02Ffb969e48B78554777f223445661fB9f).transfer(msg.sender, toClaim);
+		I(0x1565616E3994353482Eb032f7583469F5e0bcBEC).transfer(msg.sender, toClaim);
 	}
 
 	function getRewards(address a,uint amount) external returns(bool res){ //for posters, providers and oracles
-		require(msg.sender == 0xB0b3E52e432b80D3A37e15AB6BBF4673225e160f || msg.sender == _jobMarket || msg.sender == _oracleMain);//hardcoded addresses
-		I(0x95A28A02Ffb969e48B78554777f223445661fB9f).transfer(a, amount); return true;
+		require(msg.sender == 0x109533F9e10d4AEEf6d74F1e2D59a9ed11266f27 || msg.sender == _jobMarket || msg.sender == _oracleMain);//hardcoded addresses
+		I(0x1565616E3994353482Eb032f7583469F5e0bcBEC).transfer(a, amount); return true;
 	}
 
 	function _getRate() internal view returns(uint){uint rate = 1e11; uint halver = block.number/1e7;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}}return rate;}
