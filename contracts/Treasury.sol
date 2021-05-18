@@ -37,20 +37,16 @@ contract Treasury {
 		bens[a].emission = uint16(emission);
 	}
 
-	function getBeneficiaryRewards() external returns(bool){
-		uint lastClaim = bens[msg.sender].lastClaim;
-		uint amount = bens[msg.sender].amount;
-		uint rate = 1e11; uint quarter = block.number/1e7;if (quarter>1) { for (uint i=1;i<quarter;i++) {rate=rate*3/4;} }
-		uint toClaim = (block.number - lastClaim)*bens[msg.sender].emission*rate;
-		require(amount > 0 && block.number > lastClaim);
-		if(toClaim > amount) {toClaim = amount;}
-		bens[msg.sender].lastClaim = uint32(block.number);
-		bens[msg.sender].amount = uint88(amount) - uint88(toClaim);
-		bool success = I(0x1565616E3994353482Eb032f7583469F5e0bcBEC).transfer(msg.sender, toClaim); return success;
+	function getBeneficiaryRewards() external{
+		uint lastClaim = bens[msg.sender].lastClaim; uint rate = 1e11; uint quarter = block.number/1e7;
+		if (quarter>1) { for (uint i=1;i<quarter;i++) {rate=rate*3/4;} }
+		uint toClaim = (block.number - lastClaim)*bens[msg.sender].emission*rate; // if toClaim is 0(not a beneficiary) transaction goes through, but it's empty, so you just lose money on gas
+		bens[msg.sender].lastClaim = uint32(block.number); bens[msg.sender].amount -= uint88(toClaim);
+		I(0x1565616E3994353482Eb032f7583469F5e0bcBEC).transfer(msg.sender, toClaim);
 	}
 
 // these checks leave less room for deployer to be malicious
-	function getRewards(address a,uint amount) external returns(bool){ //for posters, providers and oracles
+	function getRewards(address a,uint amount) external{ //for posters, providers and oracles
 		require(msg.sender == 0x109533F9e10d4AEEf6d74F1e2D59a9ed11266f27 || msg.sender == 0xEcCD8639eA31FAfe9e9646Fbf31310Ec489ad1C8 || msg.sender == 0xde97e5a2fAe859ac24F70D1f251B82D6A9B77296);
 		if (msg.sender == 0xEcCD8639eA31FAfe9e9646Fbf31310Ec489ad1C8) {// if job market(posters)
 				uint withd =  999e24 - I(0x1565616E3994353482Eb032f7583469F5e0bcBEC).balanceOf(address(this));// balanceOf(treasury)
@@ -62,7 +58,7 @@ contract Treasury {
 				uint allowed = (block.number - 1264e4)*42e15 - withd;//10% of all emission max, maybe actually should be less, depends on stuff
 				require(amount <= allowed);
 		}
-		bool success = I(0x1565616E3994353482Eb032f7583469F5e0bcBEC).transfer(a, amount); return success;
+		I(0x1565616E3994353482Eb032f7583469F5e0bcBEC).transfer(a, amount);
 	}
 
 	function setGovernance(address a) public {require(_governanceSet < 3 && msg.sender == _governance);_governanceSet += 1;_governance = a;}
