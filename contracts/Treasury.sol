@@ -1,5 +1,5 @@
 pragma solidity >=0.8.4 <0.9.0;
-// a child or a separate contract will have support for stable coin based grants
+// stable coin based grants in next implementation
 // i am thinking of moving all beneficiary logic out of treasury in next implementation
 interface I{function transfer(address to, uint value) external returns(bool);}
 contract Treasury {
@@ -24,6 +24,8 @@ contract Treasury {
 // because if a malicious beneficiary scams governance, governance can ruin that beneficiary' reputation,
 // however if malicious governance scams a beneficiary, beneficiary can't do anything
 // best solution is yet to be found, design could change
+// another way could be is to disallow editing/removing grants at all but give those grants in small parts instead
+// so future small parts could be cancelled if required
 	function setBeneficiary(address a, bool solid, uint amount, uint lastClaim, uint emission) public {
 		require(msg.sender == _governance && bens[a].solid == false && amount<=4e22 && lastClaim < block.number+1e6 && emission >= 1e2 && emission <=1e4);
 		if(lastClaim < block.number) {lastClaim = block.number;}
@@ -31,7 +33,7 @@ contract Treasury {
 		if(lastClaim > 12510400 && lastClaim < 1264e4) {lastClaim = 1264e4;}//so it adds even more convenience
 		if (solid == true) {bens[a].solid = true;}
 		uint lc = bens[a].lastClaim;
-		if (lc == 0) {bens[a].lastClaim = uint32(lastClaim+129600);} // this delay disallows deployer to be malicious, can be removed after the governance will have control over treasury
+		if (lc == 0) {bens[a].lastClaim = uint32(lastClaim+129600);} // this 3 weeks delay disallows deployer to be malicious, can be removed after the governance will have control over treasury
 		if (bens[a].amount == 0 && lc != 0) {bens[a].lastClaim = uint32(lastClaim);}
 		bens[a].amount = uint88(amount);
 		bens[a].emission = uint16(emission);
@@ -40,8 +42,9 @@ contract Treasury {
 	function getBeneficiaryRewards() external{
 		uint lastClaim = bens[msg.sender].lastClaim; uint rate = 1e11; uint quarter = block.number/1e7;
 		if (quarter>1) { for (uint i=1;i<quarter;i++) {rate=rate*3/4;} }
-		uint toClaim = (block.number - lastClaim)*bens[msg.sender].emission*rate; // if toClaim is 0(not a beneficiary) transaction goes through, but it's empty, so you just lose money on gas
-		bens[msg.sender].lastClaim = uint32(block.number); bens[msg.sender].amount -= uint88(toClaim);
+		uint toClaim = (block.number - lastClaim)*bens[msg.sender].emission*rate;
+		bens[msg.sender].lastClaim = uint32(block.number);
+		bens[msg.sender].amount -= uint88(toClaim);
 		I(0x1565616E3994353482Eb032f7583469F5e0bcBEC).transfer(msg.sender, toClaim);
 	}
 
