@@ -4,7 +4,7 @@ This version is only for browsers based on Firefox.
 
 2.install the extension
 
-3.generate new poster address(which is not supposed to hold any funds)
+3.generate new poster address(which is not supposed to hold any real funds, so if you don't know what you are doing, don't transfer anything to this address for your security)
 
 4.go to https://faucet.matic.network/ and enter your poster address, get the tokens
 
