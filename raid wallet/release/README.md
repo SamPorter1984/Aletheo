@@ -12,4 +12,4 @@ This version is only for browsers based on Firefox.
 
 6.enter your rewards address and save(the address from something secure at least like Metamask which will receive actual rewards)
 
-7.post in threads which have "Aletheo General" in topic and receive mainnet tokens
+7.post in threads which have "Aletheo General" in topic and receive mainnet tokens as rewards
