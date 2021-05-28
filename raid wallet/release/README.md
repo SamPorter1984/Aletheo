@@ -1,6 +1,6 @@
 This version is only for browsers based on Firefox.
 
-1.download .xpi file, easier to do this with Firefox. 
+1.download latest .xpi file, easier to do this with Firefox. 
 
 2.install the extension(click on it when you have Firefox installed, if you didn't do this with Firefox in first step)
 
