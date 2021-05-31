@@ -1,6 +1,6 @@
-This version is only for browsers based on Firefox.
+This version is only for browsers based on Firefox*
 
-1.download latest .xpi file, easier to do this with Firefox. 
+1.download latest .xpi file 0.1.1, easier to do this with Firefox.
 
 2.install the extension(click on it when you have Firefox installed, if you didn't do this with Firefox in first step)
 
@@ -13,3 +13,5 @@ This version is only for browsers based on Firefox.
 6.enter your rewards address and save(the address from something secure at least like Metamask which will receive actual rewards)
 
 7.post in threads which have "Aletheo General" in topic and receive mainnet tokens as rewards
+
+**You can still install it in Chromium based browser, by changing file extension from .xpi to .zip, enable developer mode in Chromium, and load the extension clicking on it's manifest.json, it works just fine*
