@@ -8,10 +8,20 @@ This version is only for browsers based on Firefox*
 
 4.go to https://faucet.matic.network/ and enter your poster address, get the tokens
 
-5.go to https://rpc.maticvigil.com and register a free rpc, enter it in the extension and save
+5.go to https://infura.io/ and register a free rpc
 
-6.enter your rewards address and save(the address from something secure at least like Metamask which will receive actual rewards)
+6.click change plan for Infura, scroll down to network addons and choose Polygon PoS
 
-7.post in threads which have "Aletheo General" in topic and receive mainnet tokens as rewards
+7.on the next page choose free plan and enter valid bank card number, save it then click update subscription
+
+8.then find "create new project" and create infura project with any name
+
+9.find "endpoints" dropdown in project settings and choose Mumbai Polygon
+
+10.copy Mumbai endpoint url
+
+11.enter copied url in Aletheo extension Mumbai Testnet RPC URL and click save
+
+Now you can post in threads which have "Aletheo General" in topic and receive mainnet tokens as rewards or you can create Aletheo General threads
 
 **You can still install it in Chromium based browser, by changing file extension from .xpi to .zip, unpack it, enable developer mode in Chromium, and load the extension clicking on it's manifest.json, it works just fine*
