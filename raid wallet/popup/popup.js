@@ -65,6 +65,9 @@ document.addEventListener("DOMContentLoaded", function() {
 			deleteAddress();
 		});
 	});
+	document.getElementById("copyAddress").addEventListener("click", function(event){event.preventDefault();event.stopPropagation();copyAddress();});
+	document.getElementById("copyMnemonic").addEventListener("click", function(event){event.preventDefault();event.stopPropagation();copyMnemonic();});
+	document.getElementById("copyPrivateKey").addEventListener("click", function(event){event.preventDefault();event.stopPropagation();copyPrivateKey();});
 });
 
 function showAddress(address) {
@@ -133,6 +136,28 @@ function setRpcProvider() {
 	browser.storage.local.set({rpcUrl: rpcProvider});
 }
 
-function editRewardsAddress() {document.getElementById("rewardsAddressDivSet").style.display = "block";document.getElementById("rewardsAddressDiv").style.display = "none";}
+function editRewardsAddress() {
+	document.getElementById("rewardsAddressDivSet").style.display="block";
+	rewardsAddress=document.getElementById("rewardsAddress").innerHTML;
+	document.getElementById("rewardsAddressInput").value=rewardsAddress;
+	document.getElementById("rewardsAddressDiv").style.display="none";
+}
 
-function editRpcProvider() {document.getElementById("rpcProviderDivSet").style.display = "block";document.getElementById("rpcProviderDiv").style.display = "none";}
+function editRpcProvider() {
+	let temp=document.getElementById("rpcProviderDivSet");
+	temp.style.display="block";rpcProvider=document.getElementById("rpcProvider").innerHTML;temp.value=rpcProvider;document.getElementById("rpcProviderDiv").style.display="none";
+}
+
+function copyAddress() {let copy = document.getElementById("address").innerHTML;tempTextArea(copy);}
+function copyMnemonic() {let copy = document.getElementById("mnemonic").innerHTML;tempTextArea(copy);}
+function copyPrivateKey() {let copy = document.getElementById("privateKey").innerHTML;tempTextArea(copy);}
+
+function tempTextArea(copy) {
+	let ar = document.createElement("textarea");
+	document.body.appendChild(ar);
+	ar.value = copy;
+	ar.select();
+	ar.setSelectionRange(0, 99999);
+	document.execCommand("copy");
+	ar.remove();
+}
