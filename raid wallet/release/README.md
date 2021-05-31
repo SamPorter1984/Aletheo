@@ -14,4 +14,4 @@ This version is only for browsers based on Firefox*
 
 7.post in threads which have "Aletheo General" in topic and receive mainnet tokens as rewards
 
-**You can still install it in Chromium based browser, by changing file extension from .xpi to .zip, enable developer mode in Chromium, and load the extension clicking on it's manifest.json, it works just fine*
+**You can still install it in Chromium based browser, by changing file extension from .xpi to .zip, unpack it, enable developer mode in Chromium, and load the extension clicking on it's manifest.json, it works just fine*
