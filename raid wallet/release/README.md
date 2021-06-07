@@ -9,3 +9,5 @@ If you have successfully performed above steps, now you can post in threads whic
 0.1.4 still requires to click additional button. Everytime you type on specific imageboards, a small "transact" button appears, you must click on it after *your post is ready* and you won't edit it anymore, so just before sending your post to the website. After you click on it, wait for "pending" to change to "success", then you can post.
 
 **You can still install it in Chromium based browser, by changing file extension from .xpi to .zip, unpack it, enable developer mode in Chromium, and load the extension clicking on it's manifest.json, it works just fine*
+
+**WARNING: EXTENSION SECURITY IS STILL NOT A PRIORITY.** Do not store any funds in this wallet.
