@@ -8,13 +8,14 @@ interface I{
 	function transfer(address to, uint value) external returns(bool);
 	function mint(address to) external returns(uint liquidity);
 }
-// Author: Sam Porter
+// Author: SamPorter1984
 // With LGE it's now possible to create fairer distribution and fund promising projects without VC vultures at all.
 // This one is trust-minimized as much as possible, iquidity is being created automatically.
 // Founders' liquidity is not locked, instead an incentive to keep it is introduced.
 // The Event lasts for ~2 months to ensure fair distribution.
 // 0,5% of contributed Eth goes to developer for earliest development expenses including audits and bug bounties.
-// Blockchain needs no VCs, no authorities.12600000 40000
+// Blockchain needs no VCs, no authorities
+
 contract FoundingEvent {
 	mapping(address => uint) public contributions;
 	address payable private _deployer;
@@ -27,15 +28,15 @@ contract FoundingEvent {
 	function depositEth() external payable {
 		require(lgeOngoing == true);
 		uint amount = msg.value;
-		if (block.number >= 126e5) {uint phase = _phase; if(block.number >= phase+126e5){_phase = uint88(phase + 1e4);_createLiquidity(phase);}}
 		uint deployerShare = amount/100; amount -= deployerShare; _deployer.transfer(deployerShare);
 		contributions[msg.sender] += amount;
+		if (block.number >= 126e5) {uint phase = _phase; if(block.number >= phase+126e5){_phase = uint88(phase + 1e4);_createLiquidity(phase);}}
 	}
 
 	function _createLiquidity(uint phase) internal {
 		address payable WETH = payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-		address token = 0x1565616E3994353482Eb032f7583469F5e0bcBEC;
-		address staking = 0x109533F9e10d4AEEf6d74F1e2D59a9ed11266f27;
+		address token = //0x1565616E3994353482Eb032f7583469F5e0bcBEC;
+		address staking = //0x109533F9e10d4AEEf6d74F1e2D59a9ed11266f27;
 		address factory = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
 		address tknETHLP = I(factory).getPair(token,WETH);
 		if (tknETHLP == address(0)) {tknETHLP=I(factory).createPair(token, WETH);}
