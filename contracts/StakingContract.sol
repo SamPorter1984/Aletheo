@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.4 <0.9.0;
+pragma solidity ^0.7.6;
 interface I {
 	function balanceOf(address a) external view returns (uint);
 	function transfer(address recipient, uint amount) external returns (bool);
@@ -7,7 +7,7 @@ interface I {
 	function totalSupply() external view returns (uint);
 //	function getLastVoted(address account) external view returns (uint lastVoted); function changeAddress(address acc,address acc1) external;
 	function getRewards(address a,uint rewToClaim) external returns(bool);
-	function contributions(address a) external view returns(uint);
+	function deposits(address a) external view returns(uint);
 //	function providerMigr(address a,uint lpShare,uint lastClaim,uint lastEpoch,uint tknAmount,bool status) external;function lockerMigr(address a,uint amount,uint lockUpTo) external;
 }
 
@@ -18,8 +18,8 @@ contract StakingContract {
 	uint128 private _foundingETHDeposited;
 	uint128 private _foundingLPtokensMinted;
 	address private _tokenETHLP;
-	bool private _init;
-	uint88 private _genLPtokens;
+	bool private _genesis;
+	uint private _genLPtokens;
 
 	struct LPProvider {uint32 lastClaim; uint16 lastEpoch; bool founder; uint128 tknAmount; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
 	struct TokenLocker {uint128 amount;uint128 lockUpTo;}
@@ -32,20 +32,20 @@ contract StakingContract {
 //	mapping(address => address) public newAddresses;
 //	mapping(address => bool) private _takenNew;
 
-	function init(uint foundingETH, address tkn) public {
-		require(msg.sender == 0x901628CF11454AFF335770e8a9407CccAb3675BE && _init == false);
+	function genesis(uint foundingETH, address tkn) public {
+		require(msg.sender == 0x901628CF11454AFF335770e8a9407CccAb3675BE && _genesis == false);
 		_foundingETHDeposited = uint128(foundingETH);
 		_foundingLPtokensMinted = uint128(I(tkn).balanceOf(address(this)));
 		_tokenETHLP = tkn;
-		_init = true;
+		_genesis = true;
 		_createEpoch(0,false);
 		_createEpoch(1e24,true);
 	}
 
 	function claimFounderStatus() public {
-		uint ethContributed = I(0x901628CF11454AFF335770e8a9407CccAb3675BE).contributions(msg.sender);
+		uint ethContributed = I(0x901628CF11454AFF335770e8a9407CccAb3675BE).deposits(msg.sender);
 		require(ethContributed > 0);
-		require(_init == true && _ps[msg.sender].founder == false);
+		require(_genesis == true && _ps[msg.sender].founder == false);
 		_ps[msg.sender].founder = true;
 		uint foundingETH = _foundingETHDeposited;
 		uint lpShare = _foundingLPtokensMinted*ethContributed/foundingETH;
@@ -64,7 +64,7 @@ contract StakingContract {
 		_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
 		bytes32 epoch; uint length;
 		if (status == true) {length = _founderEpochs.length; epoch = _founderEpochs[length-1];}
-		else{length = _epochs.length; epoch = _epochs[length-1];_genLPtokens -= uint88(amount/1e10);}
+		else{length = _epochs.length; epoch = _epochs[length-1];_genLPtokens -= amount;}
 		(uint80 eBlock,uint96 eAmount,) = _extractEpoch(epoch);
 		eAmount -= uint96(toSubtract);
 		_storeEpoch(eBlock,eAmount,status,length);
@@ -155,9 +155,9 @@ contract StakingContract {
 		eAmount += uint96(amount);
 		_storeEpoch(eBlock,eAmount,false,length);
 		_ps[msg.sender].lastEpoch = uint16(_epochs.length);
-		uint genLPtokens = _genLPtokens*1e10;
+		uint genLPtokens = _genLPtokens;
 		genLPtokens += amount;
-		_genLPtokens = uint88(genLPtokens/1e10);
+		_genLPtokens = genLPtokens;
 		uint share = amount*I(0x1565616E3994353482Eb032f7583469F5e0bcBEC).balanceOf(tkn)/genLPtokens;
 		_ps[msg.sender].tknAmount += uint128(share);
 		_ps[msg.sender].lpShare += uint128(amount);
@@ -195,7 +195,7 @@ contract StakingContract {
 			_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
 			uint length; bytes32 epoch;
 			if (status == true){length = _founderEpochs.length; epoch = _founderEpochs[length-1];}
-			else{length = _epochs.length; epoch = _epochs[length-1]; _genLPtokens -= uint88(amount/1e10);}
+			else{length = _epochs.length; epoch = _epochs[length-1]; _genLPtokens -= amount;}
 			(uint80 eBlock, uint96 eAmount,) = _extractEpoch(epoch);
 			eAmount -= uint96(toSubtract);
 			_storeEpoch(eBlock,eAmount,status,length);
