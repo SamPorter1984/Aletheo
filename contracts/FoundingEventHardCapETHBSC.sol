@@ -28,7 +28,8 @@ contract FoundingEvent {
 //	function emergency() public {require(msg.sender == _deployer);_emergency = true;}
 //	function withdraw() public {uint d = deposits[msg.sender];require(_emergency == true && d > 0); address payable s = msg.sender;(s).transfer(d);}
 //	function defineBridge(address b) public {require(msg.sender == _deployer); _bridge = b;}
-
+	function addressBalance() external pure returns(uint){return address(this).balance;}
+	
 	function depositEth() external payable {
 		require(_lgeOngoing == true);
 		uint amount = msg.value;
@@ -36,7 +37,6 @@ contract FoundingEvent {
 		deposits[msg.sender] += amount;
 		if (address(this).balance > _hardcap) {/*_triggerBSCLaunch();*/_createLiquidity();}
 	}
-
 
 	function _createLiquidity() internal {
 		genesisBlock = block.number;
