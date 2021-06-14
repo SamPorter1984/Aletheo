@@ -18,17 +18,16 @@ contract FoundingEvent {
 	bool private _notInit;
 	uint private _hardcap;
 	uint public genesisBlock;
-//	address private _bridge;
+	address private _oracle;
 //	bool private _emergency;
 
 	constructor() {_deployer = msg.sender;}
 	function startLGE(uint hc) external {require(msg.sender == _deployer && hc < 5e21 && hc > 1e20);if(_hardcap != 0){require(hc<_hardcap);}_lgeOngoing = true; _hardcap = hc;}
+	function defineBridge(address o) public {require(msg.sender == _deployer); _oracle = o;}
+	function triggerLaunch() public {require(_lgeOngoing == true && msg.sender == _oracle);_createLiquidity();}
 //	function _triggerBSCLaunch() internal { address b = _bridge; if(b != address(0)){I(_bridge).triggerBSCLaunch();} }
-//	function triggerLaunch() public {require(_lgeOngoing == true && msg.sender == _bridge);_createLiquidity();}
 //	function emergency() public {require(msg.sender == _deployer);_emergency = true;}
 //	function withdraw() public {uint d = deposits[msg.sender];require(_emergency == true && d > 0); address payable s = msg.sender;(s).transfer(d);}
-//	function defineBridge(address b) public {require(msg.sender == _deployer); _bridge = b;}
-	function addressBalance() external pure returns(uint){return address(this).balance;}
 
 	function depositEth() external payable {
 		require(_lgeOngoing == true);
