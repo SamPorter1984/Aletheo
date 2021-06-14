@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.4 <0.9.0;
-// since contract is now upgradeable with EIP-3561 proxy, name can be changed anyway with an upgrade, so that was removed
-// added hardcoded uni v3 router to allowances
+pragma solidity ^0.7.6;
 
 // A modification of OpenZeppelin ERC20
 // Original can be found here: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol
@@ -14,7 +12,7 @@ pragma solidity >=0.8.4 <0.9.0;
 // Token name and symbol can be changed.
 // Bulk transfer allows to transact in bulk cheaper by making up to three times less store writes in comparison to regular erc-20 transfers
 
-interface I{function lgeOngoing() external returns(bool);}
+interface I{function genesisBlock() external view returns(uint);}
 
 contract VSRERC {
 	event Transfer(address indexed from, address indexed to, uint value);
@@ -27,7 +25,9 @@ contract VSRERC {
 
 	string private _name;
 	string private _symbol;
+//	address private _bridge;
 	bool private _init;
+//	bool private _bridgeDefined;
 
 	function init() public {
 		require(_init == false);
@@ -35,12 +35,12 @@ contract VSRERC {
 		_name = "Aletheo";
 		_symbol = "LET";
 		_balances[0x901628CF11454AFF335770e8a9407CccAb3675BE] = 1e24;
-		_balances[0x3E6AE87673424B1a1111E7F8180294B57be36476] = 999e24;
+		_balances[0x3E6AE87673424B1a1111E7F8180294B57be36476] = 9e24;
 	}
-
+//	function defineBridge(address b) public {require(msg.sender == 0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2 && _bridgeDefined == false);_bridgeDefined == true; _bridge = b;_balances[b] = 10e24;}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
-	function totalSupply() public view returns (uint) {uint supply = (block.number - 12640000)*42e16+1e24;if (supply > 1e27) {supply = 1e27;}return supply;}
+	function totalSupply() public pure returns (uint) {return 10e24;}
 	function decimals() public pure returns (uint) {return 18;}
 	function balanceOf(address a) public view returns (uint) {return _balances[a];}
 	function transfer(address recipient, uint amount) public returns (bool) {_transfer(msg.sender, recipient, amount);return true;}
@@ -95,16 +95,14 @@ contract VSRERC {
 		return true;
 	}*/
 
-	function _beforeTokenTransfer(address from, uint amount) internal {
-		if(I(0x901628CF11454AFF335770e8a9407CccAb3675BE).lgeOngoing() == true) {require(from == 0x901628CF11454AFF335770e8a9407CccAb3675BE);}
-		else {
-			if (from == 0x3E6AE87673424B1a1111E7F8180294B57be36476) {// hardcoded treasury proxy address
-				require(block.number > 12640000);
-				uint treasury = _balances[0x3E6AE87673424B1a1111E7F8180294B57be36476];
-				uint withd =  999e24 - treasury;
-				uint allowed = (block.number - 12640000)*42e16 - withd;
-				require(amount <= allowed && amount <= treasury);
-			}
+	function _beforeTokenTransfer(address from, uint amount) internal view {
+		if(from == 0x3E6AE87673424B1a1111E7F8180294B57be36476) {	
+			uint genesisBlock = I(0x901628CF11454AFF335770e8a9407CccAb3675BE).genesisBlock();
+			require(genesisBlock != 0);
+			uint treasury = _balances[0x3E6AE87673424B1a1111E7F8180294B57be36476]; 
+			uint withd =  9e24 - treasury; 
+			uint allowed = (block.number - genesisBlock)*42e16 - withd;
+			require(amount <= allowed && amount <= treasury);
 		}
 	}
 }
