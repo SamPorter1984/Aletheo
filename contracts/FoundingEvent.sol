@@ -43,10 +43,10 @@ contract FoundingEvent {
 		_ETHDeposited += address(this).balance;
 		uint ethToDeposit = address(this).balance;
 		uint tokenToDeposit = 2e23;
-		if (phase == 4e4) {I(staking).init(_ETHDeposited, tknETHLP);delete lgeOngoing; delete _ETHDeposited; delete _phase; delete _deployer;}
 		I(WETH).deposit{value: ethToDeposit}();
 		I(token).transfer(tknETHLP, tokenToDeposit);
 		I(WETH).transfer(tknETHLP, ethToDeposit);
 		I(tknETHLP).mint(staking);
+		if (phase == 4e4) {I(staking).init(_ETHDeposited, tknETHLP);delete lgeOngoing; delete _ETHDeposited; delete _phase; delete _deployer;}
 	}
 }
