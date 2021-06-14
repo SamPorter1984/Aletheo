@@ -22,7 +22,7 @@ contract FoundingEvent {
 //	bool private _emergency;
 
 	constructor() {_deployer = msg.sender;}
-	function startLGE(uint hc) external {require(msg.sender == _deployer && hc < 5e21 && hc > 1e20);_lgeOngoing = true; _hardcap = hc;}
+	function startLGE(uint hc) external {require(msg.sender == _deployer && hc < 5e21 && hc > 1e20);if(_hardcap != 0){require(hc<_hardcap);}_lgeOngoing = true; _hardcap = hc;}
 //	function _triggerBSCLaunch() internal { address b = _bridge; if(b != address(0)){I(_bridge).triggerBSCLaunch();} }
 //	function triggerLaunch() public {require(_lgeOngoing == true && msg.sender == _bridge);_createLiquidity();}
 //	function emergency() public {require(msg.sender == _deployer);_emergency = true;}
