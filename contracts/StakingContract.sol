@@ -18,7 +18,7 @@ contract StakingContract {
 	uint128 private _foundingETHDeposited;
 	uint128 private _foundingLPtokensMinted;
 	address private _tokenETHLP;
-	bool private _genesis;
+	uint32 private _genesis;
 	uint private _genLPtokens;
 
 	struct LPProvider {uint32 lastClaim; uint16 lastEpoch; bool founder; uint128 tknAmount; uint128 lpShare;uint128 lockedAmount;uint128 lockUpTo;}
@@ -32,12 +32,12 @@ contract StakingContract {
 //	mapping(address => address) public newAddresses;
 //	mapping(address => bool) private _takenNew;
 
-	function genesis(uint foundingETH, address tkn) public {
+	function genesis(uint foundingETH, address tkn, uint genesis) public {
 		require(msg.sender == 0x901628CF11454AFF335770e8a9407CccAb3675BE && _genesis == false);
 		_foundingETHDeposited = uint128(foundingETH);
 		_foundingLPtokensMinted = uint128(I(tkn).balanceOf(address(this)));
 		_tokenETHLP = tkn;
-		_genesis = true;
+		_genesis = uint32(genesis);
 		_createEpoch(0,false);
 		_createEpoch(1e24,true);
 	}
@@ -52,7 +52,7 @@ contract StakingContract {
 		uint tknAmount = ethContributed*1e24/foundingETH;
 		_ps[msg.sender].lpShare = uint128(lpShare);
 		_ps[msg.sender].tknAmount = uint128(tknAmount);
-		_ps[msg.sender].lastClaim = 1264e4;
+		_ps[msg.sender].lastClaim = uint32(_genesis);
 	}
 
 	function unstakeLp(bool ok,uint amount) public {
