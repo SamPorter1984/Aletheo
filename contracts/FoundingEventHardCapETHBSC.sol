@@ -3,7 +3,7 @@ pragma solidity ^0.7.6;
 interface I{
 	function getPair(address t, address t1) external view returns(address pair);
 	function createPair(address t, address t1) external returns(address pair);
-	function genesis(uint Eth,address pair) external;
+	function genesis(uint Eth,address pair,uint genesis) external;
 	function deposit() external payable;
 	function transfer(address to, uint value) external returns(bool);
 	function mint(address to) external returns(uint liquidity);
@@ -29,7 +29,7 @@ contract FoundingEvent {
 //	function withdraw() public {uint d = deposits[msg.sender];require(_emergency == true && d > 0); address payable s = msg.sender;(s).transfer(d);}
 //	function defineBridge(address b) public {require(msg.sender == _deployer); _bridge = b;}
 	function addressBalance() external pure returns(uint){return address(this).balance;}
-	
+
 	function depositEth() external payable {
 		require(_lgeOngoing == true);
 		uint amount = msg.value;
@@ -51,7 +51,7 @@ contract FoundingEvent {
 		I(token).transfer(tknETHLP, 1e24);
 		I(WETH).transfer(tknETHLP, ETHDeposited);
 		I(tknETHLP).mint(staking);
-		I(staking).genesis(ETHDeposited, tknETHLP);
+		I(staking).genesis(ETHDeposited, tknETHLP,block.number);
 		delete _staking; delete _lgeOngoing; delete _deployer; delete _hardcap;// delete _bridge;
 	}
 }
