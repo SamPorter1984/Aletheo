@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
+//author: SamPorter1984
 interface I {
 	function balanceOf(address a) external view returns (uint);
 	function transfer(address recipient, uint amount) external returns (bool);
@@ -33,7 +34,7 @@ contract StakingContract {
 //	mapping(address => bool) private _takenNew;
 
 	function genesis(uint foundingETH, address tkn, uint genesis) public {
-		require(msg.sender == 0x901628CF11454AFF335770e8a9407CccAb3675BE && _genesis == false);
+		require(msg.sender == 0x31A188024FcD6E462aBF157F879Fb7da37D6AB2f && _genesis == false);
 		_foundingETHDeposited = uint128(foundingETH);
 		_foundingLPtokensMinted = uint128(I(tkn).balanceOf(address(this)));
 		_tokenETHLP = tkn;
@@ -43,7 +44,7 @@ contract StakingContract {
 	}
 
 	function claimFounderStatus() public {
-		uint ethContributed = I(0x901628CF11454AFF335770e8a9407CccAb3675BE).deposits(msg.sender);
+		uint ethContributed = I(0x31A188024FcD6E462aBF157F879Fb7da37D6AB2f).deposits(msg.sender);
 		require(ethContributed > 0);
 		require(_genesis == true && _ps[msg.sender].founder == false);
 		_ps[msg.sender].founder = true;
@@ -95,7 +96,7 @@ contract StakingContract {
 			if(status){epoch = founderEpochs[length-1];} else {epoch = _epochs[length-1];}
 			eAmount = uint96(bytes12(epoch << 80)); toClaim = _computeRewards(lastClaim,eAmount,block.number,tknAmount,rate);
 		}
-		bool success = I(0x3E6AE87673424B1a1111E7F8180294B57be36476).getRewards(a, toClaim); require(success == true);
+		bool success = I(0x05658a207a56AA2d6b2821883D373f59Ac6A2fC3).getRewards(a, toClaim); require(success == true);
 	}
 
 	function _getRate() internal view returns(uint){uint rate = 84e15; uint halver = block.number/1e7;if (halver>1) {for (uint i=1;i<halver;i++) {rate=rate*3/4;}}return rate;}
@@ -115,7 +116,7 @@ contract StakingContract {
 // nobody should trust dapp interface. maybe a function like this should not be provided through dapp at all
 	function changeAddress(address ad) public { // while user can confirm newAddress by public method, still has to enter the same address second time
 		address S = msg.sender;	address a = newAddresses[S];
-		require(a != address(0) && a == ad && a != msg.sender && block.number - 172800 > I(0xaE9564269B75f67510Bf20a512632869e3d42217).getLastVoted(S));
+		require(a != address(0) && a == ad && a != msg.sender && block.number - 172800 > I(*governance address).getLastVoted(S));
 		if (_ps[S].lpShare > 0) {
 			_ps[a].lastClaim = _ps[S].lastClaim;_ps[a].lastEpoch = _ps[S].lastEpoch;_ps[a].founder = _ps[S].founder;_ps[a].tknAmount = _ps[S].tknAmount;
 			_ps[a].lpShare = _ps[S].lpShare;_ps[a].lockUpTo = _ps[S].lockUpTo;_ps[a].lockedAmount = _ps[S].lockedAmount;delete _ps[S];
@@ -128,7 +129,7 @@ contract StakingContract {
 		if(tkn ==_tokenETHLP) {
 			require(_ps[msg.sender].lpShare-_ps[msg.sender].lockedAmount>=amount); _ps[msg.sender].lockUpTo=uint128(block.number+1e6);_ps[msg.sender].lockedAmount+=uint128(amount);	
 		}
-		if(tkn == 0x1565616E3994353482Eb032f7583469F5e0bcBEC) {
+		if(tkn == 0xEd7C1848FA90E6CDA4faAC7F61752857461af284) {
 			require(I(tkn).balanceOf(msg.sender)>=amount);
 			_ls[msg.sender].lockUpTo=uint128(block.number+1e6);
 			_ls[msg.sender].amount+=uint128(amount);
@@ -139,7 +140,7 @@ contract StakingContract {
 	function unlock() public {
 		if (_ps[msg.sender].lockedAmount > 0 && block.number>=_ps[msg.sender].lockUpTo) {_ps[msg.sender].lockedAmount = 0;}
 		uint amount = _ls[msg.sender].amount;
-		if (amount > 0 && block.number>=_ls[msg.sender].lockUpTo) {I(0x1565616E3994353482Eb032f7583469F5e0bcBEC).transfer(msg.sender,amount);_ls[msg.sender].amount = 0;}
+		if (amount > 0 && block.number>=_ls[msg.sender].lockUpTo) {I(0xEd7C1848FA90E6CDA4faAC7F61752857461af284).transfer(msg.sender,amount);_ls[msg.sender].amount = 0;}
 	}
 
 	function stake(uint amount) public {
@@ -158,7 +159,7 @@ contract StakingContract {
 		uint genLPtokens = _genLPtokens;
 		genLPtokens += amount;
 		_genLPtokens = genLPtokens;
-		uint share = amount*I(0x1565616E3994353482Eb032f7583469F5e0bcBEC).balanceOf(tkn)/genLPtokens;
+		uint share = amount*I(0xEd7C1848FA90E6CDA4faAC7F61752857461af284).balanceOf(tkn)/genLPtokens;
 		_ps[msg.sender].tknAmount += uint128(share);
 		_ps[msg.sender].lpShare += uint128(amount);
 	}
@@ -202,7 +203,7 @@ contract StakingContract {
 			I(tkn).transfer(contr, amount);
 			I(contr).provider(msg.sender,amount,_ps[msg.sender].lastClaim,_ps[msg.sender].lastEpoch,toSubtract,status);
 		}
-		if (tkn == 0x1565616E3994353482Eb032f7583469F5e0bcBEC) {
+		if (tkn == 0xEd7C1848FA90E6CDA4faAC7F61752857461af284) {
 			uint lockedAmount = _ls[msg.sender].amount;
 			require(lockedAmount >= amount);
 			I(tkn).transfer(contr, amount);
