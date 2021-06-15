@@ -7,10 +7,6 @@ pragma solidity ^0.7.6;
 // Very slow erc20 implementation. Limits release of the funds with emission rate in _beforeTokenTransfer().
 // Even if there will be a vulnerability in upgradeable contracts defined in _beforeTokenTransfer(), it won't be devastating.
 // Developers can't simply rug.
-// Allowances are booleans now instead of uints and uni v2 router is hardcoded, so it achieves -7100 gas per trade on uni v2 post-Berlin
-// _mint() and _burn() functions are removed.
-// Token name and symbol can be changed.
-// Bulk transfer allows to transact in bulk cheaper by making up to three times less store writes in comparison to regular erc-20 transfers
 
 interface I{function genesisBlock() external view returns(uint);}
 
@@ -34,13 +30,14 @@ contract VSRERC {
 		_init = true;
 		_name = "Aletheo";
 		_symbol = "LET";
-		_balances[0x901628CF11454AFF335770e8a9407CccAb3675BE] = 1e24;
-		_balances[0x3E6AE87673424B1a1111E7F8180294B57be36476] = 9e24;
+		_balances[0x31A188024FcD6E462aBF157F879Fb7da37D6AB2f] = 1e24;//founding event
+		_balances[0x05658a207a56AA2d6b2821883D373f59Ac6A2fC3] = 896e22;//treasury
+		_balances[0x5C8403A2617aca5C86946E32E14148776E37f72A] = 4e22;//reserved for airdrop
 	}
 //	function defineBridge(address b) public {require(msg.sender == 0x2D9F853F1a71D0635E64FcC4779269A05BccE2E2 && _bridgeDefined == false);_bridgeDefined == true; _bridge = b;_balances[b] = 10e24;}
 	function name() public view returns (string memory) {return _name;}
 	function symbol() public view returns (string memory) {return _symbol;}
-	function totalSupply() public pure returns (uint) {return 10e24;}
+	function totalSupply() public view returns (uint) {return 10e24;}
 	function decimals() public pure returns (uint) {return 18;}
 	function balanceOf(address a) public view returns (uint) {return _balances[a];}
 	function transfer(address recipient, uint amount) public returns (bool) {_transfer(msg.sender, recipient, amount);return true;}
@@ -55,12 +52,12 @@ contract VSRERC {
 		if (spender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D||_allowances[owner][spender] == true) {return 2**256 - 1;} else {return 0;}
 	}
 
-	function transferFrom(address sender, address recipient, uint amount) public returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library, also univ3 router now
-		require(msg.sender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D|| msg.sender == 0xE592427A0AEce92De3Edee1F18E0157C05861564 || _allowances[sender][msg.sender] == true);_transfer(sender, recipient, amount);return true;
+	function transferFrom(address sender, address recipient, uint amount) public returns (bool) { // hardcoded mainnet uniswapv2 router 02, transfer helper library
+		require(msg.sender == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D || _allowances[sender][msg.sender] == true);_transfer(sender, recipient, amount);return true;
 	}
 
 	function _transfer(address sender, address recipient, uint amount) internal {
-		require(sender != address(0) && recipient != address(0));
+		require(sender != address(0));
 		_beforeTokenTransfer(sender, amount);
 		uint senderBalance = _balances[sender];
 		require(senderBalance >= amount);
@@ -75,7 +72,7 @@ contract VSRERC {
 		uint total;
 		for(uint i = 0;i<amounts.length;i++) {total += amounts[i];_balances[recipients[i]] += amounts[i];}
 		require(senderBalance >= total);
-		if (msg.sender == 0x3E6AE87673424B1a1111E7F8180294B57be36476) {_beforeTokenTransfer(msg.sender, total);}
+		if (msg.sender == 0x05658a207a56AA2d6b2821883D373f59Ac6A2fC3) {_beforeTokenTransfer(msg.sender, total);}
 		_balances[msg.sender] = senderBalance - total;
 		emit BulkTransfer(msg.sender, recipients, amounts);
 		return true;
@@ -96,10 +93,10 @@ contract VSRERC {
 	}*/
 
 	function _beforeTokenTransfer(address from, uint amount) internal view {
-		if(from == 0x3E6AE87673424B1a1111E7F8180294B57be36476) {	
-			uint genesisBlock = I(0x901628CF11454AFF335770e8a9407CccAb3675BE).genesisBlock();
+		if(from == 0x05658a207a56AA2d6b2821883D373f59Ac6A2fC3) {	
+			uint genesisBlock = I(0x31A188024FcD6E462aBF157F879Fb7da37D6AB2f).genesisBlock();
 			require(genesisBlock != 0);
-			uint treasury = _balances[0x3E6AE87673424B1a1111E7F8180294B57be36476]; 
+			uint treasury = _balances[0x05658a207a56AA2d6b2821883D373f59Ac6A2fC3]; 
 			uint withd =  9e24 - treasury; 
 			uint allowed = (block.number - genesisBlock)*42e16 - withd;
 			require(amount <= allowed && amount <= treasury);
