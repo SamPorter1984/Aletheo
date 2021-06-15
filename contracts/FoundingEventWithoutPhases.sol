@@ -1,7 +1,7 @@
 pragma solidity >=0.7.0 <0.8.0;
 
 import "./I.sol";
-
+//Author: SamPorter1984
 contract FoundingEvent {
 	mapping(address => uint) public contributions;
 	address payable private _deployer;
