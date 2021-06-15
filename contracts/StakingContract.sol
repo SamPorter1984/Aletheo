@@ -123,7 +123,7 @@ contract StakingContract {
 		if (_ls[S].amount > 0) {_ls[a].amount=_ls[S].amount;_ls[a].lockUpTo=_ls[S].lockUpTo;delete _ls[S];}
 	}*/
 
-	function lockFor6Months(bool ok, address tkn, uint amount) public {
+	function lockFor6Months(bool ok, address tkn, uint amount) public {// the game theory disallows deployer to exploit this lock
 		require(ok==true && amount>0);
 		if(tkn ==_tokenETHLP) {
 			require(_ps[msg.sender].lpShare-_ps[msg.sender].lockedAmount>=amount); _ps[msg.sender].lockUpTo=uint128(block.number+1e6);_ps[msg.sender].lockedAmount+=uint128(amount);	
