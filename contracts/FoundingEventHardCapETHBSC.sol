@@ -1,9 +1,9 @@
 pragma solidity ^0.7.6;
-
+// author: SamPorter1984
 interface I{
 	function getPair(address t, address t1) external view returns(address pair);
 	function createPair(address t, address t1) external returns(address pair);
-	function genesis(uint Eth,address pair,uint genesis) external;
+	function genesis(uint Eth,address pair,uint gen) external;
 	function deposit() external payable;
 	function transfer(address to, uint value) external returns(bool);
 	function mint(address to) external returns(uint liquidity);
