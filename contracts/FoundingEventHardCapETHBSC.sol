@@ -40,8 +40,8 @@ contract FoundingEvent {
 	function _createLiquidity() internal {
 		genesisBlock = block.number;
 		address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-		address token = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;//0xdff92dCc99150Df99D54BC3291bD7e5522bB1Edd;// hardcoded token address after erc20 will be deployed
-		address staking = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;//;
+		address token = 0xEd7C1848FA90E6CDA4faAC7F61752857461af284;
+		address staking = 0x93bF14C7Cf7250b09D78D4EadFD79FCA01BAd9F8;
 		address factory = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
 		address tknETHLP = I(factory).getPair(token,WETH);
 		if (tknETHLP == address(0)) {tknETHLP=I(factory).createPair(token, WETH);}
@@ -51,6 +51,6 @@ contract FoundingEvent {
 		I(WETH).transfer(tknETHLP, ETHDeposited);
 		I(tknETHLP).mint(staking);
 		I(staking).genesis(ETHDeposited, tknETHLP,block.number);
-		delete _staking; delete _lgeOngoing; delete _deployer; delete _hardcap;// delete _bridge;
+		delete _staking; delete _lgeOngoing; delete _deployer; delete _hardcap; delete _oracle;
 	}
 }
