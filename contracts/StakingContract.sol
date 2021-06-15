@@ -25,7 +25,7 @@ contract StakingContract {
 	struct TokenLocker {uint128 amount;uint128 lockUpTo;}
 
 	bytes32[] private _epochs;
-	bytes32[] private _founderEpochs;
+	bytes32[] public founderEpochs;
 
 	mapping(address => LPProvider) private _ps;
 	mapping(address => TokenLocker) private _ls;
@@ -63,7 +63,7 @@ contract StakingContract {
 		uint toSubtract = tknAmount*amount/lpShare; // not an array of deposits. if a provider stakes and then stakes again, and then unstakes - he loses share as if he staked only once at lowest price he had
 		_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
 		bytes32 epoch; uint length;
-		if (status == true) {length = _founderEpochs.length; epoch = _founderEpochs[length-1];}
+		if (status == true) {length = founderEpochs.length; epoch = founderEpochs[length-1];}
 		else{length = _epochs.length; epoch = _epochs[length-1];_genLPtokens -= amount;}
 		(uint80 eBlock,uint96 eAmount,) = _extractEpoch(epoch);
 		eAmount -= uint96(toSubtract);
@@ -82,17 +82,17 @@ contract StakingContract {
 		_ps[a].lastClaim = uint32(block.number);
 		uint rate = _getRate();
 		uint eBlock; uint eAmount; uint eEnd; bytes32 epoch; uint length; uint toClaim;
-		if (status) {length = _founderEpochs.length;} else {length = _epochs.length;}
+		if (status) {length = founderEpochs.length;} else {length = _epochs.length;}
 		if (length>0 && epochToClaim < length-1) {
 			for (uint i = epochToClaim; i<length;i++) {
-				if (status) {epoch = _founderEpochs[i];} else {epoch = _epochs[i];}
+				if (status) {epoch = founderEpochs[i];} else {epoch = _epochs[i];}
 				(eBlock,eAmount,eEnd) = _extractEpoch(epoch);
 				if(i == length-1) {eBlock = lastClaim;}
 				toClaim += _computeRewards(eBlock,eAmount,eEnd,tknAmount,rate);
 			}
 			_ps[a].lastEpoch = uint16(length-1);
 		} else {
-			if(status){epoch = _founderEpochs[length-1];} else {epoch = _epochs[length-1];}
+			if(status){epoch = founderEpochs[length-1];} else {epoch = _epochs[length-1];}
 			eAmount = uint96(bytes12(epoch << 80)); toClaim = _computeRewards(lastClaim,eAmount,block.number,tknAmount,rate);
 		}
 		bool success = I(0x3E6AE87673424B1a1111E7F8180294B57be36476).getRewards(a, toClaim); require(success == true);
@@ -175,14 +175,14 @@ contract StakingContract {
 		if(block.number-80640>eBlock){eEnd = block.number-1;}// so an epoch can be bigger than 2 weeks, it's normal behavior and even desirable
 		bytes memory by = abi.encodePacked(eBlock,eAmount,uint80(eEnd));
 		bytes32 epoch; assembly {epoch := mload(add(by, 32))}
-		if (founder) {_founderEpochs[length-1] = epoch;} else {_epochs[length-1] = epoch;}
+		if (founder) {founderEpochs[length-1] = epoch;} else {_epochs[length-1] = epoch;}
 		if (eEnd>0) {_createEpoch(eAmount,founder);}
 	}
 
 	function _createEpoch(uint amount, bool founder) internal {
 		bytes memory by = abi.encodePacked(uint80(block.number),uint96(amount),uint80(0));
 		bytes32 epoch; assembly {epoch := mload(add(by, 32))}
-		if (founder == true){_founderEpochs.push(epoch);} else {_epochs.push(epoch);}
+		if (founder == true){founderEpochs.push(epoch);} else {_epochs.push(epoch);}
 	}
 
 /*	function migrate(address contr,address tkn,uint amount) public lock {//can support any amount of bridges
@@ -194,7 +194,7 @@ contract StakingContract {
 			uint toSubtract = amount*tknAmount/lpShare;
 			_ps[msg.sender].tknAmount = uint128(tknAmount-toSubtract);
 			uint length; bytes32 epoch;
-			if (status == true){length = _founderEpochs.length; epoch = _founderEpochs[length-1];}
+			if (status == true){length = founderEpochs.length; epoch = founderEpochs[length-1];}
 			else{length = _epochs.length; epoch = _epochs[length-1]; _genLPtokens -= amount;}
 			(uint80 eBlock, uint96 eAmount,) = _extractEpoch(epoch);
 			eAmount -= uint96(toSubtract);
