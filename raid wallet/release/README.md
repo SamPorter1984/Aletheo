@@ -1,13 +1,17 @@
-This version is only for browsers based on Firefox*
+How to install
 
-1.download latest .xpi file 0.1.5, easier to do this with Firefox.
+For Firefox: click on the latest .xpi or just go to https://addons.mozilla.org/en-US/firefox/addon/aletheo-wallet/ and install from there
 
-2.install the extension(click on it when you have Firefox installed, if you didn't do this with Firefox in first step)
+For Chromium: download latest .zip, unpack, go to chrome://extensions/ (that's in the browser), enable developer mode, click load unpacked and then navigate to the extension folder, namely the folder that contains file manifest.json. extension is not yet available on chrome store
 
 If you have successfully performed above steps, now you can post in threads which have "Aletheo" in topic and receive mainnet tokens as rewards or, if there is no such thread, you can create Aletheo threads, except creation of a thread is not paid.
 
 The extension works in the background, you can just post as you post normally.
 
-**You can still install it in Chromium based browser, by changing file extension from .xpi to .zip, unpack it, enable developer mode in Chromium, and load the extension clicking on it's manifest.json, it works just fine*
-
 **WARNING: SECURITY OF THIS EXTENSION IS STILL NOT A PRIORITY.** Do not store any funds in this wallet.
+
+Basic rules for posting:
+1.Only posts with unique text count.
+2.Can't post with one address more often than roughly every minute.
+3."Aletheo" in the topic of op-post is not case-sensitive.
+4.Green text is ignored by the oracle, as well as reply links like >>. So a reply with an image will be considered an empty post and won't be registered.
