@@ -4,71 +4,68 @@
 <head>
     <title data-fhc-i18n="optionTitle">Options</title>
     <meta charset="utf-8">
-
+    <link rel="stylesheet" type="text/css" href="style.css"/>
     <link rel="icon" type="image/png" href="/theme/icons/fhc-16.png" sizes="16x16">
     <link rel="icon" type="image/png" href="/theme/icons/fhc-32.png" sizes="32x32">
     <link rel="icon" type="image/png" href="/theme/icons/fhc-48.png" sizes="48x48">
     <link rel="icon" type="image/png" href="/theme/icons/fhc_icon.svg" sizes="64x64">
-    <style>@font-face{font-family: Ubuntu;src: url(Ubuntu.ttf);}body{font-family:Ubuntu, Arial, Verdana;font-size: 12px;}button{font-size: 12px;}</style>
+    <style>
+</style>
 </head>
-<body style="width:500px; height:450px;">
+<body>
 <form>
     <div class="container">
-
         <div class="content">
             <div style="text-align: center;">
-                <br/>
-                <div style="text-align: center;">worker address:</div>
-                <button id="generate" style="margin: 5px auto; width: 148px; display: block;text-align: center;">generate address*</button>
-                <div id="addressDiv" style="display: none;text-align: center;">
+                <!--<br/><div>worker address:</div>
+                <button id="generate" style="margin: 5px auto; width: 148px; display: block;">generate address*</button>
+                <div id="addressDiv" style="display: none;">
                     <span id="address" style="padding: 5px auto;margin: auto;"></span>
-                    <span><a href="" id="copyAddress">[copy]</a></span>
                     <span><a href="" id="deleteAddress">[x]</a></span>
                 </div>
                 <br/>
-                <div style="text-align: center;">private key:</div>
-                <button id="showPrivateKey" style="margin: 5px auto; width: 148px; display: block;text-align: center;">show private key</button>
-                <div id="privateKeyDiv" style="padding: 5px 0px; display: none;margin: 5px auto;text-align: center;">
+                <div>private key:</div>
+                <button id="showPrivateKey" style="margin: 5px auto; width: 148px; display: block;">show private key</button>
+                <div id="privateKeyDiv" style="padding: 5px 0px; display: none;margin: 5px auto;">
                     <span id="privateKey" style="padding: 5px auto;"></span>
-                    <span><a href="" id="copyPrivateKey">[copy]</a></span>
                     <span><a href="" id="hidePrivateKey">[hide]</a></span>
                 </div>
                 <br/>
-                <div style="text-align: center;">mnemonic:</div>
-                <button id="showMnemonic" style="margin: 5px auto; width: 148px; display: block;text-align: center;">show mnemonic</button>
-                <div id="mnemonicDiv" style="padding: 5px 0px; display: none;margin: 5px auto;text-align: center;">
+                <div>mnemonic:</div>
+                <button id="showMnemonic" style="margin: 5px auto; width: 148px; display: block;">show mnemonic</button>
+                <div id="mnemonicDiv" style="padding: 5px 0px; display: none;margin: 5px auto;">
                     <span id="mnemonic" style="padding: 5px auto;"></span>
-                    <span><a href="" id="copyMnemonic">[copy]</a></span>
                     <span><a href="" id="hideMnemonic">[hide]</a></span>
                 </div>
                 <br/>
-                <div style="text-align: center;">rewards address:</div>
-                <div id="rewardsAddressDivSet" style="padding: 5px 0px; margin: 5px auto; display: block;text-align: center;">
-                    <input id="rewardsAddressInput" type="text" style="margin-right: 10px; width: 60%;">
-                    <button id="setRewardsAddress" style="margin: 5px auto; width: 148px; display: inline;text-align: center;">set rewards address</button>
+                <div>rewards address:</div>-->
+                <div id="rewardsAddressDivSet">
+                    <input id="rewardsAddressInput" type="text">
+                    <button id="setRewardsAddress">set rewards address</button>
                 </div>
-                <div id="rewardsAddressDiv" style="padding: 5px 0px; margin: 5px auto; display: none;text-align: center;">
-                    <span id="rewardsAddress" style="padding: 5px auto;"></span>
+                <div id="rewardsAddressDiv">
+                    <span id="rewardsAddress"></span>
                     <span><a href="" id="editRewardsAddress">[edit]</a></span>
                 </div>
-                <br/>
-                <div style="text-align: center;">Mumbai Testnet RPC URL:</div>
-                <div id="rpcProviderDivSet" style="padding: 5px 0px; display: block; margin: 5px auto;text-align: center;">
+                <!--<br/>
+                <div>Mumbai Testnet RPC URL:</div>
+                <div id="rpcProviderDivSet" style="padding: 5px 0px; display: block; margin: 5px auto;">
                 <input type="text" id="rpcProviderInput" style="margin-right: 10px; width: 60%;">
-                <button id="setRpcProvider" style="margin: 5px auto; width: 148px; display: inline;text-align: center;">set rpc provider</button>
+                <button id="setRpcProvider" style="margin: 5px auto; width: 148px; display: inline;">set rpc provider</button>
                 </div>
-                <div id="rpcProviderDiv" style="padding: 5px 0px; display: none;margin: 5px auto;text-align: center;">
+                <div id="rpcProviderDiv" style="padding: 5px 0px; display: none;margin: 5px auto;">
                     <span id="rpcProvider" style="padding: 5px auto;"></span>
                     <span><a href="" id="editRpcProvider">[edit]</a></span>
                 </div>
                 <br/><br/>
                 </div>
-                <br/>
-                <div style="text-align: center;">*IMPORTANT: this software is most probably insecure, it was developed for fundamentally secure people. Do not use generated wallets for anything but shitposting and never put any money in these wallets, until this software is proven to be secure.</div>
+                <br/><br/>
+                <br/><br/>--> 
+                <div style="text-align: center;">*IMPORTANT: this software was developed with eurobeat playing in the background, and is for fundamentally secure people, use with caution. Do not use generated wallets for anything.</div>
         </div>
     </div>
 </form>
-<fieldset id="customPrompt" style="display: none; width: 300px; position:absolute; top: 50px; margin: 0px 125px;text-align:center;z-index: 999;background-color: white;">
+<!--<fieldset id="customPrompt" style="display: none; width: 300px; position:absolute; top: 50px; margin: 0px 125px;text-align:center;">
     <div style="margin:auto;">ARE YOU SURE? This will remove the address right now forever from browser storage, including private key and mnemonic. After that you will be able to generate new address.</div>
     <div>
         <span>
@@ -78,7 +75,7 @@
             <button id="customPromptConfirm" style="float:right;">confirm</button>
         </span>
     </div>
-</fieldset>
+</fieldset>--> 
 <script src="/common/browser-polyfill.min.js"></script>
 <script src="popup.js"></script>
 </body>
