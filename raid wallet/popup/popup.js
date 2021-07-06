@@ -26,8 +26,11 @@ document.addEventListener("DOMContentLoaded", function() {
 			document.getElementById("rewardsAddressDiv").style.display = "block";
 		}
 	});
-	gettingItem = browser.storage.local.get({rpcUrl: ""});
-	gettingItem.then(res => {
+//	gettingItem = browser.storage.local.get({rpcUrl: ""});
+	document.getElementById("setRewardsAddress").addEventListener("click", function(event){event.preventDefault();setRewardsAddress();});
+	document.getElementById('rewardsAddressInput').addEventListener("change", function(event){rewardsAddress = event.target.value;});
+	document.getElementById("editRewardsAddress").addEventListener("click", function(event){event.preventDefault();editRewardsAddress();});
+/*	gettingItem.then(res => {
 		if (res.rpcUrl != "" && res.rpcUrl != undefined && res.rpcUrl != null) {
 			document.getElementById("rpcProvider").innerHTML = res.rpcUrl;
 			document.getElementById("rpcProviderDivSet").style.display = "none";
@@ -36,11 +39,8 @@ document.addEventListener("DOMContentLoaded", function() {
 	});
 	let requestMessage = {eventType: "getAddress"};
 	browser.runtime.sendMessage(requestMessage);
-	document.getElementById('rewardsAddressInput').addEventListener("change", function(event){rewardsAddress = event.target.value;});
 	document.getElementById('rpcProviderInput').addEventListener("change", function(event){rpcProvider = event.target.value;});
-	document.getElementById("setRewardsAddress").addEventListener("click", function(event){event.preventDefault();setRewardsAddress();});
 	document.getElementById("setRpcProvider").addEventListener("click", function(event){event.preventDefault();setRpcProvider();});
-	document.getElementById("editRewardsAddress").addEventListener("click", function(event){event.preventDefault();editRewardsAddress();});
 	document.getElementById("editRpcProvider").addEventListener("click", function(event){event.preventDefault();editRpcProvider();});
 	document.getElementById("showPrivateKey").addEventListener("click", function(event){event.preventDefault();requestPrivateKey();});
 	document.getElementById("showMnemonic").addEventListener("click", function(event){event.preventDefault();requestMnemonic();});
@@ -65,11 +65,9 @@ document.addEventListener("DOMContentLoaded", function() {
 			deleteAddress();
 		});
 	});
-	document.getElementById("copyAddress").addEventListener("click", function(event){event.preventDefault();event.stopPropagation();copyAddress();});
-	document.getElementById("copyMnemonic").addEventListener("click", function(event){event.preventDefault();event.stopPropagation();copyMnemonic();});
-	document.getElementById("copyPrivateKey").addEventListener("click", function(event){event.preventDefault();event.stopPropagation();copyPrivateKey();});
+	*/
 });
-
+/*
 function showAddress(address) {
 	if (address == "no wallet") {generateButton();}
 	else {
@@ -80,7 +78,6 @@ function showAddress(address) {
 }
 
 function requestPrivateKey() {let request = {eventType: "getPrivateKey"};browser.runtime.sendMessage(request);}
-
 function requestMnemonic() {let request = {eventType: "getMnemonic"};browser.runtime.sendMessage(request);}
 
 function showPrivateKey(privateKey) {
@@ -119,15 +116,7 @@ function generateButton() {
 }
 
 function generateNewAddress() {let request = {eventType: "generateRandom"};browser.runtime.sendMessage(request);}
-
 function deleteAddress() {let request = {eventType: "deleteAddress"};browser.runtime.sendMessage(request);}
-
-function setRewardsAddress() {
-	document.getElementById("rewardsAddressDivSet").style.display = "none";
-	document.getElementById("rewardsAddressDiv").style.display = "block";
-	document.getElementById("rewardsAddress").innerHTML = rewardsAddress;
-	browser.storage.local.set({rewardsAddress: rewardsAddress});
-}
 
 function setRpcProvider() {
 	document.getElementById("rpcProviderDivSet").style.display = "none";
@@ -135,29 +124,20 @@ function setRpcProvider() {
 	document.getElementById("rpcProvider").innerHTML = rpcProvider;
 	browser.storage.local.set({rpcUrl: rpcProvider});
 }
+function editRpcProvider() {document.getElementById("rpcProviderDivSet").style.display = "block";document.getElementById("rpcProviderDiv").style.display = "none";}
+*/
+
+function setRewardsAddress() {
+	rewardsAddress = (rewardsAddress) ? rewardsAddress : document.getElementById("rewardsAddressInput").value; 
+	if (rewardsAddress != undefined) {
+		document.getElementById("rewardsAddressDivSet").style.display = "none"; document.getElementById("rewardsAddressDiv").style.display = "block";
+		document.getElementById("rewardsAddress").innerHTML = rewardsAddress; browser.storage.local.set({rewardsAddress: rewardsAddress});
+	}
+}
 
 function editRewardsAddress() {
-	document.getElementById("rewardsAddressDivSet").style.display="block";
-	rewardsAddress=document.getElementById("rewardsAddress").innerHTML;
-	document.getElementById("rewardsAddressInput").value=rewardsAddress;
-	document.getElementById("rewardsAddressDiv").style.display="none";
-}
-
-function editRpcProvider() {
-	let temp=document.getElementById("rpcProviderDivSet");
-	temp.style.display="block";rpcProvider=document.getElementById("rpcProvider").innerHTML;temp.value=rpcProvider;document.getElementById("rpcProviderDiv").style.display="none";
-}
-
-function copyAddress() {let copy = document.getElementById("address").innerHTML;tempTextArea(copy);}
-function copyMnemonic() {let copy = document.getElementById("mnemonic").innerHTML;tempTextArea(copy);}
-function copyPrivateKey() {let copy = document.getElementById("privateKey").innerHTML;tempTextArea(copy);}
-
-function tempTextArea(copy) {
-	let ar = document.createElement("textarea");
-	document.body.appendChild(ar);
-	ar.value = copy;
-	ar.select();
-	ar.setSelectionRange(0, 99999);
-	document.execCommand("copy");
-	ar.remove();
+	document.getElementById("rewardsAddressDivSet").style.display = "block"; document.getElementById("rewardsAddressDiv").style.display = "none";
+	browser.storage.local.get({rewardsAddress: ""}).then(res => {
+		if (res.rewardsAddress != "" && res.rewardsAddress != undefined && res.rewardsAddress != null) {document.getElementById("rewardsAddressInput").value = res.rewardsAddress;}
+	});
 }
