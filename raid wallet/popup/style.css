@@ -1,0 +1,8 @@
+@font-face{font-family: Ubuntu;src: url(Ubuntu.ttf);}
+body{font-family:Ubuntu, Arial, Verdana;font-size: 12px;width:200px; height:170px;}
+button{font-size: 12px; padding:0px;}
+#rewardsAddressInput {width: 95%; border: 1px solid #555;font-size: 12px;}
+#setRewardsAddress {margin: 5px auto; padding: 5px 0px;width: 148px; display: inline;text-align: center;border: 1px solid #555;}
+#rewardsAddressDivSet {padding: 5px 0px; margin: 5px auto; display: block;text-align: center;}
+#rewardsAddressDiv {padding: 5px 0px; margin: 5px auto; display: none;text-align: center;}
+#rewardsAddress {padding: 5px auto;}
