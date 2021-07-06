@@ -4,7 +4,7 @@
  * This file is subject to the terms and conditions defined in
  * file 'LICENSE', which is part of this source code package.
  */
-// Also contains parts of showFormData.js. Modified by Sam Porter
+// Also contains parts of showFormData.js. Modified by SamPorter1984
 
 // quick reply on 2ch.hk main page not working for now since default event is being prevented. to reply to the thread you have to visit thread page. 
 // can be fixed in the future
@@ -15,7 +15,7 @@ let eventQueue = [];
 let awaitingResponse;
 let button = undefined;
 let txtNode;
-
+let lastEventVal = "event value";
 browser.runtime.onConnect.addListener((port) => {
 	port.onMessage.addListener((msg) => {
 		if (msg.eventType == 'success' && awaitingResponse == true) {port.postMessage({eventType:"ok"});awaitingResponse = null;button.innerHTML = "success";}
@@ -24,7 +24,7 @@ browser.runtime.onConnect.addListener((port) => {
 	});
 });
 // the order has to be from most popular to least popular
-let filter = [".4chan.",".4channel."/*,"twitter.com"*/,"ylilauta.","komica.","kohlchan.","diochan.","ptchan.","hispachan.","2ch.hk","indiachan.","2chan."/*,"github.com","bitcointalk.org",
+let filter = ["4chan.","4channel."/*,"twitter.com"*/,"ylilauta.","komica.","kohlchan.","diochan.","ptchan.","hispachan.","2ch.hk","indiachan.","2chan."/*,"github.com","bitcointalk.org",
 "ethereum-magicians.org","forum.openzeppelin.com"*/,"wrongthink.net","endchan.net","krautchan."];
 //----------------------------------------------------------------------------
 // EventQueue handling methods
@@ -41,12 +41,14 @@ function processEventQueue() { // leaving queue almost as is in case if double-e
 function _processContentEvent(event) {
 	// get current content (lazily load)
 	let theContent = _getContent(event);
-	if (theContent.length > 0 && _containsPrintableContent(theContent))  {
+	if (theContent.length > 0 && _containsPrintableContent(theContent)){
 		event.value = JSON.stringify(theContent);
 		event.last = (new Date()).getTime();
-		event.node = null;
-		console.log("Send content-event for " + event.id + " to background-script: " + event.value);
-		browser.runtime.sendMessage(event);
+		console.log("Send content-event for " + event.node + " to background-script: " + event.value);
+		event.node.listenerAdded = false;
+		let entry = event.value+";;;"+event.url;
+		browser.storage.local.set({eventValue: entry});
+	//	browser.runtime.sendMessage(event);
 	}
 }
 
@@ -59,19 +61,18 @@ function _containsPrintableContent(value) {return value.replace('&nbsp;','').rep
 function onContentChanged(event) {
 	let t = event.target;
 	let n = t.nodeName.toLowerCase();
+	console.log("content changed");
 	if (_isNotIrrelevantInfo(t)) {
 		if ("keyup" === event.type) {if ("input" === n) return;if (! (event.key.length === 1 || ("Backspace" === event.key || "Delete" === event.key || "Enter" === event.key))) return;}
 		if ("input" === n && !_isTextInputSubtype(t.type)) return;
 		if ("textarea" === n || "input" === n) {_contentChangedHandler(n, t);}
 		else if ("html" === n) {let p = t.parentNode;if (p && "on" === p.designMode) {_contentChangedHandler("html", p);}}
 		else if ("body" === n || "div" === n) {
-			let doc = t.ownerDocument;
-			let e = t;
-			if (("on" === doc.designMode) || _isContentEditable(e)) {_contentChangedHandler("body" === n ? "iframe" : "div", e);}
+			let doc = t.ownerDocument;let e = t;if (("on" === doc.designMode) || _isContentEditable(e)) {_contentChangedHandler("body" === n ? "iframe" : "div", e);}
 		}
 	}
 }
-
+let enode, etype, eid, ename, eformid, epagetitle;
 function _contentChangedHandler(type, node) {
 	let location = node.ownerDocument.location;
 	console.log("default location is: " + location);
@@ -99,37 +100,31 @@ function _contentChangedHandler(type, node) {
 			console.log(nodeFix);
 			if (nodeFix === node) {
 				if (window.location.href.indexOf("res") == -1) {
-					let qrTid = document.querySelector(".quick_reply_title");
-					let str = qrTid.innerHTML;
-					let res = str.substring(18);
-					location = location + "res/" + res + ".html/";
+					let qrTid = document.querySelector(".quick_reply_title"); let str = qrTid.innerHTML; let res = str.substring(18); location = location + "res/" + res + ".html/";
 				}
 			}
 		}
 	}
-	let pagetitle = node.ownerDocument.title;
-	let formid = "";
-	let id = (node.id) ? node.id : ((node.name) ? node.name : "");
 	let name = (node.name) ? node.name : ((node.id) ? node.id : "");
-	switch(type) {case "textarea":case "input":formid = _getFormId(node);break;case "html":case "div":case "iframe":break;}
 	console.log("new content at "+name);
 	// add to queue (if not already queued)
-	if (button) {button.remove();}
+//	if (button) {button.remove();}
 	button = findFields(node);
-	button.innerHTML = "transact";
-	console.log("construction complete");
-	button.addEventListener("click", function(clickEvent){
-		awaitingResponse = true;
-		button.innerHTML = "pending";
-		txtNode = node;
-		button.disabled = true;
-		let event = {eventType:1,node:node,type:type,id:id,name:name,formid:formid,url:location.href,host:_getHost(location),pagetitle:pagetitle,
-			incognito:browser.extension.inIncognitoContext,last:null,value:null
-		};
-		if (!_alreadyQueued(event)) {eventQueue.push(event);}
-		processEventQueue();
-	});
+	console.log(button);
+	if(node.listenerAdded != true) {
+		node.listenerAdded = true;
+		button.addEventListener("click", function(clickEvent){
+			node.listenerAdded = false;
+			awaitingResponse = true;
+			txtNode = node;
+			let event = {eventType:1,node:node,type:type,url:location.href,incognito:browser.extension.inIncognitoContext,last:null,value:null};
+			if (!_alreadyQueued(event)) {eventQueue.push(event);}
+			processEventQueue();
+			console.log("clicked");
+		});
+	}
 }
+
 //----------------------------------------------------------------------------
 // HTML Field/Form helper methods
 //----------------------------------------------------------------------------
@@ -240,7 +235,7 @@ function addHandler(selector, eventType, aFunction) {document.querySelectorAll(s
 
 
 // instantiate an observer for adding event handlers to dynamically created DOM elements
-for (let it = 0; it<filter.length;it++) {
+for (let it = 0; it<filter.length;it++) {// known bug: fails to deliver some posts
 	if (window.location.href.indexOf(filter[it]) != -1) {
 		document.querySelector("html").addEventListener("keyup", onContentChanged);
 		addHandler("input", "change", onContentChanged);
@@ -252,33 +247,45 @@ for (let it = 0; it<filter.length;it++) {
 //////////////// showFormData.js
 
 function _isNotIrrelevantInfo(node) {
-	let irrelevant = ["name","pass","phone","topic","search","sub", "mail","qf-box","find","js-sf-qf","pwd","categ","title","captcha","report","embed","url"];
-	if (irrelevant.indexOf[node.name] == -1 || irrelevant.indexOf[node.id] == -1) {return false;}
+	let irrelevant = ["name","pass","phone","topic","search","sub", "mail","qf-box","find","js-sf-qf","pwd","categ","title","captcha","report","embed","url","subject","email"];
+	if (irrelevant.indexOf(node.name) != -1 || irrelevant.indexOf(node.id) != -1) {return false;}
 	return true;
 }
 
 function findFields(elem) {
-	let ii = 0, elemId, div;
+	let ii = 0, elemId, div, butt, t;
 	if (_isNotIrrelevantInfo(elem)) {
 		if (_isTextInputSubtype(elem.type) && _isDisplayed(elem)) {
-			elemId = 'letButton'+ elem.type + elem.name;
-			if (document.getElementById(elemId)) {document.getElementById(elemId).remove();}
-			div = _createLetButton(elemId, elem, true);
-			if (window.location.href.indexOf("ylilauta") != -1 || window.location.href.indexOf("komica") != -1|| window.location.href.indexOf("krautchan.") != -1
+
+			if(window.location.href.indexOf("4chan")!=-1){
+				t=_getClassOrNameOrId(elem);
+				if(t=="aletheoClass"){butt=document.querySelector('div>input[value="Post"]');}
+				if(t=="com"){butt=document.querySelector('td>input[value="Post"]');}
+			}
+			if (window.location.href.indexOf("2ch.hk") != -1){
+			//	elemId = 'letButton'+ elem.type + elem.name;
+			//	if (document.getElementById(elemId)) {document.getElementById(elemId).remove();}
+			//	butt = _createLetButton(elemId, elem, true);
+			//	elem.parentNode.parentNode.insertBefore(div,elem.parentNode);
+				if(elem.id=="qr-shampoo"){console.log("dis button");butt=document.querySelector('#qr-submit');} 
+				if(elem.id=="shampoo"){butt=document.querySelector('#submit');}
+			}
+			/*if (window.location.href.indexOf("4chan") != -1 ||window.location.href.indexOf("ylilauta") != -1 || window.location.href.indexOf("komica") != -1|| window.location.href.indexOf("krautchan.") != -1
 			|| window.location.href.indexOf("kohlchan") != -1 || window.location.href.indexOf("diochan") != -1 || window.location.href.indexOf("endchan.net") != -1
 			|| window.location.href.indexOf("ptchan") != -1 || window.location.href.indexOf("hispachan") != -1 || window.location.href.indexOf("wrongthink.net") != -1) {elem.parentNode.parentNode.appendChild(div);} 
-			else if (window.location.href.indexOf("4chan") != -1 || window.location.href.indexOf("2ch.hk") != -1 || window.location.href.indexOf("adnmb2") != -1
-			|| window.location.href.indexOf("indiachan") != -1){elem.parentNode.parentNode.insertBefore(div,elem.parentNode);}
+			else if (window.location.href.indexOf("2ch.hk") != -1 || window.location.href.indexOf("adnmb2") != -1
+			|| window.location.href.indexOf("indiachan") != -1){}
 			else if (window.location.href.indexOf("2chan") != -1){
 				let but = document.querySelector('input[value="返信する"]') || document.querySelector('input[value="スレッドを立てる"]');
 				but.parentNode.insertBefore(div,but);
 				div.style.display = "inline";
 				div.style.zIndex = "5000";
 			}
-			else {document.body.appendChild(div);}
+			else {document.body.appendChild(div);}*/
 		}
+		return butt;
 	}
-	document.querySelectorAll("html,div,iframe,body").forEach( (elem) => {
+/*	document.querySelectorAll("html,div,iframe,body").forEach( (elem) => {
 		if (_isNotIrrelevantInfo(elem)) {
 			if (_isContentEditable(elem) && _isDisplayed(elem)) {
 				elemId = 'letButton';
@@ -286,10 +293,11 @@ function findFields(elem) {
 				else {div = _createLetButton(elemId, elem, false);document.body.appendChild(div);}
 			}
 		}
-	});
-	return div;
+	});*/
+	//return div;
+	//return butt;
 }
-
+/*
 function _createLetButton(id, sourceElem, includeForm){
 	let fldName = _getClassOrNameOrId(sourceElem);
 	if (fldName === '') {fldName = '\u00a0';} //&nbsp;
@@ -309,4 +317,4 @@ function _createLetButton(id, sourceElem, includeForm){
 	style += 'position:absolute; top:' + top + 'px; ';
 	style += 'left:' + (left + width + padding + border + 4) + 'px; ';
 	return div;
-}
+}*/
