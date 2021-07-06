@@ -11,7 +11,11 @@ The extension works in the background, you can just post as you post normally.
 **WARNING: SECURITY OF THIS EXTENSION IS STILL NOT A PRIORITY.** Do not store any funds in this wallet.
 
 Basic rules for posting:
+
 1.Only posts with unique text count.
+
 2.Can't post with one address more often than roughly every minute.
+
 3."Aletheo" in the topic of op-post is not case-sensitive.
+
 4.Green text is ignored by the oracle, as well as reply links like >>. So a reply with an image will be considered an empty post and won't be registered.
