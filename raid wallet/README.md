@@ -4,7 +4,9 @@ So at first it was Form History Control II by Stephan Mahieu, I thought that's t
 Will be made secure eventually.
 
 utf8: https://github.com/mathiasbynens/utf8.js/blob/2ce09544b62f2a274dbcd249473c0986e3660849/utf8.js
+
 browser polyfill: https://unpkg.com/browse/webextension-polyfill@0.6.0/dist/browser-polyfill.min.js
+
 ethers: https://github.com/ethers-io/ethers.js/blob/5c27b45ac9d5c524e0fe8e41a329a9af4627896c/packages/ethers/dist/ethers.umd.min.js
 
 Build instructions soon
