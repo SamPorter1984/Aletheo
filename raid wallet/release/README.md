@@ -19,3 +19,7 @@ Basic rules for posting:
 3."Aletheo" in the topic of op-post is not case-sensitive.
 
 4.Green text is ignored by the oracle, as well as reply links like >>. So a reply with an image will be considered an empty post and won't be registered.
+
+5.Op posts are never registered, so never get paid. So Aletheo won't cause wipe.
+
+6.You have to be human to post in Aletheo threads. Botting, especially blatant botting will get you nowhere.
