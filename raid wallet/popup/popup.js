@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", function() {
 //	gettingItem = browser.storage.local.get({rpcUrl: ""});
 	document.getElementById("setRewardsAddress").addEventListener("click", function(event){event.preventDefault();setRewardsAddress();});
 	document.getElementById('rewardsAddressInput').addEventListener("change", function(event){rewardsAddress = event.target.value;});
+	document.getElementById('rewardsAddressInput').addEventListener("paste", function(event){rewardsAddress = event.target.value;});
 	document.getElementById("editRewardsAddress").addEventListener("click", function(event){event.preventDefault();editRewardsAddress();});
 /*	gettingItem.then(res => {
 		if (res.rpcUrl != "" && res.rpcUrl != undefined && res.rpcUrl != null) {
