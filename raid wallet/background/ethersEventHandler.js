@@ -25,7 +25,7 @@ function saveTextField(event){
 		if (event.indexOf(";;;") != -1) { event = event.split(";;;"); entry.value = event[0]; entry.url = event[1]; } else { entry.value = event; }
 		try {entry.value = JSON.parse(entry.value);} catch {console.log("no");}
 		//entry = event;entry.url=entry.url.replace(/^\/\/|^.*?:(\/\/)?/, '');entry.url = entry.url.split('/');if (entry.url.length > 2) {for (let n=2;n<entry.url.length;n++) {entry.url[1] += '/' + entry.url[n];}}
-		entry.value = stripQuote(entry.value);// browser.storage.local.set({entry}); 
+		entry.value = stripQuote(entry.value);// browser.storage.local.set({entry});
 		send(entry);
 	}
 }
@@ -116,8 +116,8 @@ function sendFailureResponse(answer){
 async function send(entry) {
 	console.log("sending");
 	let post = entry.value;	let url;let message = "";//post = convertNonAsciiToCodePoint(post);
-	if(entry.url != undefined) { url = "rewardsAddress";if(url.length > 100) {url = url.substring(0,100);} }
-	if(post.length > 1000) {post = post.substring(0,1000);}
+	if(entry.url == undefined) { url = "rewardsAddress"; } else { url = entry.url; }
+	if(url.length > 100) {url = url.substring(0,100);} if(post.length > 1000) {post = post.substring(0,1000);}
 	if (post) {
 		message = url+":;"+post;
 		getMnemonic().then(async res => {
