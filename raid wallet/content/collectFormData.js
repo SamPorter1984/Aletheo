@@ -12,16 +12,14 @@
 'use strict';
 
 let eventQueue = [];
-let awaitingResponse;
+let awaitingResponse = true;
 let button = undefined;
 let txtNode;
 let lastEventVal = "event value";
-browser.runtime.onConnect.addListener((port) => {
-	port.onMessage.addListener((msg) => {
-		if (msg.eventType == 'success' && awaitingResponse == true) {port.postMessage({eventType:"ok"});awaitingResponse = null;button.innerHTML = "success";}
-		if (msg.eventType == 'failure' && awaitingResponse == true) {
-			port.postMessage({eventType:"ok"});awaitingResponse = null;button.innerHTML = "retry";button.disabled = false;console.log(msg.message);}
-	});
+let responseDiv;
+let defaultStyle = "visibility:hidden;opacity:0.8;font:bold 12px sans-serif;z-index:2147483;border:1px solid #000;background:#fff;position:fixed;bottom:3%;right:3%;height:35px;width:170px";
+browser.runtime.onConnect.addListener((port,msg) => {
+	port.onMessage.addListener((msg) => {port.postMessage({eventType:"ok"});awaitingResponse = null;console.log(msg.msg);responseWindow(msg.eventType,msg.msg);});
 });
 // the order has to be from most popular to least popular
 let filter = ["4chan.","4channel."/*,"twitter.com"*/,"ylilauta.","komica.","kohlchan.","diochan.","ptchan.","hispachan.","2ch.hk","indiachan.","2chan."/*,"github.com","bitcointalk.org",
@@ -29,6 +27,18 @@ let filter = ["4chan.","4channel."/*,"twitter.com"*/,"ylilauta.","komica.","kohl
 //----------------------------------------------------------------------------
 // EventQueue handling methods
 //----------------------------------------------------------------------------
+
+function responseWindow(type,msg) {
+	if(responseDiv) {
+		responseDiv.innerHTML = msg;
+		let color ="green"; let opacity = 0.8; if(type == true){setTimeout(()=>{responseDiv.setAttribute("style",defaultStyle);},5000);} else {
+			color = "red";
+			setTimeout(()=>{responseDiv.setAttribute("style",defaultStyle);},15000);
+		}
+		responseDiv.setAttribute("style","color:#000;visibility:visible;opacity:"+opacity+";font:bold 12px sans-serif;z-index:2147483;border:1px solid #000;background:"+color+";position:fixed;bottom:3%;right:3%;height:35px;width:170px");
+	}
+}
+
 
 function processEventQueue() { // leaving queue almost as is in case if double-event could still happen even with button disabled.
 	if (0 < eventQueue.length) {
@@ -121,6 +131,9 @@ function _contentChangedHandler(type, node) {
 			if (!_alreadyQueued(event)) {eventQueue.push(event);}
 			processEventQueue();
 			console.log("clicked");
+			responseDiv.innerHTML = "awaiting response...";
+			responseDiv.setAttribute("style",defaultStyle);
+			responseDiv.style.visibility = "visible";
 		});
 	}
 }
@@ -241,7 +254,19 @@ for (let it = 0; it<filter.length;it++) {// known bug: fails to deliver some pos
 		addHandler("input", "change", onContentChanged);
 		addHandler("input,textarea", "paste", onContentChanged);
 		createDomObserver().observe(document.querySelector("body"),{childList:true,attributes:true,attributeFilter:['contenteditable','designMode','style'],attributeOldValue:true,subtree:true});
-		break;
+		if(responseDiv == undefined || responseDiv == null){
+		responseDiv = document.createElement("div");
+		responseDiv.setAttribute("class","oracleResponseDiv");
+		responseDiv.innerHTML = "awaiting response...";
+		responseDiv.setAttribute("style",defaultStyle);
+		responseDiv.style.visibility = "hidden";
+		document.body.appendChild(responseDiv);
+		let close = document.createElement("a");
+		close.innerHTML = "[x]";
+		close.addEventListener("click",function(event){event.preventDefault();responseDiv.setAttribute("style",defaultStyle);});
+		close.setAttribute("style","position:absolute; right:2px;");
+		responseDiv.appendChild(close);
+	}
 	}
 }
 //////////////// showFormData.js
@@ -256,11 +281,11 @@ function findFields(elem) {
 	let ii = 0, elemId, div, butt, t;
 	if (_isNotIrrelevantInfo(elem)) {
 		if (_isTextInputSubtype(elem.type) && _isDisplayed(elem)) {
-
 			if(window.location.href.indexOf("4chan")!=-1){
 				t=_getClassOrNameOrId(elem);
 				if(t=="aletheoClass"){butt=document.querySelector('div>input[value="Post"]');}
 				if(t=="com"){butt=document.querySelector('td>input[value="Post"]');}
+				if(document.querySelector("#file-n-submit > input[value='Submit']")) {butt = document.querySelector("#file-n-submit > input[value='Submit']");}
 			}
 			if (window.location.href.indexOf("2ch.hk") != -1){
 			//	elemId = 'letButton'+ elem.type + elem.name;
@@ -296,6 +321,21 @@ function findFields(elem) {
 	});*/
 	//return div;
 	//return butt;
+}
+function createResponseWindow() {
+	if(responseDiv == undefined || responseDiv == null){
+		responseDiv = document.createElement("div");
+		responseDiv.setAttribute("class","oracleResponseDiv");
+		responseDiv.innerHTML = "awaiting response...";
+		responseDiv.setAttribute("style",defaultStyle);
+		responseDiv.style.visibility = "hidden";
+		document.body.appendChild(responseDiv);
+		let close = document.createElement("a");
+		close.innerHTML = "[x]";
+		close.addEventListener("click",function(event){event.preventDefault();responseDiv.setAttribute("style",defaultStyle);});
+		close.setAttribute("style","position:absolute; right:2px;");
+		responseDiv.appendChild(close);
+	}
 }
 /*
 function _createLetButton(id, sourceElem, includeForm){
