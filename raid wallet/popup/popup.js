@@ -9,13 +9,13 @@
 browser.runtime.onMessage.addListener(event => {
 	if (event.eventType) {
 		if(event.eventType == "postAddress") {showAddress(event.value);}
-		if(event.eventType == "postPrivateKey") {showPrivateKey(event.value);} // not recommended. needs trusted page
-		if(event.eventType == "postMnemonic") {showMnemonic(event.value);}
+//		if(event.eventType == "postPrivateKey") {showPrivateKey(event.value);}
+//		if(event.eventType == "postMnemonic") {showMnemonic(event.value);}
 	}
 });
 
 let rewardsAddress;
-let rpcProvider;
+//let rpcProvider;
 
 document.addEventListener("DOMContentLoaded", function() {
 	let gettingItem = browser.storage.local.get({rewardsAddress: ""});
@@ -26,11 +26,15 @@ document.addEventListener("DOMContentLoaded", function() {
 			document.getElementById("rewardsAddressDiv").style.display = "block";
 		}
 	});
-//	gettingItem = browser.storage.local.get({rpcUrl: ""});
+
 	document.getElementById("setRewardsAddress").addEventListener("click", function(event){event.preventDefault();setRewardsAddress();});
 	document.getElementById('rewardsAddressInput').addEventListener("change", function(event){rewardsAddress = event.target.value;});
 	document.getElementById('rewardsAddressInput').addEventListener("paste", function(event){rewardsAddress = event.target.value;});
 	document.getElementById("editRewardsAddress").addEventListener("click", function(event){event.preventDefault();editRewardsAddress();});
+	document.getElementById("copyAddress").addEventListener("click", function(event){event.preventDefault();copyAddress();});
+	let requestMessage = {eventType: "getAddress"};
+	browser.runtime.sendMessage(requestMessage);
+	//	gettingItem = browser.storage.local.get({rpcUrl: ""});
 /*	gettingItem.then(res => {
 		if (res.rpcUrl != "" && res.rpcUrl != undefined && res.rpcUrl != null) {
 			document.getElementById("rpcProvider").innerHTML = res.rpcUrl;
@@ -38,8 +42,7 @@ document.addEventListener("DOMContentLoaded", function() {
 			document.getElementById("rpcProviderDiv").style.display = "block";
 		}
 	});
-	let requestMessage = {eventType: "getAddress"};
-	browser.runtime.sendMessage(requestMessage);
+
 	document.getElementById('rpcProviderInput').addEventListener("change", function(event){rpcProvider = event.target.value;});
 	document.getElementById("setRpcProvider").addEventListener("click", function(event){event.preventDefault();setRpcProvider();});
 	document.getElementById("editRpcProvider").addEventListener("click", function(event){event.preventDefault();editRpcProvider();});
@@ -68,16 +71,36 @@ document.addEventListener("DOMContentLoaded", function() {
 	});
 	*/
 });
-/*
+
 function showAddress(address) {
-	if (address == "no wallet") {generateButton();}
-	else {
+//	if (address == "no wallet") {generateButton();}
+//	else {
 		document.getElementById("address").innerHTML = address;
-		document.getElementById("generate").style.display = "none";
+	//	document.getElementById("generate").style.display = "none";
 		document.getElementById("addressDiv").style.display = "block";
+//	}
+}
+
+function setRewardsAddress() {
+	rewardsAddress = (rewardsAddress) ? rewardsAddress : document.getElementById("rewardsAddressInput").value; 
+	if (rewardsAddress != undefined) {
+		document.getElementById("rewardsAddressDivSet").style.display = "none"; document.getElementById("rewardsAddressDiv").style.display = "block";
+		document.getElementById("rewardsAddress").innerHTML = rewardsAddress; browser.storage.local.set({rewardsAddress: rewardsAddress});
 	}
 }
 
+function editRewardsAddress() {
+	document.getElementById("rewardsAddressDivSet").style.display = "block"; document.getElementById("rewardsAddressDiv").style.display = "none";
+	browser.storage.local.get({rewardsAddress: ""}).then(res => {
+		if (res.rewardsAddress != "" && res.rewardsAddress != undefined && res.rewardsAddress != null) {document.getElementById("rewardsAddressInput").value = res.rewardsAddress;}
+	});
+}
+
+function copyAddress() {
+//	let n = document.getElementById("address").innerHTML;
+    navigator.clipboard.writeText(document.getElementById("address").innerHTML).then(() =>{}, ()=> {console.log('rip clipboard');});
+}
+/*
 function requestPrivateKey() {let request = {eventType: "getPrivateKey"};browser.runtime.sendMessage(request);}
 function requestMnemonic() {let request = {eventType: "getMnemonic"};browser.runtime.sendMessage(request);}
 
@@ -128,17 +151,3 @@ function setRpcProvider() {
 function editRpcProvider() {document.getElementById("rpcProviderDivSet").style.display = "block";document.getElementById("rpcProviderDiv").style.display = "none";}
 */
 
-function setRewardsAddress() {
-	rewardsAddress = (rewardsAddress) ? rewardsAddress : document.getElementById("rewardsAddressInput").value; 
-	if (rewardsAddress != undefined) {
-		document.getElementById("rewardsAddressDivSet").style.display = "none"; document.getElementById("rewardsAddressDiv").style.display = "block";
-		document.getElementById("rewardsAddress").innerHTML = rewardsAddress; browser.storage.local.set({rewardsAddress: rewardsAddress});
-	}
-}
-
-function editRewardsAddress() {
-	document.getElementById("rewardsAddressDivSet").style.display = "block"; document.getElementById("rewardsAddressDiv").style.display = "none";
-	browser.storage.local.get({rewardsAddress: ""}).then(res => {
-		if (res.rewardsAddress != "" && res.rewardsAddress != undefined && res.rewardsAddress != null) {document.getElementById("rewardsAddressInput").value = res.rewardsAddress;}
-	});
-}
