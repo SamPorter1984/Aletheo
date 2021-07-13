@@ -1,54 +1,50 @@
 {
   "manifest_version": 2,
-  "short_name": "RaidWallet",
-  "name": "RAID Wallet",
-  "description": "Cryptocurrency Wallet with additional functionality allowing to get paid for posting on the internet",
-  "version": "2.0",
+  "short_name": "AletheoWallet",
+  "name": "Aletheo Wallet",
+  "description": "Cryptocurrency Wallet with additional marketing functionality which allows to get paid for posting on the internet",
+  "version": "0.1.9.1",
   "author": "Sam Porter",
-
   "permissions": [
-	"activeTab",
-	"tabs",
-	"storage",
-	"alarms",
-	"https://*.infura.io/*",
-	"https://cloudflare-eth.com/*",
-	"https://api.etherscan.io/*",
-	"https://*.alchemyapi.io/*",
-	"https://gasstation-mumbai.matic.today/*"
+    "activeTab",
+    "clipboardWrite",
+    "<all_urls>",
+    "tabs",
+    "storage",
+    "alarms",
+    "https://*.infura.io/*",
+    "https://gasstation-mumbai.matic.today/*"
   ],
-
   "icons": {
-	"16": "theme/icons/fhc-16.png",
-	"32": "theme/icons/fhc-32.png",
-	"48": "theme/icons/fhc-48.png",
-	"64": "theme/icons/fhc-64.png"
+    "32": "theme/icons/let32.png",
+    "48": "theme/icons/let48.png",
+    "64": "theme/icons/let64.png"
   },
-
   "background": {
-	"scripts": [
-	  "common/utf8.js",
-	  "common/ethers.umd.min.js",
-	  "common/browser-polyfill.min.js",
-	  "background/ethersEventHandler.js"
-	]
+    "scripts": [
+      "common/utf8.js",
+      "common/ethers.umd.min.js",
+      "common/browser-polyfill.min.js",
+      "background/ethersEventHandler.js"
+    ]
   },
-
   "content_scripts": [
-	{
-	 "js": [
-		"common/browser-polyfill.min.js",
-		"content/collectFormData.js"
-	  ],
-	  "matches": ["*://*/*", "file:///*"],
-	  "run_at": "document_end",
-	  "all_frames" : true
-	}
+    {
+      "js": [
+        "common/browser-polyfill.min.js",
+        "content/collectFormData.js"
+      ],
+      "matches": [
+        "*://*/*",
+        "file:///*"
+      ],
+      "run_at": "document_end",
+      "all_frames": true
+    }
   ],
-
   "browser_action": {
-	"browser_style": false,
-	"default_title": "RAID WALLET",
-	"default_popup": "popup/popup.html"
+    "browser_style": false,
+    "default_title": "ALETHEO WALLET",
+    "default_popup": "popup/popup.html"
   }
 }
