@@ -1,0 +1,44 @@
+{
+  "name": "aletheo",
+  "version": "1.0.0",
+  "description": "From Greek it's the Bringer of truth from God, or simply God of Truth. Most of the development is now in private repo/background for a bit while",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm install && npx hardhat test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SamPorter1984/Aletheo.git"
+  },
+  "author": "",
+  "license": "BUSL-1.1",
+  "bugs": {
+    "url": "https://github.com/SamPorter1984/Aletheo/issues"
+  },
+  "homepage": "https://github.com/SamPorter1984/Aletheo#readme",
+  "devDependencies": {
+    "@ethersproject/providers": "^5.7.2",
+    "@nomicfoundation/hardhat-chai-matchers": "^1.0.5",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.7",
+    "@nomicfoundation/hardhat-toolbox": "^2.0.0",
+    "@nomiclabs/hardhat-ethers": "^2.2.1",
+    "@nomiclabs/hardhat-etherscan": "^3.1.3",
+    "@typechain/ethers-v5": "^10.2.0",
+    "@typechain/hardhat": "^6.1.5",
+    "@types/chai": "^4.3.4",
+    "@types/mocha": "^9.1.1",
+    "chai": "^4.3.7",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.12.4",
+    "hardhat-gas-reporter": "^1.0.9",
+    "prettier": "2.8.1",
+    "solidity-coverage": "^0.8.2",
+    "ts-node": "^10.9.1",
+    "typechain": "^8.1.1"
+  },
+  "dependencies": {
+    "@controlcpluscontrolv/hardhat-yul": "^2.0.4",
+    "hardhat-tracer": "^1.2.1",
+    "patch-package": "^6.5.0"
+  }
+}

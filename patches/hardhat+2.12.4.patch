@@ -1,0 +1,13 @@
+diff --git a/node_modules/hardhat/src/internal/hardhat-network/provider/TxPool.ts b/node_modules/hardhat/src/internal/hardhat-network/provider/TxPool.ts
+index 85c8f23..b25bebf 100644
+--- a/node_modules/hardhat/src/internal/hardhat-network/provider/TxPool.ts
++++ b/node_modules/hardhat/src/internal/hardhat-network/provider/TxPool.ts
+@@ -452,7 +452,7 @@ export class TxPool {
+ 
+     if (txMaxUpfrontCost > senderBalance) {
+       throw new InvalidInputError(
+-        `sender doesn't have enough funds to send tx. The max upfront cost is: ${txMaxUpfrontCost.toString()}` +
++        `sender ${senderAccount} doesn't have enough funds to send tx. The max upfront cost is: ${txMaxUpfrontCost.toString()}` +
+           ` and the sender's account only has: ${senderBalance.toString()}`
+       );
+     }
