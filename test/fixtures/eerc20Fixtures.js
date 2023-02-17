@@ -13,9 +13,6 @@ async function EERC20Fixture() {
     treasury: accounts[3].address,
     foundingEvent: accounts[4].address,
     governance: accounts[0].address,
-    factory: accounts[0].address,
-    helper: accounts[0].address,
-    WETH: accounts[0].address,
   });
   return [eerc20, accounts];
 }
@@ -31,9 +28,6 @@ async function EERC20ProxiedFixture() {
       treasury: accounts[3].address,
       foundingEvent: accounts[4].address,
       governance: accounts[0].address,
-      factory: accounts[0].address,
-      helper: accounts[0].address,
-      WETH: accounts[0].address,
     },
   ]);
   await trustMinimizedProxy.connect(accounts[19]).proposeTo(eerc20.address, initData);

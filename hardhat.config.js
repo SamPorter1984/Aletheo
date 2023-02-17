@@ -42,7 +42,7 @@ const conf = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 62840, //6284
+            runs: 62840,
           },
         },
       },
@@ -51,7 +51,7 @@ const conf = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 62840, //6284
+            runs: 62840,
           },
         },
       },

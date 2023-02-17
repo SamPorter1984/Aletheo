@@ -16,33 +16,114 @@ const {
 } = require('./utils.js');
 
 const ITERATIONS = 10;
+const spaces = "          "
 
 const provider = ethers.provider;
 let treasury = {},
   eerc20 = {},
-  wbnb = {},
-  busd = {},
+  WETH = {},
+  DAI = {},
   foundingEvent = {},
-  staking = {},
   router = {},
   factory = {},
-  letBNBpool = {},
+  letETHpool = {},
   pool = {},
-  bnbBUSDPool = {},
+  ETHDAIPool = {},
   accounts = [];
 
 describe('TREASURY RANDOMIZED MATH TESTS', function () {
   beforeEach('deploy fixture', async () => {
-    [treasury, eerc20, wbnb, busd, accounts, foundingEvent, staking, router, factory, bnbBUSDPool] = await loadFixture(
+    [treasury, eerc20, WETH, DAI, accounts, foundingEvent, router, factory, ETHDAIPool] = await loadFixture(
       treasuryWithUniswapAndFoundingEventNotConcludedFixture
     );
     await setBalance(accounts[0].address, ethers.utils.parseEther(TEN_MILLION));
     let toDeposit = ethers.BigNumber.from(ONE).mul('49999');
-    await foundingEvent.connect(accounts[0]).depositBNB({ value: toDeposit });
+    await foundingEvent.connect(accounts[0]).depositETH({ value: toDeposit });
     await foundingEvent.connect(accounts[0]).triggerLaunch();
     pool = await (await ethers.getContractFactory('UniswapV2Pair')).connect(accounts[19]).deploy();
-    const poolAddress = await factory.getPair(wbnb.address, eerc20.address);
-    letBNBpool = await pool.attach(poolAddress);
+    const poolAddress = await factory.getPair(WETH.address, eerc20.address);
+    letETHpool = await pool.attach(poolAddress);
+  });
+
+  describe('emission tests for 1 second blocktime', function () {
+    describe('pessimistic, the price is never above 1 usd', function () {
+      it('get rate after 1 year has passed', async function() {
+        const initialRate = await treasury.getRate();
+        console.log(spaces,"initialRate: ",String(initialRate))
+        await mine(31536000);
+        const rateReturned = await treasury.getRate();
+        console.log(spaces,"rate after one year:",String(rateReturned))
+      });
+      it('total claimed in whole first day of the year with a claim every 1000 blocks', async function() {
+        let total = ethers.BigNumber.from(0)
+        for (let i = 0; i < 87; i++) {//js is too slow for this
+          await mine(1000);
+          const rateReturned = await treasury.getRate();
+          const toAdd = rateReturned.mul(1000)
+          total = total.add(toAdd);
+        }
+        console.log(spaces,"totalClaimable:",String(total))
+        console.log(spaces,"total whole tokens claimable:",String(total.div("1000000000000000000")))
+      });
+      it('total claimed in whole last day of the year with a claim every 1000 blocks', async function() {
+        await mine(31536000);
+        let total = ethers.BigNumber.from(0)
+        for (let i = 0; i < 87; i++) {
+          await mine(1000);
+          const rateReturned = await treasury.getRate();
+          const toAdd = rateReturned.mul(1000)
+          total = total.add(toAdd);
+        }
+        console.log(spaces,"totalClaimable:",String(total))
+        console.log(spaces,"total whole tokens claimable:",String(total.div("1000000000000000000")))
+      });
+    })
+
+    describe('optimistic, the price is 10 usd', function () {
+      beforeEach('change pool balance', async () => {
+        const poolAddress = await factory.getPair(eerc20.address,WETH.address)
+        const initialPoolBalance = await WETH.balanceOf(poolAddress);
+        //console.log("initialPoolBalance:",initialPoolBalance)
+        await WETH.deposit({value:initialPoolBalance.mul(9)})
+        await WETH.transfer(poolAddress,initialPoolBalance.mul(9));
+        const poolBalanceAfter = await WETH.balanceOf(poolAddress);
+        //console.log("poolBalanceAfter:",poolBalanceAfter)
+        const uniswapV2Pair = await (await ethers.getContractFactory('UniswapV2Pair')).connect(accounts[19]).deploy();
+        const poolContract =  await uniswapV2Pair.attach(poolAddress);
+        await poolContract.sync()
+      });
+      it('get rate after 1 year has passed', async function() {
+        const initialRate = await treasury.getRate();
+        console.log(spaces,"initialRate:",String(initialRate))
+
+        await mine(31536000);
+        const rateReturned = await treasury.getRate();
+        console.log(spaces,"rate after one year:",String(rateReturned))
+      });
+      it('total claimed in whole first day of the year with a claim every 1000 blocks', async function() {
+        let total = ethers.BigNumber.from(0)
+        for (let i = 0; i < 87; i++) {
+          await mine(1000);
+          const rateReturned = await treasury.getRate();
+          const toAdd = rateReturned.mul(1000)
+          total = total.add(toAdd);
+        }
+        console.log(spaces,"totalClaimable:",String(total))
+        console.log(spaces,"total whole tokens claimable:",String(total.div("1000000000000000000")))
+      });
+      it('total claimed in whole last day of the year with a claim every 1000 blocks', async function() {
+        await mine(31536000);
+        let total = ethers.BigNumber.from(0)
+        for (let i = 0; i < 87; i++) {
+          await mine(1000);
+          const rateReturned = await treasury.getRate();
+          const toAdd = rateReturned.mul(1000)
+          total = total.add(toAdd);
+        }
+        console.log(spaces,"totalClaimable:",String(total))
+        console.log(spaces,"total whole tokens claimable:",String(total.div("1000000000000000000")))
+      });
+    })
   });
 
   describe('getRate()', function () {
@@ -62,7 +143,7 @@ describe('TREASURY RANDOMIZED MATH TESTS', function () {
         let toDeposit = baseDeposit.div(mod);
         let trade = 0;
         while (trade < 9) {
-          await router.swapExactETHForTokens(0, [wbnb.address, eerc20.address], nAddress, ethers.constants.MaxUint256, { value: toDeposit });
+          await router.swapExactETHForTokens(0, [WETH.address, eerc20.address], nAddress, ethers.constants.MaxUint256, { value: toDeposit });
           const rand = Math.floor(Math.random() * 2) + 2;
           toDeposit = toDeposit.mul(9).div(10);
           toDeposit = toDeposit.div(rand);
@@ -202,6 +283,7 @@ describe('TREASURY RANDOMIZED MATH TESTS', function () {
     const iterations = 0 + ITERATIONS;
     it(iterations + ' random iterations for posterRewardsAvailable()', async function () {
       for (let i = 0; i < iterations; i++) {
+        
         const n = Math.floor(Math.random() * 20);
         const nAddress = accounts[n].address;
         const randBlocks = Math.floor(Math.random() * 100000000);
@@ -245,80 +327,23 @@ describe('TREASURY RANDOMIZED MATH TESTS', function () {
       await expect(treasury.connect(accounts[0]).claimPosterRewardsFor([accounts[0].address])).to.be.reverted;
     });
   });
-  /*
-  describe('claimPosterRewardsWithSignature()', function () {
-    const iterations = 0 + ITERATIONS;
-    const chainId = 31337;
-    const DOMAIN_TYPEHASH = ethers.utils.solidityKeccak256(['string'], ['EIP712Domain(string name,uint256 chainId,address verifyingContract)']);
-    it(iterations + ' random iterations for claimPosterRewardsWithSignature()', async function () {
-      for (let i = 0; i < iterations; i++) {
-        const n = Math.floor(Math.random() * 19);
-        const nAddress = accounts[n].address;
-        const signer = accounts[Math.floor(Math.random() * 19)];
-        await treasury.connect(accounts[10]).addPosters([nAddress], ['11111111111111111']);
-        await treasury.approvePosters([nAddress]);
-        await mine(172800);
-        const domainSeparator = ethers.utils.solidityKeccak256(
-          ['bytes32', 'uint', 'string', 'address'],
-          [DOMAIN_TYPEHASH, chainId, 'claimPosterRewardsWithSignature()', treasury.address]
-        );
-        const hashStruct = ethers.utils.solidityKeccak256(['string', 'address'], ['Aletheo 1000 EOY', nAddress]);
-        const message = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [domainSeparator, hashStruct]);
-        const signature = await accounts[n].signMessage(ethers.utils.arrayify(message));
-        const tx = await treasury.connect(signer).claimPosterRewardsWithSignature(nAddress, signature);
-        const receipt = await tx.wait();
-        const tc = createTestCase({ i, n, nAddress, signer, domainSeparator, hashStruct, message, signature, tx, receipt });
-        expect(receipt.status, tcJSON(tc)).to.equal(1);
-      }
-    });
-    it('Reverts if not eligible for poster rewards', async () => {
-      const nAddress = accounts[0].address;
-      const signer = accounts[Math.floor(Math.random() * 19)];
-      const domainSeparator = ethers.utils.solidityKeccak256(
-        ['bytes32', 'uint', 'string', 'address'],
-        [DOMAIN_TYPEHASH, chainId, 'claimPosterRewardsWithSignature()', treasury.address]
-      );
-      const hashStruct = ethers.utils.solidityKeccak256(['string', 'address'], ['Aletheo 1000 EOY', nAddress]);
-      const message = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [domainSeparator, hashStruct]);
-      const signature = await accounts[0].signMessage(ethers.utils.arrayify(message));
-
-      const tc = createTestCase({ nAddress, signer, domainSeparator, hashStruct, message, signature });
-      await expect(treasury.connect(signer).claimPosterRewardsWithSignature(nAddress, signature), tcJSON(tc)).to.be.reverted;
-    });
-    it('Reverts if recovered signer address and passed arg address dont match or signature is invalid', async () => {
-      const nAddress = accounts[0].address;
-      const signer = accounts[Math.floor(Math.random() * 19)];
-      const domainSeparator = ethers.utils.solidityKeccak256(
-        ['bytes32', 'uint', 'string', 'address'],
-        [DOMAIN_TYPEHASH, chainId, 'INVALID_STRING', treasury.address]
-      );
-      await treasury.connect(accounts[10]).addPosters([nAddress], [1]);
-      await treasury.approvePosters([nAddress]);
-      const hashStruct = ethers.utils.solidityKeccak256(['string', 'address'], ['Aletheo 1000 EOY', nAddress]);
-      const message = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [domainSeparator, hashStruct]);
-      const signature = await accounts[0].signMessage(ethers.utils.arrayify(message));
-
-      const tc = createTestCase({ nAddress, signer, domainSeparator, hashStruct, message, signature });
-      await expect(treasury.connect(signer).claimPosterRewardsWithSignature(nAddress, signature), tcJSON(tc)).to.be.reverted;
-    });
-  });*/
 });
 
 describe('TREASURY Founders', function () {
   beforeEach('deploy fixture', async () => {
-    [treasury, eerc20, wbnb, busd, accounts, foundingEvent, staking, router, factory, bnbBUSDPool] = await loadFixture(
+    [treasury, eerc20, WETH, DAI, accounts, foundingEvent, router, factory, ETHDAIPool] = await loadFixture(
       treasuryWithUniswapAndFoundingEventNotConcludedFixture
     );
     for (let i = 0; i < accounts.length - 1; i++) {
       await setBalance(accounts[i].address, ethers.utils.parseEther(TEN_MILLION));
       // prettier-ignore
       const toDeposit = ethers.BigNumber.from(ONE).mul('' + (Math.floor(Math.random() * 20 + 30)));
-      await foundingEvent.connect(accounts[i]).depositBNB({ value: toDeposit });
+      await foundingEvent.connect(accounts[i]).depositETH({ value: toDeposit });
     }
     await foundingEvent.connect(accounts[0]).triggerLaunch();
     pool = await (await ethers.getContractFactory('UniswapV2Pair')).connect(accounts[19]).deploy();
-    const poolAddress = await factory.getPair(wbnb.address, eerc20.address);
-    letBNBpool = await pool.attach(poolAddress);
+    const poolAddress = await factory.getPair(WETH.address, eerc20.address);
+    letETHpool = await pool.attach(poolAddress);
   });
 
   describe('founderRewardsAvailable()', function () {
@@ -327,9 +352,10 @@ describe('TREASURY Founders', function () {
       for (let i = 0; i < iterations; i++) {
         const n = Math.floor(Math.random() * 19);
         const nAddress = accounts[n].address;
-        const randBlocks = Math.floor(Math.random() * 100000000);
+        const randBlocks = Math.floor(Math.random() * 100000000)+1;
         const toClaimOrNotToClaim = Math.floor(Math.random() * 2);
-        if (toClaimOrNotToClaim == 1) {
+        //if already all claimed in previous iteration
+        if (toClaimOrNotToClaim == 1&&(await treasury.founders(accounts[n].address)).amount.gt(0)) {
           await treasury.connect(accounts[n]).claimFounderRewards();
         }
         await mine(randBlocks);
@@ -363,25 +389,25 @@ describe('TREASURY Founders', function () {
 
 const treasuryUtils = {
   getAmountOut: async (amountIn, tkn) => {
-    return getAmountOut(amountIn, tkn, { eerc20, letBNBpool });
+    return getAmountOut(amountIn, tkn, { eerc20, letETHpool });
   },
   calculateLetAmountInToken: async (stringValue, tkn) => {
-    return calculateLetAmountInToken(stringValue, tkn, { eerc20, letBNBpool });
+    return calculateLetAmountInToken(stringValue, tkn, { eerc20, letETHpool });
   },
   calculateRateLocally: async blockAdjust => {
-    return calculateRateLocally(blockAdjust, { provider, treasury, eerc20, wbnb, letBNBpool });
+    return calculateRateLocally(blockAdjust, { provider, treasury, eerc20, WETH, letETHpool });
   },
   calculateAirdropAvailable: async (n, blockAdjust) => {
-    return calculateAirdropAvailable(n, blockAdjust, { provider, treasury, eerc20, wbnb, letBNBpool, accounts });
+    return calculateAirdropAvailable(n, blockAdjust, { provider, treasury, eerc20, WETH, letETHpool, accounts });
   },
   calculatePosterRewardsAvailable: async (n, blockAdjust) => {
-    return calculatePosterRewardsAvailable(n, blockAdjust, { provider, treasury, eerc20, wbnb, letBNBpool, accounts });
+    return calculatePosterRewardsAvailable(n, blockAdjust, { provider, treasury, eerc20, WETH, letETHpool, accounts });
   },
   calculatePosterRewardsWithBonus: async (n, blockAdjust) => {
-    return calculatePosterRewardsWithBonus(n, blockAdjust, { provider, treasury, eerc20, wbnb, letBNBpool, accounts });
+    return calculatePosterRewardsWithBonus(n, blockAdjust, { provider, treasury, eerc20, WETH, letETHpool, accounts });
   },
   calculateFounderRewardsAvailable: async (n, blockAdjust, willClaim) => {
-    return calculateFounderRewardsAvailable(n, blockAdjust, willClaim, { provider, treasury, foundingEvent, eerc20, wbnb, letBNBpool, accounts });
+    return calculateFounderRewardsAvailable(n, blockAdjust, willClaim, { provider, treasury, foundingEvent, eerc20, WETH, letETHpool, accounts });
   },
 };
 
@@ -525,7 +551,7 @@ async function posterBeforeTx(entity, nAddress, n) {
   }
   const { toClaimInitial, toClaimWithBonus } = await treasuryUtils.calculatePosterRewardsWithBonus(n, 1); //might fail
   if (entity.lowBalance == true) {
-    entity.amountToReceive = await treasuryUtils.getAmountOut(toClaimWithBonus, wbnb);
+    entity.amountToReceive = await treasuryUtils.getAmountOut(toClaimWithBonus, WETH);
   }
   entity.amount = (await treasury[entity.name + 's'](nAddress)).amount;
   entity.toClaim = await treasuryUtils.calculateAirdropAvailable(n, 1);

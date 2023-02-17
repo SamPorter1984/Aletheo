@@ -59,56 +59,72 @@ interface I {
 
 contract LiquidityManager {
     mapping(address => uint) public amounts;
-    address public router;
-    address public factory;
-    address public mainToken;
-    address public defTokenFrom;
-    address public defPoolFrom;
-    address public defTokenTo;
-    address public defPoolTo;
-    address public liqMan;
-    address public dao;
 
-    function init() public {
-        router = 0x10ED43C718714eb63d5aA57B78B54704E256024E;
-        factory = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73;
-        mainToken = 0x74404135DE39FABB87493c389D0Ca55665520d9A; //let token
-        defTokenFrom = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c; //wbnb
-        address LP = I(factory).getPair(mainToken, defTokenFrom);
+    struct AddressBook {
+        address router;
+        address factory;
+        address mainToken;
+        address defTokenFrom;
+        address defPoolFrom;
+        address defTokenTo;
+        address defPoolTo;
+        address liqMan;
+        address dao;
+    }
+
+    AddressBook public ab;
+    uint abLastUpdate;
+    AddressBook public abPending;
+
+    function init(AddressBook calldata _ab) public {
+        //alert
+        ab = _ab;
+        address LP = I(_ab.factory).getPair(_ab.mainToken, _ab.defTokenFrom);
         if (LP == address(0)) {
-            LP = I(factory).createPair(mainToken, defTokenFrom);
+            LP = I(_ab.factory).createPair(_ab.mainToken, _ab.defTokenFrom);
         }
-        defPoolFrom = LP; //wbnb pool
-        I(mainToken).addPool(LP);
-        defTokenTo = 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56; //busd
-        LP = I(factory).getPair(mainToken, defTokenTo);
+        address defPoolFrom = LP; //WETH pool
+        I(_ab.mainToken).addPool(LP);
+        LP = I(_ab.factory).getPair(_ab.mainToken, _ab.defTokenTo);
         if (LP == address(0)) {
-            LP = I(factory).createPair(mainToken, defTokenTo);
+            LP = I(_ab.factory).createPair(_ab.mainToken, _ab.defTokenTo);
         }
-        defPoolTo = LP; //busd pool
-        I(mainToken).addPool(LP);
-        liqMan = 0xB23b6201D1799b0E8e209a402daaEFaC78c356Dc; // liquidity manager
-        I(mainToken).approve(router, 2 ** 256 - 1);
-        I(defTokenFrom).approve(router, 2 ** 256 - 1);
-        I(defTokenTo).approve(router, 2 ** 256 - 1);
-        I(defPoolFrom).approve(router, 2 ** 256 - 1);
-        I(defPoolTo).approve(router, 2 ** 256 - 1);
+        address defPoolTo = LP; //DAI pool
+        I(_ab.mainToken).addPool(LP);
+        I(_ab.mainToken).approve(_ab.router, 2 ** 256 - 1);
+        I(_ab.defTokenFrom).approve(_ab.router, 2 ** 256 - 1);
+        I(_ab.defTokenTo).approve(_ab.router, 2 ** 256 - 1);
+        I(defPoolFrom).approve(_ab.router, 2 ** 256 - 1);
+        I(defPoolTo).approve(_ab.router, 2 ** 256 - 1);
+    }
+
+    function setPendingAddressBook(AddressBook calldata pab_) external {
+        require(msg.sender == ab.liqMan);
+        abPending = pab_;
+    }
+
+    function setAddressBook() external {
+        require(msg.sender == ab.liqMan && abLastUpdate > block.number + 1209600); // 2 weeks for this version
+        abLastUpdate = block.number;
+        ab = abPending;
     }
 
     modifier onlyLiqMan() {
-        require(msg.sender == liqMan);
+        require(msg.sender == ab.liqMan);
         _;
     }
     modifier onlyDao() {
-        require(msg.sender == dao);
+        require(msg.sender == ab.dao);
         _;
     }
 
     function approve(address token) public onlyLiqMan {
-        I(token).approve(router, 2 ** 256 - 1);
+        I(token).approve(ab.router, 2 ** 256 - 1);
     }
 
     function swapLiquidity(address tokenFrom, address tokenTo, uint percent) public onlyDao {
+        address factory = ab.factory;
+        address mainToken = ab.mainToken;
         address pFrom = I(factory).getPair(mainToken, tokenFrom);
         address pTo = I(factory).getPair(mainToken, tokenTo);
         uint liquidity = (I(pFrom).balanceOf(address(this)) * percent) / 100;
@@ -119,15 +135,18 @@ contract LiquidityManager {
     }
 
     function swapLiquidityDef(uint percent) public onlyLiqMan {
+        address mainToken = ab.mainToken;
+        address defPoolFrom = ab.defPoolFrom;
+        address defPoolTo = ab.defPoolTo;
         uint amountFrom = I(mainToken).balanceOf(defPoolFrom);
         uint amountTo = I(mainToken).balanceOf(defPoolTo);
         uint liquidity;
-        address tokenFrom = defTokenFrom;
-        address tokenTo = defTokenTo;
+        address tokenFrom = ab.defTokenFrom;
+        address tokenTo = ab.defTokenTo;
         if (amountTo > amountFrom) {
             liquidity = I(defPoolTo).balanceOf(address(this));
-            tokenFrom = defTokenTo;
-            tokenTo = defTokenFrom;
+            tokenFrom = ab.defTokenTo;
+            tokenTo = ab.defTokenFrom;
         } else {
             liquidity = I(defPoolFrom).balanceOf(address(this));
         }
@@ -136,6 +155,9 @@ contract LiquidityManager {
     }
 
     function _swapLiquidity(address tokenFrom, address tokenTo, uint liquidity) private {
+        address router = ab.router;
+        address factory = ab.factory;
+        address mainToken = ab.mainToken;
         address[] memory ar = new address[](2);
         ar[0] = tokenFrom;
         ar[1] = tokenTo;
@@ -163,38 +185,54 @@ contract LiquidityManager {
     }
 
     function changeDefTokenTo(address token) public onlyDao {
-        defTokenTo = token;
+        address factory = ab.factory;
+        address router = ab.router;
+        address mainToken = ab.mainToken;
+        ab.defTokenTo = token;
         address pool = I(factory).getPair(mainToken, token);
         if (pool == address(0)) {
             pool = I(factory).createPair(mainToken, token);
         }
-        defPoolTo = pool;
-        I(defTokenTo).approve(router, 2 ** 256 - 1);
-        I(defPoolTo).approve(router, 2 ** 256 - 1);
+        ab.defPoolTo = pool;
+        I(token).approve(router, 2 ** 256 - 1);
+        I(pool).approve(router, 2 ** 256 - 1);
         I(mainToken).addPool(pool);
     }
 
     function addLiquidity() external payable {
-        I(router).addLiquidityETH{value: address(this).balance}(mainToken, I(mainToken).balanceOf(address(this)), 0, 0, address(this), 2 ** 256 - 1);
+        address mainToken = ab.mainToken;
+        I(ab.router).addLiquidityETH{value: address(this).balance}(
+            mainToken,
+            I(mainToken).balanceOf(address(this)),
+            0,
+            0,
+            address(this),
+            2 ** 256 - 1
+        );
     }
 
     function stakeLiquidity(uint amount) external {
+        address mainToken = ab.mainToken;
+        address defPoolFrom = ab.defPoolFrom;
         amounts[msg.sender] += amount;
         I(defPoolFrom).transferFrom(msg.sender, address(this), amount);
         uint amountFrom = I(mainToken).balanceOf(defPoolFrom);
-        uint amountTo = I(mainToken).balanceOf(defPoolTo);
+        uint amountTo = I(mainToken).balanceOf(ab.defPoolTo);
         if (amountTo > amountFrom) {
-            _swapLiquidity(defTokenFrom, defTokenTo, amount);
+            _swapLiquidity(ab.defTokenFrom, ab.defTokenTo, amount);
         }
     }
 
     function unstakeLiquidity(uint amount) external {
         require(amounts[msg.sender] >= amount);
+        address defPoolFrom = ab.defPoolFrom;
         amounts[msg.sender] -= amount;
         if (I(defPoolFrom).balanceOf(address(this)) >= amount) {
             I(defPoolFrom).transfer(msg.sender, amount);
         } else {
-            uint liquidity = I(defPoolTo).balanceOf(address(this));
+            address defTokenTo = ab.defTokenTo;
+            address defTokenFrom = ab.defTokenFrom;
+            uint liquidity = I(ab.defPoolTo).balanceOf(address(this));
             _swapLiquidity(defTokenTo, defTokenFrom, liquidity);
             I(defPoolFrom).transfer(msg.sender, amount);
             liquidity = I(defPoolFrom).balanceOf(address(this));

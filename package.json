@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@controlcpluscontrolv/hardhat-yul": "^2.0.4",
+    "@uniswap/v3-sdk": "^3.9.0",
     "hardhat-tracer": "^1.2.1",
     "patch-package": "^6.5.0"
   }

@@ -357,7 +357,6 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     ) external virtual override ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
-        //console.log(pair);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
         liquidity = IUniswapV2Pair(pair).mint(to);
@@ -709,7 +708,7 @@ library UniswapV2Library {
                         hex'ff',
                         factory,
                         keccak256(abi.encodePacked(token0, token1)),
-                        hex'aea0c85d120089e3bd173b980fd89cc32d9b82353d3bcbdf726332a2c38729e0' // init code hash
+                        hex'5f4c0a69926f37b766c58a9322829c164736c6960473ea2e5c3555cd4937b69c' // init code hash
                     )
                 )
             )

@@ -24,11 +24,11 @@ function tcJSON(testCase) {
 }
 
 async function getAmountOut(amountIn, tkn, options) {
-  const { eerc20, letBNBpool } = options;
+  const { eerc20, letETHpool } = options;
   const tknSize = ethers.BigNumber.from(tkn.address);
   const eerc20Size = ethers.BigNumber.from(eerc20.address);
   const [token0, token1] = tknSize.gt(eerc20Size) ? [eerc20.address, tkn.address] : [tkn.address, eerc20.address];
-  const reserves = await letBNBpool.getReserves();
+  const reserves = await letETHpool.getReserves();
   const [reserveLET, reserveTOKEN] = eerc20.address == token0 ? [reserves[0], reserves[1]] : [reserves[1], reserves[0]];
   const reserveIn = reserveLET;
   const reserveOut = reserveTOKEN;
@@ -41,11 +41,11 @@ async function getAmountOut(amountIn, tkn, options) {
 }
 
 async function calculateLetAmountInToken(stringValue, tkn, options) {
-  const { eerc20, letBNBpool } = options;
-  const wbnbSize = ethers.BigNumber.from(tkn.address);
+  const { eerc20, letETHpool } = options;
+  const WETHSize = ethers.BigNumber.from(tkn.address);
   const eerc20Size = ethers.BigNumber.from(eerc20.address);
-  const [token0, token1] = wbnbSize.gt(eerc20Size) ? [eerc20.address, tkn.address] : [tkn.address, eerc20.address];
-  const reserves = await letBNBpool.getReserves();
+  const [token0, token1] = WETHSize.gt(eerc20Size) ? [eerc20.address, tkn.address] : [tkn.address, eerc20.address];
+  const reserves = await letETHpool.getReserves();
   const [reserveLET, reserveTOKEN] = tkn.address == token0 ? [reserves[0], reserves[1]] : [reserves[1], reserves[0]];
   const amount = ethers.BigNumber.from(stringValue).mul(reserveLET).div(reserveTOKEN);
 
@@ -53,18 +53,36 @@ async function calculateLetAmountInToken(stringValue, tkn, options) {
 }
 
 async function calculateRateLocally(blockAdjust, options) {
-  const { provider, treasury, wbnb } = options;
+  const { provider, treasury, WETH } = options;
   if (!blockAdjust) {
     blockAdjust = 0;
   }
   let rate;
   const baseRate = await treasury.baseRate();
-  const price = await calculateLetAmountInToken(ONE, wbnb, options);
+  //console.log("baseRateJS:",baseRate)
+  const price = await calculateLetAmountInToken(ONE, WETH, options);
+  const priceSqrt = sqrt(price)
+  //console.log("priceSqrt:",priceSqrt)
   const timestamp = (await provider.getBlock(await provider.getBlockNumber())).timestamp + HARDHAT_BLOCK_TIME * blockAdjust;
   const timeSecs = ethers.BigNumber.from(timestamp).sub(EMISSION_BASERATE_START_TIMESTAMP);
-  rate = price.gt(ethers.BigNumber.from(ONE)) ? baseRate.div(price).div(timeSecs) : baseRate.div(ONE).div(timeSecs);
-
+  //console.log("timeSecs:",timeSecs)
+  rate = price.gt(ethers.BigNumber.from(ONE)) ? (baseRate.div(priceSqrt)).div(timeSecs) : (baseRate.div(sqrt(ONE))).div(timeSecs);
+  //console.log("rate:",rate)
+  //console.log('block.numberJS:', await provider.getBlockNumber());
   return rate;
+}
+
+function sqrt(value) {
+  const ONE = ethers.BigNumber.from(1);
+  const TWO = ethers.BigNumber.from(2);
+  x = ethers.BigNumber.from(value);
+  let z = x.add(ONE).div(TWO);
+  let y = x;
+  while (z.sub(y).isNegative()) {
+      y = z;
+      z = x.div(z).add(z).div(TWO);
+  }
+  return y;
 }
 
 async function calculateAirdropAvailable(n, blockAdjust, options) {
@@ -91,9 +109,13 @@ async function calculateAirdropAvailable(n, blockAdjust, options) {
     const blocksPassed = ethers.BigNumber.from(await provider.getBlockNumber())
       .add(blockAdjust)
       .sub(lastClaim);
+    
+    //console.log("blocksPassed:",blocksPassed)
+    //console.log("airdropRate:",airdropRate)
     available = blocksPassed.mul(airdropRate);
   }
   available = available.gt(smaller) ? smaller : available;
+  //console.log("available",available)
   return available;
 }
 
@@ -113,10 +135,9 @@ async function calculatePosterRewardsAvailable(n, blockAdjust, options) {
   const rate = await calculateRateLocally(blockAdjust, options);
   const posterRewardsRate = rate.mul(posterAmount).div(totalPosterRewards).mul(posterRate).div(1000);
   const blockNumber = ethers.BigNumber.from(await time.latestBlock());
-  let posterRewardsAvailable = blockNumber.add(blockAdjust).sub(lastClaim).mul(posterRewardsRate);
-  const smaller = freeAmount > treasuryBalance ? treasuryBalance : freeAmount;
+  let posterRewardsAvailable = (blockNumber.add(blockAdjust).sub(lastClaim)).mul(posterRewardsRate);
+  const smaller = freeAmount.gt(treasuryBalance) ? treasuryBalance : freeAmount;
   posterRewardsAvailable = posterRewardsAvailable.gt(smaller) ? smaller : posterRewardsAvailable;
-
   return posterRewardsAvailable;
 }
 

@@ -146,8 +146,8 @@ contract BEP20TokenMock is Context, IBEP20, Ownable {
     string public _name;
 
     constructor() public {
-        _name = 'BUSD Token';
-        _symbol = 'BUSD';
+        _name = 'DAI Token';
+        _symbol = 'DAI';
         _decimals = 18;
         _totalSupply = 31000000000000000000000000;
         _balances[msg.sender] = _totalSupply;

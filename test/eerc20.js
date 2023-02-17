@@ -16,18 +16,21 @@ describe('EERC20', function () {
 
   describe('init()', function () {
     it('Initializes correctly', async function () {
+
+      const latestBlock = await ethers.provider.getBlock("latest");
+      console.log(latestBlock.timestamp)
       expect(await eerc20.ini(), 'unexpected ini value').to.equal(true);
       expect(await eerc20.name(), 'unexpected name value').to.equal('Aletheo');
       expect(await eerc20.symbol(), 'unexpected symbol value').to.equal('LET');
-      const ab = await eerc20._ab();
+      const ab = await eerc20.ab();
       expect(ab.liquidityManager, 'unexpected liquidityManager value').to.equal(accounts[2].address);
       expect(ab.treasury, 'unexpected treasury value').to.equal(accounts[3].address);
       expect(ab.foundingEvent, 'unexpected foundingEvent value').to.equal(accounts[4].address);
       expect(ab.governance, 'unexpected governance value').to.equal(accounts[0].address);
-      expect(await eerc20.totalSupply(), 'unexpected totalSupply value').to.equal(ethers.BigNumber.from('165000000000000000000000'));
+      expect(await eerc20.totalSupply(), 'unexpected totalSupply value').to.equal(ethers.BigNumber.from('135000000000000000000000'));
       expect(await eerc20.balanceOf(accounts[0].address), 'unexpected governance balance').to.equal(ethers.BigNumber.from('15000000000000000000000'));
       expect(await eerc20.balanceOf(accounts[3].address), 'unexpected treasury balance').to.equal(ethers.BigNumber.from('50000000000000000000000'));
-      expect(await eerc20.balanceOf(accounts[4].address), 'unexpected foundingEvent balance').to.equal(ethers.BigNumber.from('100000000000000000000000'));
+      expect(await eerc20.balanceOf(accounts[4].address), 'unexpected foundingEvent balance').to.equal(ethers.BigNumber.from('70000000000000000000000'));
     });
     it('Cant be initialized more than once', async () => {
       await expect(
@@ -312,77 +315,6 @@ describe('EERC20', function () {
         );
       }
       expect(await eerc20.balanceOf(accounts[3].address), 'unexpected treasury balance').to.equal(initialTreasuryBalance.add(amounts[3]));
-    });
-  });
-
-  describe('callBySignature()', function () {
-    const chainId = 31337;
-    const DOMAIN_TYPEHASH = ethers.utils.solidityKeccak256(['string'], ['EIP712Domain(string name,uint256 chainId,address verifyingContract)']);
-
-    it('Gets poster rewards if called with signature of eligible', async function () {
-      await treasury.connect(accounts[10]).addPosters([accounts[1].address], ['1999000000000000000000']);
-
-      await treasury.approvePosters([accounts[1].address]);
-      await mine(172800);
-      const domainSeparator = ethers.utils.solidityKeccak256(
-        ['bytes32', 'uint', 'string', 'address'],
-        [DOMAIN_TYPEHASH, chainId, 'claimPosterRewardsWithSignature()', treasury.address]
-      );
-      const hashStruct = ethers.utils.solidityKeccak256(['string', 'address'], ['Aletheo 1000 EOY', accounts[1].address]);
-      const message = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [domainSeparator, hashStruct]);
-      const signature = await accounts[1].signMessage(ethers.utils.arrayify(message));
-      const tx = await treasury.connect(accounts[0]).claimPosterRewardsWithSignature(accounts[1].address, signature);
-      await expect(tx).not.to.be.reverted;
-    });
-    it('Sends gas instead if signatory balance is below 1e17', async function () {
-      await treasury.connect(accounts[10]).addPosters([accounts[1].address], ['1999000000000000000000']);
-
-      await treasury.approvePosters([accounts[1].address]);
-      await mine(172800);
-      const balanceBeforeSpending = await provider.getBalance(accounts[1].address);
-      if (balanceBeforeSpending.gt(100000000000000000n)) {
-        const toSpend = balanceBeforeSpending.sub(100000000000000000n);
-        await accounts[1].sendTransaction({
-          to: mockRouter.address,
-          value: toSpend,
-        });
-      }
-      const initialETHBalance = await provider.getBalance(accounts[1].address);
-      const domainSeparator = ethers.utils.solidityKeccak256(
-        ['bytes32', 'uint', 'string', 'address'],
-        [DOMAIN_TYPEHASH, chainId, 'claimPosterRewardsWithSignature()', treasury.address]
-      );
-      const hashStruct = ethers.utils.solidityKeccak256(['string', 'address'], ['Aletheo 1000 EOY', accounts[1].address]);
-      const message = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [domainSeparator, hashStruct]);
-      const signature = await accounts[1].signMessage(ethers.utils.arrayify(message));
-      const tx = await treasury.connect(accounts[0]).claimPosterRewardsWithSignature(accounts[1].address, signature);
-      await expect(tx).not.to.be.reverted;
-      await (await tx).wait();
-      expect(initialETHBalance).to.be.below(await provider.getBalance(accounts[1].address));
-    });
-    it('Fails if signatory is not eligible', async function () {
-      const domainSeparator = ethers.utils.solidityKeccak256(
-        ['bytes32', 'uint', 'string', 'address'],
-        [DOMAIN_TYPEHASH, chainId, 'claimPosterRewardsWithSignature()', treasury.address]
-      );
-      const hashStruct = ethers.utils.solidityKeccak256(['string', 'address'], ['Aletheo 1000 EOY', accounts[1].address]);
-      const message = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [domainSeparator, hashStruct]);
-      const signature = await accounts[1].signMessage(ethers.utils.arrayify(message));
-      const tx = treasury.connect(accounts[0]).claimPosterRewardsWithSignature(accounts[1].address, signature);
-      await expect(tx).to.be.reverted;
-    });
-    it('Fails if signature is invalid', async function () {
-      await treasury.connect(accounts[10]).addPosters([accounts[1].address], [1111111111]);
-      await treasury.approvePosters([accounts[1].address]);
-      const domainSeparator = ethers.utils.solidityKeccak256(
-        ['bytes32', 'uint', 'string', 'address'],
-        [DOMAIN_TYPEHASH, chainId, 'claimPosterRewardsWithSignature()', ethers.constants.AddressZero]
-      );
-      const hashStruct = ethers.utils.solidityKeccak256(['string', 'address'], ['Aletheo 1000 EOY', accounts[1].address]);
-      const message = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [domainSeparator, hashStruct]);
-      const signature = await accounts[1].signMessage(ethers.utils.arrayify(message));
-      const tx = treasury.connect(accounts[0]).claimPosterRewardsWithSignature(accounts[1].address, signature);
-      await expect(tx).to.be.reverted;
     });
   });
 });

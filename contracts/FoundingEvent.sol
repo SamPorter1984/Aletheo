@@ -58,12 +58,11 @@ interface I {
 
     function deposit() external payable;
 }
-import 'hardhat/console.sol';
 
 contract FoundingEvent {
     mapping(address => uint) public deposits;
     bool public emergency;
-    bool public swapToBNB;
+    bool public swapToETH;
     uint public genesisBlock;
     uint public hardcap;
     uint public sold;
@@ -72,29 +71,33 @@ contract FoundingEvent {
 
     struct AddressBook {
         address payable deployer;
+        address liquidityManager;
         address letToken;
-        address WBNB;
-        address BUSD;
+        address WETH;
+        address DAI;
         address router;
         address factory;
     }
 
-    AddressBook public _ab;
+    AddressBook public ab;
+    uint abLastUpdate;
+    AddressBook public abPending;
     bool public initialized;
 
-    function init(AddressBook memory ab) external {
-        require(msg.sender == 0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199);
+    function init(AddressBook memory _ab) external {
+        require(msg.sender == 0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199); //alert
         require(!initialized);
         initialized = true;
-        _ab = ab;
+        ab = _ab;
+        abLastUpdate = block.number;
         maxSold = 50000e18;
-        I(ab.WBNB).approve(ab.router, 2 ** 256 - 1);
+        I(ab.WETH).approve(ab.router, 2 ** 256 - 1);
         I(ab.letToken).approve(ab.router, 2 ** 256 - 1);
-        I(ab.BUSD).approve(ab.router, 2 ** 256 - 1);
+        I(ab.DAI).approve(ab.router, 2 ** 256 - 1);
     }
 
     function setupEvent(uint248 b) external {
-        require(msg.sender == _ab.deployer, 'not deployer');
+        require(msg.sender == ab.deployer, 'not deployer');
         require(b > block.number, 'choose higher block');
         if (presaleEndBlock != 0) {
             require(b < presaleEndBlock);
@@ -102,34 +105,34 @@ contract FoundingEvent {
         presaleEndBlock = b;
     }
 
-    function depositBUSD(uint amount) external {
+    function depositDAI(uint amount) external {
         require(presaleEndBlock > 0 && !emergency);
-        I(_ab.BUSD).transferFrom(msg.sender, address(this), amount);
-        I(_ab.BUSD).transfer(_ab.deployer, amount / 20);
-        if (swapToBNB) {
-            _swap(_ab.BUSD, _ab.WBNB, (amount / 20) * 19);
+        I(ab.DAI).transferFrom(msg.sender, address(this), amount);
+        I(ab.DAI).transfer(ab.deployer, amount / 10);
+        if (swapToETH) {
+            _swap(ab.DAI, ab.WETH, (amount / 10) * 9);
         }
-        deposits[msg.sender] += amount;
-        I(_ab.letToken).transfer(msg.sender, amount);
-        sold += amount * 2;
+        deposits[msg.sender] += amount / 2;
+        I(ab.letToken).transfer(msg.sender, amount / 2);
+        sold += amount;
         if (sold >= maxSold || block.number >= presaleEndBlock) {
             _createLiquidity();
         }
     }
 
-    function depositBNB() external payable {
+    function depositETH() external payable {
         require(presaleEndBlock > 0 && !emergency, 'too late');
-        uint letAmount = _calculateLetAmountInToken(_ab.WBNB, msg.value);
-        (bool success, ) = payable(_ab.deployer).call{value: msg.value / 20}('');
+        uint letAmount = _calculateLetAmountInToken(ab.WETH, msg.value);
+        (bool success, ) = payable(ab.deployer).call{value: msg.value / 10}('');
         require(success, 'try again');
-        if (!swapToBNB) {
-            I(_ab.WBNB).deposit{value: address(this).balance}();
-            _swap(_ab.WBNB, _ab.BUSD, (msg.value * 19) / 20);
+        if (!swapToETH) {
+            I(ab.WETH).deposit{value: address(this).balance}();
+            _swap(ab.WETH, ab.DAI, (msg.value * 9) / 10);
         } else {
-            I(_ab.WBNB).deposit{value: address(this).balance}();
+            I(ab.WETH).deposit{value: address(this).balance}();
         }
-        deposits[msg.sender] += letAmount;
-        I(_ab.letToken).transfer(msg.sender, letAmount);
+        deposits[msg.sender] += letAmount / 2;
+        I(ab.letToken).transfer(msg.sender, letAmount / 2);
         sold += letAmount;
         if (sold >= maxSold || block.number >= presaleEndBlock) {
             _createLiquidity();
@@ -138,55 +141,46 @@ contract FoundingEvent {
 
     //required for fee on transfer tokens
     function _calculateLetAmountInToken(address token, uint amount) internal view returns (uint) {
-        if (token == _ab.BUSD) return amount;
-        address pool = I(_ab.factory).getPair(token, _ab.BUSD);
-        (address token0, ) = token < _ab.BUSD ? (token, _ab.BUSD) : (_ab.BUSD, token);
+        // alert
+        if (token == ab.DAI) return amount;
+        address pool = I(ab.factory).getPair(token, ab.DAI);
+        (address token0, ) = token < ab.DAI ? (token, ab.DAI) : (ab.DAI, token);
         (uint reserve0, uint reserve1, ) = I(pool).getReserves();
-        (uint reserveToken, uint reserveBUSD) = token == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
-        return (amount * reserveToken) / reserveBUSD;
+        (uint reserveToken, uint reserveDAI) = token == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
+        return (amount * reserveToken) / reserveDAI;
     }
 
-    //probably fails if no direct route available and probably can get scammed with fee on transfer tokens
+    //fails if no direct route available and probably can get scammed with fee on transfer tokens
     function _swap(address token0, address token1, uint amount) private returns (uint[] memory tradeResult) {
         if (I(token0).balanceOf(address(this)) > 0) {
             address[] memory ar = new address[](2);
             ar[0] = token0;
             ar[1] = token1;
-            tradeResult = I(_ab.router).swapExactTokensForTokens(amount, 0, ar, address(this), 2 ** 256 - 1);
+            tradeResult = I(ab.router).swapExactTokensForTokens(amount, 0, ar, address(this), 2 ** 256 - 1);
         }
     }
 
-    function setSwapToBNB(bool swapToBNB_) public {
-        require(msg.sender == _ab.deployer, 'only deployer');
-        swapToBNB = swapToBNB_;
-        swapToBNB_ == true
-            ? _swap(_ab.BUSD, _ab.WBNB, I(_ab.BUSD).balanceOf(address(this)))
-            : _swap(_ab.WBNB, _ab.BUSD, I(_ab.WBNB).balanceOf(address(this)));
-    }
-
-    function _calculateLetAmountInBNB(uint amountBNB) internal view returns (uint) {
-        address pool; //alert need pool address
-        (address token0, ) = _ab.WBNB < _ab.BUSD ? (_ab.WBNB, _ab.BUSD) : (_ab.BUSD, _ab.WBNB); //alert: idk the order yet
-        (uint reserve0, uint reserve1, ) = I(pool).getReserves();
-        (uint reserveWBNB, uint reserveBUSD) = _ab.WBNB == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
-        return (amountBNB * reserveBUSD) / reserveWBNB;
+    function setSwapToETH(bool swapToETH_) public {
+        require(msg.sender == ab.deployer, 'only deployer');
+        swapToETH = swapToETH_;
+        swapToETH_ == true ? _swap(ab.DAI, ab.WETH, I(ab.DAI).balanceOf(address(this))) : _swap(ab.WETH, ab.DAI, I(ab.WETH).balanceOf(address(this)));
     }
 
     function _createLiquidity() internal {
-        address liquidityManager = 0x539cB40D3670fE03Dbe67857C4d8da307a70B305;
-        address token = _ab.letToken;
-        address tknBNBLP = I(_ab.factory).getPair(token, _ab.WBNB);
-        if (tknBNBLP == address(0)) {
-            tknBNBLP = I(_ab.factory).createPair(token, _ab.WBNB);
+        address liquidityManager = ab.liquidityManager;
+        address token = ab.letToken;
+        address letETHLP = I(ab.factory).getPair(token, ab.WETH);
+        if (letETHLP == address(0)) {
+            letETHLP = I(ab.factory).createPair(token, ab.WETH);
         }
-        if (!swapToBNB) {
-            _swap(_ab.BUSD, _ab.WBNB, I(_ab.BUSD).balanceOf(address(this)));
+        if (!swapToETH) {
+            _swap(ab.DAI, ab.WETH, I(ab.DAI).balanceOf(address(this)));
         }
-        I(_ab.router).addLiquidity(
+        I(ab.router).addLiquidity(
             token,
-            _ab.WBNB,
+            ab.WETH,
             I(token).balanceOf(address(this)),
-            I(_ab.WBNB).balanceOf(address(this)),
+            I(ab.WETH).balanceOf(address(this)),
             0,
             0,
             liquidityManager,
@@ -195,42 +189,53 @@ contract FoundingEvent {
         genesisBlock = block.number;
 
         // if somebody already created the pool
-        uint wbnbBalance = I(_ab.WBNB).balanceOf(address(this));
-        if (wbnbBalance > 0) {
-            I(_ab.WBNB).transfer(tknBNBLP, wbnbBalance);
+        uint WETHBalance = I(ab.WETH).balanceOf(address(this));
+        if (WETHBalance > 0) {
+            I(ab.WETH).transfer(letETHLP, WETHBalance);
         }
         uint letBalance = I(token).balanceOf(address(this));
         if (letBalance > 0) {
-            I(token).transfer(tknBNBLP, letBalance);
+            I(token).transfer(letETHLP, letBalance);
         }
-        I(tknBNBLP).sync();
+        I(letETHLP).sync();
     }
 
     function triggerLaunch() public {
         if (block.number < presaleEndBlock) {
-            require(msg.sender == _ab.deployer);
+            require(msg.sender == ab.deployer);
         }
         _createLiquidity();
     }
 
     function toggleEmergency() public {
-        require(msg.sender == _ab.deployer);
+        require(msg.sender == ab.deployer);
         emergency = !emergency;
     }
 
-    // founding event can swap funds back and forth between bnb and busd,
+    // founding event can swap funds back and forth between ETH and DAI,
     // its almost a guarantee that the last caller of withdraw
     // won't get at least some wei back no matter the setup
     function withdraw() public {
         require(emergency == true && deposits[msg.sender] > 0);
         uint withdrawAmount = (deposits[msg.sender] * 19) / 20;
-        if (I(_ab.WBNB).balanceOf(address(this)) > 0) {
-            _swap(_ab.WBNB, _ab.BUSD, I(_ab.WBNB).balanceOf(address(this)));
+        if (I(ab.WETH).balanceOf(address(this)) > 0) {
+            _swap(ab.WETH, ab.DAI, I(ab.WETH).balanceOf(address(this)));
         }
-        if (I(_ab.BUSD).balanceOf(address(this)) < withdrawAmount) {
-            withdrawAmount = I(_ab.BUSD).balanceOf(address(this));
+        if (I(ab.DAI).balanceOf(address(this)) < withdrawAmount) {
+            withdrawAmount = I(ab.DAI).balanceOf(address(this));
         }
-        I(_ab.BUSD).transfer(msg.sender, withdrawAmount);
+        I(ab.DAI).transfer(msg.sender, withdrawAmount);
         delete deposits[msg.sender];
+    }
+
+    function setPendingAddressBook(AddressBook calldata pab_) external {
+        require(msg.sender == ab.deployer);
+        abPending = pab_;
+    }
+
+    function setAddressBook() external {
+        require(msg.sender == ab.deployer && abLastUpdate > block.number + 1209600); // 2 weeks for this version
+        abLastUpdate = block.number;
+        ab = abPending;
     }
 }

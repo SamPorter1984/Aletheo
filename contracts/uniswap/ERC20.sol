@@ -90,7 +90,6 @@ contract ERC20 is Context {
         unchecked {
             _approve(owner, spender, currentAllowance - subtractedValue);
         }
-
         return true;
     }
 
